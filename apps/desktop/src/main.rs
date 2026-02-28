@@ -276,7 +276,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", steamcharts_weight())}" }
+                        strong { format!("{:.1}x", steamcharts_weight()) }
                     }
                     label { class: "control-row",
                         span { "SteamDB weight" }
@@ -292,7 +292,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", steamdb_weight())}" }
+                        strong { format!("{:.1}x", steamdb_weight()) }
                     }
                     label { class: "control-row",
                         span { "Twitch weight" }
@@ -308,7 +308,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", twitch_weight())}" }
+                        strong { format!("{:.1}x", twitch_weight()) }
                     }
                     label { class: "control-row",
                         span { "Steam import weight" }
@@ -324,7 +324,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", steam_import_weight())}" }
+                        strong { format!("{:.1}x", steam_import_weight()) }
                     }
                     label { class: "control-row",
                         span { "Manual weight" }
@@ -340,7 +340,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", manual_weight())}" }
+                        strong { format!("{:.1}x", manual_weight()) }
                     }
                     label { class: "control-row",
                         span { "Scanned weight" }
@@ -356,7 +356,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { "{format!("{:.1}x", scanned_weight())}" }
+                        strong { format!("{:.1}x", scanned_weight()) }
                     }
                 }
             }

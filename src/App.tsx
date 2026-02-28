@@ -1820,7 +1820,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="sources-heading">
-            <h2 id="sources-heading">{t("sources")}</h2>
+            <h2 id="sources-heading" className="section-heading">
+              <span>{t("sources")}</span>
+              <HelpTip text="Enable sources you trust. Games from multiple enabled sources are merged and gain combined weight." />
+            </h2>
             <div className="grid-sources">
               {sourceKeys.map((source) => {
                 const sourceMeta =
@@ -1894,6 +1897,10 @@ export default function App() {
             </div>
 
             <div className="weights-grid">
+              <p className="muted">
+                Per-source multipliers
+                <HelpTip text="Higher multipliers make that source more likely in weighted mode. 1.0x is neutral." />
+              </p>
               {sourceKeys.map((source) => (
                 <label key={source} className="weight-row">
                   <span>{sourceLabels[source]}</span>
@@ -1930,7 +1937,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="advanced-filters-heading">
-            <h2 id="advanced-filters-heading">Advanced Options</h2>
+            <h2 id="advanced-filters-heading" className="section-heading">
+              <span>Advanced Options</span>
+              <HelpTip text="Advanced controls include filters, exclusions, notifications, and cloud sync. Expand only when needed." />
+            </h2>
             <p className="muted">Filters, exclusions, notifications, and cloud sync are hidden by default.</p>
             <div className="button-row">
               <button
@@ -1946,7 +1956,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="steam-import-heading">
-            <h2 id="steam-import-heading">{t("steamImportTitle")}</h2>
+            <h2 id="steam-import-heading" className="section-heading">
+              <span>{t("steamImportTitle")}</span>
+              <HelpTip text="Imports owned games from Steam Web API using your API key and SteamID64. Profile privacy must allow owned games." />
+            </h2>
             <p className="muted">
               {t("steamImportDescription")}
             </p>
@@ -2002,7 +2015,10 @@ export default function App() {
 
           <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
           <section className="panel" aria-labelledby="filters-heading">
-            <h2 id="filters-heading">Advanced Filters</h2>
+            <h2 id="filters-heading" className="section-heading">
+              <span>Advanced Filters</span>
+              <HelpTip text="Filters narrow the candidate pool before cooldown and exclusion logic runs." />
+            </h2>
             <p className="muted">Filter by platform, tags, length, release window, and price.</p>
             <div className="filters-grid">
               <label className="filter-field">
@@ -2107,7 +2123,8 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                Free only
+                <span>Free only</span>
+                <HelpTip text="When enabled, only free-to-play entries are kept and max-price filtering is ignored." />
               </label>
             </div>
             <div className="button-row">
@@ -2125,12 +2142,16 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="exclusion-heading">
-            <h2 id="exclusion-heading">{t("playedCompletedTitle")}</h2>
+            <h2 id="exclusion-heading" className="section-heading">
+              <span>{t("playedCompletedTitle")}</span>
+              <HelpTip text="Use this to block games you already played or completed so they no longer appear on spins." />
+            </h2>
             <p className="muted">{t("playedCompletedDescription")}</p>
             <div className="odds-controls">
               <label className="inline-check">
                 <input type="checkbox" checked={excludePlayed} onChange={(event) => setExcludePlayed(event.target.checked)} />
-                {t("excludePlayed")}
+                <span>{t("excludePlayed")}</span>
+                <HelpTip text="Removes titles listed in Played from the active wheel pool." />
               </label>
               <label className="inline-check">
                 <input
@@ -2138,7 +2159,8 @@ export default function App() {
                   checked={excludeCompleted}
                   onChange={(event) => setExcludeCompleted(event.target.checked)}
                 />
-                {t("excludeCompleted")}
+                <span>{t("excludeCompleted")}</span>
+                <HelpTip text="Removes completed titles and keeps them out unless you clear the list." />
               </label>
             </div>
             <label htmlFor="exclusion-input" className="sr-only">
@@ -2208,7 +2230,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="notification-heading">
-            <h2 id="notification-heading">{t("notificationsTitle")}</h2>
+            <h2 id="notification-heading" className="section-heading">
+              <span>{t("notificationsTitle")}</span>
+              <HelpTip text="Browser notifications can alert you about trend refreshes and spin reminders when enabled." />
+            </h2>
             <p className="muted">{t("notificationsDescription")}</p>
             <div className="odds-controls">
               <label className="inline-check">
@@ -2219,7 +2244,8 @@ export default function App() {
                     void setNotificationsEnabledWithPermission(event.target.checked);
                   }}
                 />
-                {t("notificationsEnabled")}
+                <span>{t("notificationsEnabled")}</span>
+                <HelpTip text="Requires browser permission. If denied, this setting will stay off." />
               </label>
               <label className="inline-check">
                 <input
@@ -2228,7 +2254,8 @@ export default function App() {
                   disabled={!notificationsEnabled}
                   onChange={(event) => setTrendNotifications(event.target.checked)}
                 />
-                {t("newTrendsAlerts")}
+                <span>{t("newTrendsAlerts")}</span>
+                <HelpTip text="Sends an alert when refreshed trend data is available in the app." />
               </label>
               <label className="inline-check">
                 <input
@@ -2237,10 +2264,12 @@ export default function App() {
                   disabled={!notificationsEnabled}
                   onChange={(event) => setReminderNotifications(event.target.checked)}
                 />
-                {t("spinReminders")}
+                <span>{t("spinReminders")}</span>
+                <HelpTip text="Sends periodic reminders to spin again when the page is not active." />
               </label>
               <label className="cooldown-control">
-                {t("reminderInterval")}
+                <span>{t("reminderInterval")}</span>
+                <HelpTip text="Sets how often reminder notifications can fire, in minutes." />
                 <input
                   type="range"
                   min={15}
@@ -2261,7 +2290,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="cloud-sync-heading">
-            <h2 id="cloud-sync-heading">Cloud Sync (Optional)</h2>
+            <h2 id="cloud-sync-heading" className="section-heading">
+              <span>Cloud Sync (Optional)</span>
+              <HelpTip text="Syncs settings/history through a private GitHub Gist. Token stays in your local browser storage." />
+            </h2>
             <p className="muted">
               Sync your settings/history across devices using a private GitHub Gist. Your token is stored locally in
               this browser only.

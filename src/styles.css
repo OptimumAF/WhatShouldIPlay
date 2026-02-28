@@ -298,6 +298,12 @@ body {
   font-size: 1.9rem;
 }
 
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .preset-grid {
   display: grid;
   gap: 0.65rem;
@@ -475,6 +481,12 @@ select {
 .weights-grid {
   margin-top: 0.72rem;
   display: grid;
+  gap: 0.45rem;
+}
+
+.weights-grid .muted {
+  display: inline-flex;
+  align-items: center;
   gap: 0.45rem;
 }
 

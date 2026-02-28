@@ -44,7 +44,7 @@ jobs:
         if: ${{ matrix.platform == 'linux' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -56,13 +56,22 @@ jobs:
         working-directory: apps/desktop
 
       - name: Sign executable (optional)
-        if: ${{ matrix.platform == 'windows' && env.WINDOWS_CERT_BASE64 != '' && env.WINDOWS_CERT_PASSWORD != '' }}
+        if: ${{ matrix.platform == 'windows' && startsWith(github.ref, 'refs/tags/') && env.WINDOWS_CERT_BASE64 != '' && env.WINDOWS_CERT_PASSWORD != '' }}
+        continue-on-error: true
         shell: pwsh
         run: |
           $exe = Get-ChildItem apps/desktop/target/release/*.exe | Select-Object -First 1
           if (-not $exe) { throw "No executable found to sign." }
           $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
-          if (-not $signtool) { throw "signtool.exe not found on runner." }
+          if (-not $signtool) {
+            $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $signtool) {
+            Write-Warning "signtool.exe not found on runner. Skipping optional signing."
+            exit 0
+          }
           $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
           [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
           & $signtool sign /fd SHA256 /f $certPath /p $env:WINDOWS_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $exe.FullName

@@ -47,10 +47,28 @@ jobs:
           $exe = Get-ChildItem apps/desktop/target/release/*.exe | Select-Object -First 1
           if (-not $exe) { throw "No executable found to sign." }
           $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+          if (-not $signtool) {
+            $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
           if (-not $signtool) { throw "signtool.exe not found on runner." }
           $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
           [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
-          & $signtool sign /fd SHA256 /f $certPath /p $env:WINDOWS_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $exe.FullName
+          $timestampAuthorities = @(
+            "http://timestamp.digicert.com",
+            "http://timestamp.sectigo.com"
+          )
+          $signed = $false
+          foreach ($timestamp in $timestampAuthorities) {
+            & $signtool sign /fd SHA256 /f $certPath /p $env:WINDOWS_CERT_PASSWORD /tr $timestamp /td SHA256 $exe.FullName
+            if ($LASTEXITCODE -eq 0) {
+              $signed = $true
+              break
+            }
+            Write-Warning "Signing attempt failed with timestamp server '$timestamp' (exit $LASTEXITCODE)."
+          }
+          if (-not $signed) { throw "Failed to sign executable with available timestamp servers." }
 
       - name: Generate checksums
         shell: pwsh

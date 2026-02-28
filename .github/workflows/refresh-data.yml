@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,15 +27,15 @@ jobs:
       - name: Fetch latest top games
         run: npm run fetch:data
 
-      - name: Commit updated data
-        run: |
-          if git diff --quiet public/data/top-games.json; then
-            echo "No data changes."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/top-games.json
-          git commit -m "chore(data): refresh top game feeds"
-          git push
-
+      - name: Create data refresh pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/refresh-top-games
+          delete-branch: true
+          title: "chore(data): refresh top game feeds"
+          commit-message: "chore(data): refresh top game feeds"
+          body: |
+            Automated data refresh from `npm run fetch:data`.
+          labels: |
+            automated
+            data

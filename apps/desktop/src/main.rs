@@ -72,6 +72,7 @@ fn App() -> Element {
     let mut include_manual = use_signal(|| true);
     let mut include_scanned = use_signal(|| true);
     let mut weighted_mode = use_signal(|| true);
+    let mut adaptive_recommendations = use_signal(|| false);
     let mut cooldown_spins = use_signal(|| 2_usize);
     let mut steamcharts_weight = use_signal(|| 1.2_f64);
     let mut steamdb_weight = use_signal(|| 1.15_f64);
@@ -157,6 +158,31 @@ fn App() -> Element {
     let steam_import_weight_label = format!("{:.1}x", steam_import_weight());
     let manual_weight_label = format!("{:.1}x", manual_weight());
     let scanned_weight_label = format!("{:.1}x", scanned_weight());
+    let behavior_signal_count = spin_history().len().min(20);
+    let behavior_multipliers = compute_behavior_multipliers(&spin_history());
+    let suggested_steamcharts_weight = suggested_source_weight(1.2, behavior_multipliers[0]);
+    let suggested_steamdb_weight = suggested_source_weight(1.15, behavior_multipliers[1]);
+    let suggested_twitch_weight = suggested_source_weight(1.0, behavior_multipliers[2]);
+    let suggested_steam_import_weight = suggested_source_weight(1.35, behavior_multipliers[3]);
+    let suggested_manual_weight = suggested_source_weight(0.9, behavior_multipliers[4]);
+    let suggested_scanned_weight = suggested_source_weight(1.0, behavior_multipliers[5]);
+    let suggested_steamcharts_weight_label = format!("{:.1}x", suggested_steamcharts_weight);
+    let suggested_steamdb_weight_label = format!("{:.1}x", suggested_steamdb_weight);
+    let suggested_twitch_weight_label = format!("{:.1}x", suggested_twitch_weight);
+    let suggested_steam_import_weight_label = format!("{:.1}x", suggested_steam_import_weight);
+    let suggested_manual_weight_label = format!("{:.1}x", suggested_manual_weight);
+    let suggested_scanned_weight_label = format!("{:.1}x", suggested_scanned_weight);
+    let adaptive_spin_weights = spin_pool
+        .iter()
+        .map(|entry| {
+            let source_multiplier = if adaptive_recommendations() {
+                average_source_multiplier(&entry.sources, &behavior_multipliers)
+            } else {
+                1.0
+            };
+            (entry.weight * source_multiplier).max(0.05)
+        })
+        .collect::<Vec<_>>();
     let (profile_label, profile_duration_ms, profile_revolutions, profile_jitter_ratio) =
         match spin_speed_profile().as_str() {
             "cinematic" => ("Cinematic", 6200.0, 10.5, 0.28),
@@ -269,6 +295,15 @@ fn App() -> Element {
                             onclick: move |_| weighted_mode.set(!weighted_mode()),
                             {if weighted_mode() { "ON" } else { "OFF" }}
                         }
+                    }
+                    div { class: "control-row",
+                        span { "Adaptive recommendations" }
+                        button {
+                            class: "ghost",
+                            onclick: move |_| adaptive_recommendations.set(!adaptive_recommendations()),
+                            {if adaptive_recommendations() { "ON" } else { "OFF" }}
+                        }
+                        strong { "{behavior_signal_count} signals" }
                     }
                     label { class: "control-row",
                         span { "Cooldown spins" }
@@ -401,7 +436,56 @@ fn App() -> Element {
                         }
                         strong { "{scanned_weight_label}" }
                     }
+                    div { class: "control-row",
+                        span { "Apply behavior suggestions" }
+                        button {
+                            class: "ghost",
+                            disabled: behavior_signal_count < 3,
+                            onclick: move |_| {
+                                steamcharts_weight.set(suggested_steamcharts_weight);
+                                steamdb_weight.set(suggested_steamdb_weight);
+                                twitch_weight.set(suggested_twitch_weight);
+                                steam_import_weight.set(suggested_steam_import_weight);
+                                manual_weight.set(suggested_manual_weight);
+                                scanned_weight.set(suggested_scanned_weight);
+                                weighted_mode.set(true);
+                            },
+                            "Apply"
+                        }
+                        strong { if behavior_signal_count < 3 { "Need 3+" } else { "Ready" } }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "SteamCharts suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_steamcharts_weight_label}" }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "SteamDB suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_steamdb_weight_label}" }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "Twitch suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_twitch_weight_label}" }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "Steam import suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_steam_import_weight_label}" }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "Manual suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_manual_weight_label}" }
+                    }
+                    div { class: "control-row suggested-row",
+                        span { "Scanned suggested" }
+                        div { class: "suggested-bar" }
+                        strong { "{suggested_scanned_weight_label}" }
+                    }
                 }
+                p { class: "muted", "Adaptive mode uses recent spin history to bias sources you consistently land on. Apply suggested weights for a persistent baseline." }
             }
 
             section { class: "panel",
@@ -593,8 +677,9 @@ fn App() -> Element {
                                 return;
                             }
                             let mut rng = rand::rng();
-                            let weights = spin_pool.iter().map(|entry| entry.weight).collect::<Vec<_>>();
-                            let winner_index = if weighted_mode() {
+                            let behavior_weighted = weighted_mode() || adaptive_recommendations();
+                            let weights = adaptive_spin_weights.clone();
+                            let winner_index = if behavior_weighted {
                                 pick_weighted_index(&weights, &mut rng)
                             } else {
                                 rng.random_range(0..spin_pool.len())
@@ -608,13 +693,13 @@ fn App() -> Element {
                                 + (360.0 - winner_center)
                                 + jitter;
                             let selected = &spin_pool[winner_index];
-                            let total_weight = if weighted_mode() {
+                            let total_weight = if behavior_weighted {
                                 weights.iter().sum::<f64>().max(0.0001)
                             } else {
                                 spin_pool.len() as f64
                             };
-                            let odds = if weighted_mode() {
-                                selected.weight / total_weight
+                            let odds = if behavior_weighted {
+                                weights[winner_index] / total_weight
                             } else {
                                 1.0 / spin_pool.len() as f64
                             };
@@ -869,6 +954,60 @@ fn format_odds(odds: f64) -> String {
     } else {
         format!("{:.1}%", odds * 100.0)
     }
+}
+
+fn source_index_from_label(label: &str) -> Option<usize> {
+    match label.trim() {
+        "SteamCharts" => Some(0),
+        "SteamDB" => Some(1),
+        "TwitchMetrics" => Some(2),
+        "Steam Import" => Some(3),
+        "Manual" => Some(4),
+        "Scanned" => Some(5),
+        _ => None,
+    }
+}
+
+fn compute_behavior_multipliers(history: &[SpinHistoryItem]) -> [f64; 6] {
+    let mut scores = [0.0_f64; 6];
+    for (index, entry) in history.iter().take(20).enumerate() {
+        let recency = (1.0 - (index as f64 / 24.0)).max(0.22);
+        for source in entry.sources.split('+') {
+            if let Some(source_index) = source_index_from_label(source) {
+                scores[source_index] += 0.55 * recency;
+            }
+        }
+    }
+
+    let max_score = scores.iter().copied().fold(0.0_f64, f64::max);
+    if max_score <= 0.0 {
+        return [1.0; 6];
+    }
+
+    scores.map(|score| {
+        let normalized = score / max_score;
+        (0.78 + normalized * 0.62).clamp(0.72, 1.45)
+    })
+}
+
+fn average_source_multiplier(sources: &[String], multipliers: &[f64; 6]) -> f64 {
+    let mut total = 0.0;
+    let mut count = 0_u32;
+    for source in sources {
+        if let Some(index) = source_index_from_label(source) {
+            total += multipliers[index];
+            count += 1;
+        }
+    }
+    if count == 0 {
+        1.0
+    } else {
+        total / count as f64
+    }
+}
+
+fn suggested_source_weight(base_weight: f64, multiplier: f64) -> f64 {
+    ((base_weight * multiplier).clamp(0.1, 3.0) * 10.0).round() / 10.0
 }
 
 fn merge_lines(existing: &[String], input: &str) -> Vec<String> {
@@ -1750,6 +1889,16 @@ select {
 .control-row span {
   color: #2f4f6b;
   font-size: var(--text-sm);
+}
+
+.control-row.suggested-row {
+  background: rgba(36, 123, 160, 0.08);
+}
+
+.suggested-bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(36, 123, 160, 0.4), #247ba0);
 }
 
 .button-row {

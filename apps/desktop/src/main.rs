@@ -1962,13 +1962,48 @@ button:disabled {
   margin-top: var(--space-3);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1240px) {
+  .layout {
+    padding: var(--space-5) var(--space-4) var(--space-6);
+    gap: var(--space-3);
+  }
+
+  .workspace {
+    grid-template-columns: minmax(236px, 290px) minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .sidebar {
+    gap: var(--space-3);
+  }
+
+  .wheel-shell {
+    width: min(82vw, 430px);
+  }
+}
+
+@media (max-width: 1040px) {
   .workspace {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
     position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout {
+    padding: var(--space-4) var(--space-3) var(--space-5);
+  }
+
+  .control-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .button-row {
+    gap: var(--space-1);
   }
 }
 

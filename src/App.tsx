@@ -77,8 +77,26 @@ const steamOwnedSchema = z.object({
     .default({}),
 });
 
+const storedSteamImportSchema = z.object({
+  steamApiKey: z.string().default(""),
+  steamId: z.string().default(""),
+  steamImportGames: z
+    .array(
+      z.object({
+        name: z.string(),
+        rank: z.number().optional(),
+        score: z.number().optional(),
+        appId: z.number().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .default([]),
+});
+
 const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
+const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
+const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
@@ -122,6 +140,12 @@ interface StoredSettings {
   weightedMode: boolean;
   cooldownSpins: number;
   activePreset: string;
+}
+
+interface StoredSteamImport {
+  steamApiKey: string;
+  steamId: string;
+  steamImportGames: GameEntry[];
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -215,6 +239,12 @@ const fallbackSettings: StoredSettings = {
   activePreset: "balanced",
 };
 
+const fallbackSteamImport: StoredSteamImport = {
+  steamApiKey: "",
+  steamId: "",
+  steamImportGames: [],
+};
+
 async function fetchTopGames(): Promise<TopGamesPayload> {
   const url = `${import.meta.env.BASE_URL}data/top-games.json`;
   const response = await fetch(url, { cache: "no-store" });
@@ -266,9 +296,39 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
   };
 };
 
+const sanitizeSteamImport = (input: StoredSteamImport | null): StoredSteamImport => {
+  if (!input) return fallbackSteamImport;
+  const parsed = storedSteamImportSchema.safeParse(input);
+  if (!parsed.success) return fallbackSteamImport;
+
+  const deduped = new Map<string, GameEntry>();
+  parsed.data.steamImportGames.forEach((entry, index) => {
+    const cleaned = entry.name.trim();
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (deduped.has(key)) return;
+    deduped.set(key, {
+      name: cleaned,
+      source: "steamImport",
+      rank: entry.rank ?? index + 1,
+      score: entry.score,
+      appId: entry.appId,
+      url: entry.url,
+    });
+  });
+
+  return {
+    steamApiKey: parsed.data.steamApiKey,
+    steamId: parsed.data.steamId,
+    steamImportGames: [...deduped.values()],
+  };
+};
+
 export default function App() {
   const initialSettings = sanitizeSettings(readStorage<StoredSettings | null>(SETTINGS_STORAGE_KEY, null));
   const initialHistory = readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []);
+  const initialManualGames = normalizeGames(readStorage<string[]>(MANUAL_GAMES_STORAGE_KEY, []));
+  const initialSteamImport = sanitizeSteamImport(readStorage<StoredSteamImport | null>(STEAM_IMPORT_STORAGE_KEY, null));
 
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
@@ -277,10 +337,10 @@ export default function App() {
   const [activePreset, setActivePreset] = useState(initialSettings.activePreset);
 
   const [manualInput, setManualInput] = useState("");
-  const [manualGames, setManualGames] = useState<string[]>([]);
-  const [steamImportGames, setSteamImportGames] = useState<GameEntry[]>([]);
-  const [steamApiKey, setSteamApiKey] = useState("");
-  const [steamId, setSteamId] = useState("");
+  const [manualGames, setManualGames] = useState<string[]>(initialManualGames);
+  const [steamImportGames, setSteamImportGames] = useState<GameEntry[]>(initialSteamImport.steamImportGames);
+  const [steamApiKey, setSteamApiKey] = useState(initialSteamImport.steamApiKey);
+  const [steamId, setSteamId] = useState(initialSteamImport.steamId);
   const [steamImportStatus, setSteamImportStatus] = useState<string>("");
   const [steamImportLoading, setSteamImportLoading] = useState(false);
 
@@ -386,6 +446,21 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(spinHistory.slice(0, 50)));
   }, [spinHistory]);
+
+  useEffect(() => {
+    localStorage.setItem(MANUAL_GAMES_STORAGE_KEY, JSON.stringify(manualGames));
+  }, [manualGames]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      STEAM_IMPORT_STORAGE_KEY,
+      JSON.stringify({
+        steamApiKey,
+        steamId,
+        steamImportGames,
+      } satisfies StoredSteamImport),
+    );
+  }, [steamApiKey, steamId, steamImportGames]);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {

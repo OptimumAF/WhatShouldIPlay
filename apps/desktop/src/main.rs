@@ -1548,9 +1548,34 @@ const DESKTOP_CSS: &str = r#"
   box-sizing: border-box;
 }
 
+:root {
+  --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", sans-serif;
+  --line-height: 1.45;
+  --text-xs: 0.78rem;
+  --text-sm: 0.88rem;
+  --text-base: 1rem;
+  --text-lg: 1.12rem;
+  --text-xl: 1.45rem;
+  --text-2xl: clamp(1.7rem, 3vw, 2.2rem);
+  --text-hero: clamp(1.9rem, 4vw, 2.6rem);
+  --space-1: 0.35rem;
+  --space-2: 0.5rem;
+  --space-3: 0.7rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 20px;
+}
+
 body {
   margin: 0;
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--line-height);
   color: #0f2032;
   background:
     radial-gradient(circle at 8% 14%, #ffe066 0%, transparent 34%),
@@ -1562,15 +1587,15 @@ body {
 .layout {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 18px 14px 28px;
+  padding: var(--space-6) var(--space-5) var(--space-6);
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
 .workspace {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -1580,56 +1605,62 @@ body {
 
 .sidebar {
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
   position: sticky;
-  top: 12px;
+  top: var(--space-4);
 }
 
 .content-stack {
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
 .hero,
 .panel {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(15, 32, 50, 0.16);
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .hero h1 {
   margin: 0;
-  font-size: 2.1rem;
+  font-size: var(--text-hero);
+  font-family: var(--font-display);
+  line-height: 1.1;
 }
 
 .hero p {
-  margin: 6px 0 0;
+  margin: var(--space-2) 0 0;
 }
 
 .kicker {
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: #1f3f5b;
 }
 
 h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  line-height: 1.15;
 }
 
 .muted,
 .status {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   color: #3c556f;
+  font-size: var(--text-sm);
 }
 
 textarea {
   width: 100%;
   border: 1px solid rgba(15, 32, 50, 0.2);
-  border-radius: 10px;
-  margin-top: 8px;
-  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
   font: inherit;
   resize: vertical;
 }
@@ -1637,50 +1668,50 @@ textarea {
 input {
   width: 100%;
   border: 1px solid rgba(15, 32, 50, 0.2);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   font: inherit;
 }
 
 .input-grid {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .control-grid {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   display: grid;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .control-row {
   border: 1px solid rgba(15, 32, 50, 0.18);
-  border-radius: 12px;
-  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
   display: grid;
   grid-template-columns: 150px 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .control-row span {
   color: #2f4f6b;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .button-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 button {
   border: 0;
   border-radius: 999px;
-  padding: 9px 14px;
+  padding: 0.6rem var(--space-4);
   font-weight: 700;
   cursor: pointer;
   background: #f25f5c;
@@ -1698,7 +1729,7 @@ button:disabled {
 }
 
 .wheel-shell {
-  margin: 14px auto 0;
+  margin: var(--space-4) auto 0;
   width: min(74vw, 460px);
   aspect-ratio: 1;
   position: relative;
@@ -1777,11 +1808,11 @@ button:disabled {
 }
 
 .winner {
-  margin-top: 10px;
+  margin-top: var(--space-3);
   border: 1px solid rgba(15, 32, 50, 0.2);
   background: #f9f3df;
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
 
 .winner p {
@@ -1790,28 +1821,28 @@ button:disabled {
 }
 
 .winner strong {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   display: inline-block;
-  font-size: 1.35rem;
+  font-size: var(--text-xl);
 }
 
 .history-list {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .history-list li {
   border: 1px solid rgba(15, 32, 50, 0.18);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.65);
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .history-list small {
@@ -1831,19 +1862,19 @@ button:disabled {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 12px;
+  padding: var(--space-4);
 }
 
 .winner-popup {
   position: relative;
   width: min(90vw, 520px);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(16, 38, 58, 0.2);
   background:
     radial-gradient(circle at 20% 10%, rgba(255, 224, 102, 0.56) 0%, transparent 40%),
     radial-gradient(circle at 88% 20%, rgba(112, 193, 179, 0.44) 0%, transparent 45%),
     linear-gradient(145deg, #fdf7e8 0%, #e7f0f8 100%);
-  padding: 16px;
+  padding: var(--space-5);
   animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
 }
 
@@ -1858,15 +1889,17 @@ button:disabled {
 
 .winner-tag {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #24415c;
 }
 
 .winner-popup h3 {
-  margin: 6px 0;
-  font-size: clamp(1.9rem, 6vw, 3rem);
+  margin: var(--space-2) 0;
+  font-size: clamp(1.9rem, 6vw, 2.8rem);
+  font-family: var(--font-display);
+  line-height: 1.1;
 }
 
 .winner-popup p {
@@ -1875,7 +1908,7 @@ button:disabled {
 }
 
 .winner-popup button {
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
 
 @media (max-width: 980px) {

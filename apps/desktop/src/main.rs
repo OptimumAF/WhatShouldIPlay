@@ -90,6 +90,7 @@ fn App() -> Element {
     let mut pending_winner_odds = use_signal(|| 0.0_f64);
     let mut spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let mut show_winner_popup = use_signal(|| false);
+    let mut show_sidebar = use_signal(|| true);
 
     let full_pool = build_weighted_pool(
         include_steamcharts(),
@@ -157,9 +158,19 @@ fn App() -> Element {
                 h1 { "Spin For Your Next Game" }
                 p { "Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner." }
                 p { class: "status", "Status: {status}" }
+                div { class: "button-row",
+                    button {
+                        class: "ghost",
+                        onclick: move |_| show_sidebar.set(!show_sidebar()),
+                        if show_sidebar() { "Hide Settings" } else { "Show Settings" }
+                    }
+                }
             }
 
-            section { class: "panel",
+            div { class: if show_sidebar() { "workspace" } else { "workspace sidebar-collapsed" },
+                if show_sidebar() {
+                    aside { class: "sidebar",
+                        section { class: "panel",
                 h2 { "Mode Presets + Odds" }
                 div { class: "button-row",
                     button {
@@ -464,48 +475,11 @@ fn App() -> Element {
                     p { class: "muted", "{steam_import_status}" }
                 }
             }
-
-            section { class: "panel",
-                h2 { "Manual + Scan" }
-                textarea {
-                    value: "{manual_text}",
-                    rows: "4",
-                    oninput: move |evt| manual_text.set(evt.value()),
-                    placeholder: "Hades II\nHelldivers 2\nMonster Hunter Wilds"
-                }
-                div { class: "button-row",
-                    button {
-                        onclick: move |_| {
-                            let merged = merge_lines(&manual_games(), &manual_text());
-                            manual_games.set(merged);
-                            manual_text.set(String::new());
-                        },
-                        "Add Manual Games"
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| include_manual.set(!include_manual()),
-                        {format!("Manual: {}", if include_manual() { "ON" } else { "OFF" })}
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| {
-                            let games = scan_installed_games();
-                            scanned_games.set(games);
-                        },
-                        "Scan Game Libraries"
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| include_scanned.set(!include_scanned()),
-                        {format!("Scanned: {}", if include_scanned() { "ON" } else { "OFF" })}
                     }
                 }
-                p { class: "muted", "Manual games: {manual_games().len()} | Scanned games: {scanned_games().len()}" }
-                p { class: "muted", "Desktop scan checks Steam manifests + common game install folders. Shortcut crawling is disabled by default." }
-            }
 
-            section { class: "panel",
+                div { class: "content-stack",
+                    section { class: "panel",
                 h2 { "Wheel" }
                 p { class: "muted", "Current pool: {spin_pool.len()} unique games" }
                 if cooldown_exhausted {
@@ -623,7 +597,47 @@ fn App() -> Element {
                 }
             }
 
-            section { class: "panel",
+                    section { class: "panel",
+                h2 { "Manual + Scan" }
+                textarea {
+                    value: "{manual_text}",
+                    rows: "4",
+                    oninput: move |evt| manual_text.set(evt.value()),
+                    placeholder: "Hades II\nHelldivers 2\nMonster Hunter Wilds"
+                }
+                div { class: "button-row",
+                    button {
+                        onclick: move |_| {
+                            let merged = merge_lines(&manual_games(), &manual_text());
+                            manual_games.set(merged);
+                            manual_text.set(String::new());
+                        },
+                        "Add Manual Games"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| include_manual.set(!include_manual()),
+                        {format!("Manual: {}", if include_manual() { "ON" } else { "OFF" })}
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            let games = scan_installed_games();
+                            scanned_games.set(games);
+                        },
+                        "Scan Game Libraries"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| include_scanned.set(!include_scanned()),
+                        {format!("Scanned: {}", if include_scanned() { "ON" } else { "OFF" })}
+                    }
+                }
+                p { class: "muted", "Manual games: {manual_games().len()} | Scanned games: {scanned_games().len()}" }
+                p { class: "muted", "Desktop scan checks Steam manifests + common game install folders. Shortcut crawling is disabled by default." }
+            }
+
+                    section { class: "panel",
                 h2 { "Spin History" }
                 if spin_history().is_empty() {
                     p { class: "muted", "No spins yet." }
@@ -639,6 +653,8 @@ fn App() -> Element {
                             }
                         }
                     }
+                }
+            }
                 }
             }
         }
@@ -1415,6 +1431,29 @@ body {
   gap: 12px;
 }
 
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.workspace.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sidebar {
+  display: grid;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+}
+
+.content-stack {
+  display: grid;
+  gap: 12px;
+}
+
 .hero,
 .panel {
   background: rgba(255, 255, 255, 0.86);
@@ -1701,6 +1740,16 @@ button:disabled {
 
 .winner-popup button {
   margin-top: 12px;
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
 }
 
 @keyframes winner-pop {

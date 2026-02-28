@@ -41,6 +41,33 @@ body {
   gap: 1rem;
 }
 
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.workspace.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-sidebar {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.settings-sidebar.is-collapsed {
+  display: none;
+}
+
+.content-stack {
+  display: grid;
+  gap: 1rem;
+}
+
 .hero {
   background: var(--surface);
   border: 1px solid var(--panel-border);
@@ -59,6 +86,13 @@ body {
   margin: 0.4rem 0 0;
   color: var(--muted);
   max-width: 80ch;
+}
+
+.hero-actions {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .kicker {
@@ -550,6 +584,14 @@ button.ghost {
 @media (max-width: 760px) {
   .layout {
     padding: 1rem 0.7rem 2rem;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-sidebar {
+    position: static;
   }
 
   .panel,

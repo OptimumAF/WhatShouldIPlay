@@ -354,6 +354,7 @@ export default function App() {
   const [winnerPulse, setWinnerPulse] = useState(0);
   const [spinHistory, setSpinHistory] = useState<SpinHistoryItem[]>(initialHistory);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -645,232 +646,241 @@ export default function App() {
           Mix top games from SteamCharts, SteamDB/Steam charts data, TwitchMetrics, Steam account import, and your own
           list. Then spin.
         </p>
-        {installPrompt ? (
-          <div className="button-row">
+        <div className="hero-actions">
+          <button type="button" className="ghost" onClick={() => setSidebarOpen((current) => !current)}>
+            {sidebarOpen ? "Hide Settings" : "Show Settings"}
+          </button>
+          {installPrompt ? (
             <button type="button" className="ghost" onClick={handleInstall}>
               Install App
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </header>
 
-      <section className="panel">
-        <h2>Mode Presets</h2>
-        <div className="preset-grid">
-          {modePresets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={clsx("preset-card", activePreset === preset.id && "is-active")}
-              onClick={() => applyPreset(preset)}
-            >
-              <strong>{preset.label}</strong>
-              <span>{preset.description}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className={clsx("workspace", !sidebarOpen && "sidebar-collapsed")}>
+        <aside className={clsx("settings-sidebar", !sidebarOpen && "is-collapsed")}>
+          <section className="panel">
+            <h2>Mode Presets</h2>
+            <div className="preset-grid">
+              {modePresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={clsx("preset-card", activePreset === preset.id && "is-active")}
+                  onClick={() => applyPreset(preset)}
+                >
+                  <strong>{preset.label}</strong>
+                  <span>{preset.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      <section className="panel">
-        <h2>Sources</h2>
-        <div className="grid-sources">
-          {sourceKeys.map((source) => {
-            const sourceMeta =
-              source === "manual"
-                ? manualGames.length
-                : source === "steamImport"
-                  ? steamImportGames.length
-                  : topGames?.sources[source].games.length;
-            const note =
-              source === "manual"
-                ? "Your custom list"
-                : source === "steamImport"
-                  ? "Imported from your Steam account"
-                  : topGames?.sources[source].note;
-            const fetchedAt =
-              source === "manual" || source === "steamImport" ? null : topGames?.sources[source].fetchedAt;
+          <section className="panel">
+            <h2>Sources</h2>
+            <div className="grid-sources">
+              {sourceKeys.map((source) => {
+                const sourceMeta =
+                  source === "manual"
+                    ? manualGames.length
+                    : source === "steamImport"
+                      ? steamImportGames.length
+                      : topGames?.sources[source].games.length;
+                const note =
+                  source === "manual"
+                    ? "Your custom list"
+                    : source === "steamImport"
+                      ? "Imported from your Steam account"
+                      : topGames?.sources[source].note;
+                const fetchedAt =
+                  source === "manual" || source === "steamImport" ? null : topGames?.sources[source].fetchedAt;
 
-            return (
-              <label key={source} className={clsx("source-card", enabledSources[source] && "is-enabled")}>
+                return (
+                  <label key={source} className={clsx("source-card", enabledSources[source] && "is-enabled")}>
+                    <input
+                      type="checkbox"
+                      checked={enabledSources[source]}
+                      onChange={() => {
+                        setEnabledSources((current) => ({
+                          ...current,
+                          [source]: !current[source],
+                        }));
+                        markCustom();
+                      }}
+                    />
+                    <div>
+                      <strong>{sourceLabels[source]}</strong>
+                      <p>{sourceMeta} games loaded</p>
+                      {fetchedAt ? <small>Updated {new Date(fetchedAt).toLocaleString()}</small> : null}
+                      {note ? <small>{note}</small> : null}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="odds-controls">
+              <label className="inline-check">
                 <input
                   type="checkbox"
-                  checked={enabledSources[source]}
-                  onChange={() => {
-                    setEnabledSources((current) => ({
-                      ...current,
-                      [source]: !current[source],
-                    }));
+                  checked={weightedMode}
+                  onChange={(event) => {
+                    setWeightedMode(event.target.checked);
                     markCustom();
                   }}
                 />
-                <div>
-                  <strong>{sourceLabels[source]}</strong>
-                  <p>{sourceMeta} games loaded</p>
-                  {fetchedAt ? <small>Updated {new Date(fetchedAt).toLocaleString()}</small> : null}
-                  {note ? <small>{note}</small> : null}
-                </div>
+                Weighted wheel
               </label>
-            );
-          })}
-        </div>
-
-        <div className="odds-controls">
-          <label className="inline-check">
-            <input
-              type="checkbox"
-              checked={weightedMode}
-              onChange={(event) => {
-                setWeightedMode(event.target.checked);
-                markCustom();
-              }}
-            />
-            Weighted wheel
-          </label>
-          <label className="cooldown-control">
-            Cooldown spins
-            <input
-              type="range"
-              min={0}
-              max={20}
-              value={cooldownSpins}
-              onChange={(event) => {
-                setCooldownSpins(Number(event.target.value));
-                markCustom();
-              }}
-            />
-            <strong>{cooldownSpins}</strong>
-          </label>
-        </div>
-
-        <div className="weights-grid">
-          {sourceKeys.map((source) => (
-            <label key={source} className="weight-row">
-              <span>{sourceLabels[source]}</span>
-              <input
-                type="range"
-                min={0.1}
-                max={3}
-                step={0.1}
-                disabled={!weightedMode}
-                value={sourceWeights[source]}
-                onChange={(event) => {
-                  setSourceWeights((current) => ({
-                    ...current,
-                    [source]: Number(event.target.value),
-                  }));
-                  markCustom();
-                }}
-              />
-              <strong>{sourceWeights[source].toFixed(1)}x</strong>
-            </label>
-          ))}
-        </div>
-
-        {topGamesQuery.isLoading ? <p className="status">Loading source data...</p> : null}
-        {topGamesQuery.isError ? <p className="status error">{(topGamesQuery.error as Error).message}</p> : null}
-      </section>
-
-      <section className="panel">
-        <h2>Steam Account Import</h2>
-        <p className="muted">
-          Import owned games using Steam Web API key + SteamID64. Profile and game details must be public.
-        </p>
-        <div className="steam-grid">
-          <input
-            type="password"
-            placeholder="Steam Web API Key"
-            value={steamApiKey}
-            onChange={(event) => setSteamApiKey(event.target.value)}
-            autoComplete="off"
-          />
-          <input
-            type="text"
-            placeholder="SteamID64"
-            value={steamId}
-            onChange={(event) => setSteamId(event.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <div className="button-row">
-          <button type="button" onClick={importSteamLibrary} disabled={steamImportLoading}>
-            {steamImportLoading ? "Importing..." : "Import Steam Library"}
-          </button>
-          <button type="button" className="ghost" onClick={clearSteamImport}>
-            Clear Import
-          </button>
-        </div>
-        {steamImportStatus ? <p className="status">{steamImportStatus}</p> : null}
-      </section>
-
-      <section className="panel">
-        <h2>Manual List</h2>
-        <p className="muted">Add games by newline or comma.</p>
-        <textarea
-          rows={5}
-          value={manualInput}
-          onChange={(event) => setManualInput(event.target.value)}
-          placeholder="Helldivers 2&#10;Hades II&#10;Monster Hunter Wilds"
-        />
-        <div className="button-row">
-          <button type="button" onClick={addManualGames}>
-            Add Games
-          </button>
-          <button type="button" className="ghost" onClick={clearManualGames}>
-            Clear Manual
-          </button>
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>Wheel</h2>
-        <p className="muted">
-          {activePool.length} games in this spin pool
-          {cooldownSpins > 0 ? ` (${Math.max(0, basePool.length - activePool.length)} on cooldown)` : ""}.
-        </p>
-        {cooldownSaturated ? (
-          <p className="status">Cooldown exhausted the pool, so all entries were temporarily re-enabled.</p>
-        ) : null}
-        <Wheel games={activePool.map((candidate) => candidate.name)} rotation={rotation} spinning={spinning} onSpinEnd={onSpinEnd} />
-        <div className="button-row">
-          <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
-            {spinning ? "Spinning..." : "Spin The Wheel"}
-          </button>
-          <button type="button" className="ghost" onClick={clearHistory}>
-            Clear History
-          </button>
-        </div>
-        {winner && winnerMeta ? (
-          <div className="winner winner-rich">
-            <p>You should play:</p>
-            <strong>{winner}</strong>
-            <div className="winner-stats">
-              <span>Sources: {sourceLabelList(winnerMeta.sources)}</span>
-              <span>Odds: {formatOdds(winnerMeta.odds)}</span>
+              <label className="cooldown-control">
+                Cooldown spins
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  value={cooldownSpins}
+                  onChange={(event) => {
+                    setCooldownSpins(Number(event.target.value));
+                    markCustom();
+                  }}
+                />
+                <strong>{cooldownSpins}</strong>
+              </label>
             </div>
-          </div>
-        ) : null}
-      </section>
 
-      <section className="panel">
-        <h2>Spin History</h2>
-        {spinHistory.length === 0 ? (
-          <p className="muted">No spins yet.</p>
-        ) : (
-          <ul className="history-list">
-            {spinHistory.slice(0, 10).map((item, index) => (
-              <li key={`${item.name}-${item.spunAt}-${index}`}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <small>
-                    {new Date(item.spunAt).toLocaleString()} | {sourceLabelList(item.sources)}
-                  </small>
+            <div className="weights-grid">
+              {sourceKeys.map((source) => (
+                <label key={source} className="weight-row">
+                  <span>{sourceLabels[source]}</span>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    disabled={!weightedMode}
+                    value={sourceWeights[source]}
+                    onChange={(event) => {
+                      setSourceWeights((current) => ({
+                        ...current,
+                        [source]: Number(event.target.value),
+                      }));
+                      markCustom();
+                    }}
+                  />
+                  <strong>{sourceWeights[source].toFixed(1)}x</strong>
+                </label>
+              ))}
+            </div>
+
+            {topGamesQuery.isLoading ? <p className="status">Loading source data...</p> : null}
+            {topGamesQuery.isError ? <p className="status error">{(topGamesQuery.error as Error).message}</p> : null}
+          </section>
+
+          <section className="panel">
+            <h2>Steam Account Import</h2>
+            <p className="muted">
+              Import owned games using Steam Web API key + SteamID64. Profile and game details must be public.
+            </p>
+            <div className="steam-grid">
+              <input
+                type="password"
+                placeholder="Steam Web API Key"
+                value={steamApiKey}
+                onChange={(event) => setSteamApiKey(event.target.value)}
+                autoComplete="off"
+              />
+              <input
+                type="text"
+                placeholder="SteamID64"
+                value={steamId}
+                onChange={(event) => setSteamId(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={importSteamLibrary} disabled={steamImportLoading}>
+                {steamImportLoading ? "Importing..." : "Import Steam Library"}
+              </button>
+              <button type="button" className="ghost" onClick={clearSteamImport}>
+                Clear Import
+              </button>
+            </div>
+            {steamImportStatus ? <p className="status">{steamImportStatus}</p> : null}
+          </section>
+        </aside>
+
+        <div className="content-stack">
+          <section className="panel">
+            <h2>Wheel</h2>
+            <p className="muted">
+              {activePool.length} games in this spin pool
+              {cooldownSpins > 0 ? ` (${Math.max(0, basePool.length - activePool.length)} on cooldown)` : ""}.
+            </p>
+            {cooldownSaturated ? (
+              <p className="status">Cooldown exhausted the pool, so all entries were temporarily re-enabled.</p>
+            ) : null}
+            <Wheel games={activePool.map((candidate) => candidate.name)} rotation={rotation} spinning={spinning} onSpinEnd={onSpinEnd} />
+            <div className="button-row">
+              <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
+                {spinning ? "Spinning..." : "Spin The Wheel"}
+              </button>
+              <button type="button" className="ghost" onClick={clearHistory}>
+                Clear History
+              </button>
+            </div>
+            {winner && winnerMeta ? (
+              <div className="winner winner-rich">
+                <p>You should play:</p>
+                <strong>{winner}</strong>
+                <div className="winner-stats">
+                  <span>Sources: {sourceLabelList(winnerMeta.sources)}</span>
+                  <span>Odds: {formatOdds(winnerMeta.odds)}</span>
                 </div>
-                <span>{formatOdds(item.odds)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="panel">
+            <h2>Manual List</h2>
+            <p className="muted">Add games by newline or comma.</p>
+            <textarea
+              rows={5}
+              value={manualInput}
+              onChange={(event) => setManualInput(event.target.value)}
+              placeholder="Helldivers 2&#10;Hades II&#10;Monster Hunter Wilds"
+            />
+            <div className="button-row">
+              <button type="button" onClick={addManualGames}>
+                Add Games
+              </button>
+              <button type="button" className="ghost" onClick={clearManualGames}>
+                Clear Manual
+              </button>
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>Spin History</h2>
+            {spinHistory.length === 0 ? (
+              <p className="muted">No spins yet.</p>
+            ) : (
+              <ul className="history-list">
+                {spinHistory.slice(0, 10).map((item, index) => (
+                  <li key={`${item.name}-${item.spunAt}-${index}`}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <small>
+                        {new Date(item.spunAt).toLocaleString()} | {sourceLabelList(item.sources)}
+                      </small>
+                    </div>
+                    <span>{formatOdds(item.odds)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
 
       {showWinnerPopup && winner && winnerMeta ? (
         <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>

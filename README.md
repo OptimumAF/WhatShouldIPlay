@@ -81,6 +81,12 @@ cd apps/desktop
 cargo run --features deep-shortcut-scan
 ```
 
+Configure Windows code-signing secrets for CI (requires a `.pfx` code-signing cert):
+
+```powershell
+.\scripts\set-windows-signing-secrets.ps1 -CertPath "C:\path\codesign.pfx" -CertPassword "your-password"
+```
+
 Release build:
 
 ```bash

@@ -27,3 +27,11 @@ cargo run
 ```bash
 cargo build --release
 ```
+
+## Optional: Enable CI Code Signing
+
+From repo root, set GitHub Action secrets using your `.pfx` cert:
+
+```powershell
+.\scripts\set-windows-signing-secrets.ps1 -CertPath "C:\path\codesign.pfx" -CertPassword "your-password"
+```

@@ -3,8 +3,14 @@ name: Build Desktop App
 on:
   workflow_dispatch:
   push:
-    tags:
-      - "v*"
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
 
 jobs:
   build-windows:
@@ -28,6 +34,5 @@ jobs:
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
-          name: pick-a-game-desktop-windows
+          name: pick-a-game-desktop-windows-${{ github.run_number }}
           path: apps/desktop/target/release/*.exe
-

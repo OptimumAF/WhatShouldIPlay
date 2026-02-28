@@ -55,6 +55,7 @@ fn App() -> Element {
     let mut wheel_rotation = use_signal(|| 0.0_f64);
     let mut winner = use_signal(String::new);
     let mut pending_winner = use_signal(String::new);
+    let mut show_winner_popup = use_signal(|| false);
 
     let pool = build_pool(
         include_steamcharts(),
@@ -71,6 +72,11 @@ fn App() -> Element {
 
     let segment_count = pool.len().max(1);
     let segment_angle = 360.0 / segment_count as f64;
+    let wheel_background = if pool.is_empty() {
+        "#f4f0e6".to_string()
+    } else {
+        wheel_gradient(pool.len())
+    };
 
     rsx! {
         style { "{DESKTOP_CSS}" }
@@ -179,27 +185,34 @@ fn App() -> Element {
                     div {
                         class: "wheel",
                         style: format!(
-                            "--rotation:{}deg;--transition:{};",
+                            "--rotation:{}deg;--transition:{};--wheel-bg:{};",
                             wheel_rotation(),
-                            if spinning() { "transform 4.8s cubic-bezier(.17,.67,.11,.99)" } else { "none" }
+                            if spinning() { "transform 4.8s cubic-bezier(.17,.67,.11,.99)" } else { "none" },
+                            wheel_background
                         ),
                         ontransitionend: move |_| {
                             if spinning() {
                                 spinning.set(false);
                                 winner.set(pending_winner());
+                                show_winner_popup.set(true);
+                                let mut show_winner_popup = show_winner_popup;
+                                spawn(async move {
+                                    sleep(Duration::from_millis(3600)).await;
+                                    show_winner_popup.set(false);
+                                });
                             }
                         },
+                        div { class: "wheel-hub" }
                         if pool.is_empty() {
                             div { class: "wheel-empty", "Add or load games first" }
                         } else {
                             for (index, game) in pool.iter().enumerate() {
+                                let label_angle = index as f64 * segment_angle + (segment_angle / 2.0);
                                 div {
-                                    class: "segment",
+                                    class: "wheel-label",
                                     style: format!(
-                                        "--idx:{};--angle:{}deg;--bg:{};",
-                                        index,
-                                        segment_angle,
-                                        segment_color(index)
+                                        "--label-angle:{}deg;",
+                                        label_angle
                                     ),
                                     span { "{game}" }
                                 }
@@ -231,6 +244,24 @@ fn App() -> Element {
                     div { class: "winner",
                         p { "You should play:" }
                         strong { "{winner}" }
+                    }
+                }
+            }
+        }
+        if show_winner_popup() && !winner().is_empty() {
+            div {
+                class: "winner-overlay",
+                onclick: move |_| show_winner_popup.set(false),
+                div {
+                    class: "winner-popup",
+                    onclick: move |event| event.stop_propagation(),
+                    div { class: "winner-glow" }
+                    p { class: "winner-tag", "Winner" }
+                    h3 { "{winner}" }
+                    p { "Launch it. No second guessing." }
+                    button {
+                        onclick: move |_| show_winner_popup.set(false),
+                        "Nice"
                     }
                 }
             }
@@ -808,6 +839,16 @@ fn segment_color(index: usize) -> &'static str {
     COLORS[index % COLORS.len()]
 }
 
+fn wheel_gradient(count: usize) -> String {
+    let mut stops = Vec::new();
+    for index in 0..count {
+        let start = index as f64 * (360.0 / count as f64);
+        let end = (index + 1) as f64 * (360.0 / count as f64);
+        stops.push(format!("{} {:.4}deg {:.4}deg", segment_color(index), start, end));
+    }
+    format!("conic-gradient({})", stops.join(", "))
+}
+
 const DESKTOP_CSS: &str = r#"
 *,
 *::before,
@@ -930,11 +971,24 @@ button:disabled {
   height: 100%;
   border-radius: 50%;
   border: 10px solid #10263a;
-  background: #f4f0e6;
+  background: var(--wheel-bg, #f4f0e6);
   position: relative;
   overflow: hidden;
   transform: rotate(var(--rotation));
   transition: var(--transition);
+}
+
+.wheel-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #10263a;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.72);
+  z-index: 2;
 }
 
 .wheel-empty {
@@ -946,38 +1000,26 @@ button:disabled {
   font-weight: 700;
 }
 
-.segment {
-  --segment-angle: var(--angle);
-  --angle-pos: calc(var(--idx) * var(--segment-angle));
+.wheel-label {
   position: absolute;
   inset: 0;
-  transform: rotate(var(--angle-pos));
+  transform: rotate(var(--label-angle));
   transform-origin: center;
+  z-index: 1;
 }
 
-.segment::before {
-  content: "";
+.wheel-label span {
   position: absolute;
-  width: 50%;
-  height: 50%;
-  right: 0;
-  top: 0;
-  transform-origin: 0% 100%;
-  transform: rotate(var(--segment-angle));
-  background: var(--bg);
-  clip-path: polygon(0 100%, 100% 100%, 0 0);
-}
-
-.segment span {
-  position: absolute;
-  left: 54%;
-  top: 8%;
-  transform: rotate(calc(var(--segment-angle) / 2));
-  transform-origin: left top;
-  max-width: 43%;
+  left: 50%;
+  top: 7%;
+  transform: translateX(-50%) rotate(calc(-1 * var(--label-angle)));
+  transform-origin: center;
+  max-width: 44%;
   line-height: 1.1;
   font-size: clamp(0.58rem, 1.4vw, 0.82rem);
   font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 .winner {
@@ -997,5 +1039,82 @@ button:disabled {
   margin-top: 4px;
   display: inline-block;
   font-size: 1.35rem;
+}
+
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 26, 41, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.winner-popup {
+  position: relative;
+  width: min(90vw, 520px);
+  border-radius: 20px;
+  border: 1px solid rgba(16, 38, 58, 0.2);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 224, 102, 0.56) 0%, transparent 40%),
+    radial-gradient(circle at 88% 20%, rgba(112, 193, 179, 0.44) 0%, transparent 45%),
+    linear-gradient(145deg, #fdf7e8 0%, #e7f0f8 100%);
+  padding: 16px;
+  animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
+}
+
+.winner-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  animation: winner-ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.winner-tag {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #24415c;
+}
+
+.winner-popup h3 {
+  margin: 6px 0;
+  font-size: clamp(1.9rem, 6vw, 3rem);
+}
+
+.winner-popup p {
+  margin: 0;
+  color: #2d4d69;
+}
+
+.winner-popup button {
+  margin-top: 12px;
+}
+
+@keyframes winner-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.65) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes winner-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
 }
 "#;

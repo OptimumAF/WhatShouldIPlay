@@ -199,11 +199,24 @@ button.ghost {
   height: 100%;
   border-radius: 50%;
   border: 10px solid #10263a;
-  background: #f4f0e6;
+  background: var(--wheel-bg, #f4f0e6);
   position: relative;
   overflow: hidden;
   transform: rotate(var(--rotation));
   transition: var(--transition);
+}
+
+.wheel-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #10263a;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.72);
+  z-index: 2;
 }
 
 .wheel-empty {
@@ -215,37 +228,26 @@ button.ghost {
   font-weight: 700;
 }
 
-.wheel-segment {
-  --angle: calc(var(--segment-index) * var(--segment-angle));
+.wheel-label {
   position: absolute;
   inset: 0;
-  transform: rotate(var(--angle));
+  transform: rotate(var(--label-angle));
   transform-origin: center;
+  z-index: 1;
 }
 
-.wheel-segment::before {
-  content: "";
+.wheel-label span {
   position: absolute;
-  width: 50%;
-  height: 50%;
-  right: 0;
-  top: 0;
-  transform-origin: 0% 100%;
-  transform: rotate(var(--segment-angle));
-  background: var(--segment-color);
-  clip-path: polygon(0 100%, 100% 100%, 0 0);
-}
-
-.wheel-segment span {
-  position: absolute;
-  left: 54%;
+  left: 50%;
   top: 7%;
-  transform: rotate(calc(var(--segment-angle) / 2));
-  transform-origin: left top;
+  transform: translateX(-50%) rotate(calc(-1 * var(--label-angle)));
+  transform-origin: center;
   font-size: clamp(0.62rem, 1.4vw, 0.84rem);
   font-weight: 700;
-  max-width: 43%;
+  max-width: 44%;
   line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 .winner {
@@ -267,6 +269,85 @@ button.ghost {
   display: inline-block;
 }
 
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 26, 41, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.winner-popup {
+  position: relative;
+  width: min(92vw, 520px);
+  border-radius: 20px;
+  border: 1px solid rgba(16, 38, 58, 0.2);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 224, 102, 0.56) 0%, transparent 40%),
+    radial-gradient(circle at 88% 20%, rgba(112, 193, 179, 0.44) 0%, transparent 45%),
+    linear-gradient(145deg, #fdf7e8 0%, #e7f0f8 100%);
+  padding: 1.2rem;
+  animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
+}
+
+.winner-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  animation: winner-ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.winner-tag {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #24415c;
+}
+
+.winner-popup h3 {
+  margin: 0.35rem 0;
+  font-family: "Bebas Neue", sans-serif;
+  letter-spacing: 0.03em;
+  font-size: clamp(2rem, 8vw, 3.2rem);
+}
+
+.winner-popup p {
+  margin: 0;
+  color: #2d4d69;
+}
+
+.winner-popup button {
+  margin-top: 0.85rem;
+}
+
+@keyframes winner-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.65) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes winner-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
 @media (max-width: 760px) {
   .layout {
     padding: 1rem 0.7rem 2rem;
@@ -277,4 +358,3 @@ button.ghost {
     border-radius: 18px;
   }
 }
-

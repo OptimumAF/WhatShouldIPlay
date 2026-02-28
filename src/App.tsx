@@ -90,6 +90,8 @@ export default function App() {
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<string>("");
   const [pendingWinner, setPendingWinner] = useState<string>("");
+  const [showWinnerPopup, setShowWinnerPopup] = useState(false);
+  const [winnerPulse, setWinnerPulse] = useState(0);
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -140,9 +142,17 @@ export default function App() {
 
   const onSpinEnd = () => {
     if (!spinning) return;
-    setWinner(pendingWinner);
+    const finalWinner = pendingWinner;
+    setWinner(finalWinner);
     setPendingWinner("");
     setSpinning(false);
+    if (finalWinner) {
+      setWinnerPulse((current) => current + 1);
+      setShowWinnerPopup(true);
+      window.setTimeout(() => {
+        setShowWinnerPopup(false);
+      }, 3600);
+    }
   };
 
   return (
@@ -228,7 +238,20 @@ export default function App() {
           </div>
         ) : null}
       </section>
+
+      {showWinnerPopup && winner ? (
+        <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>
+          <div className="winner-popup" key={winnerPulse} onClick={(event) => event.stopPropagation()}>
+            <div className="winner-glow" />
+            <p className="winner-tag">Winner</p>
+            <h3>{winner}</h3>
+            <p>Launch it. No second guessing.</p>
+            <button type="button" onClick={() => setShowWinnerPopup(false)}>
+              Nice
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
-

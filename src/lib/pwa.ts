@@ -1,3 +1,5 @@
 export const SW_UPDATE_READY_EVENT = "pickagame:sw-update-ready";
 
 export const SW_SKIP_WAITING_MESSAGE = "SKIP_WAITING";
+export const SW_NOTIFICATION_PREFS_MESSAGE = "UPDATE_NOTIFICATION_PREFS";
+export const SW_TOP_GAMES_UPDATED_MESSAGE = "TOP_GAMES_UPDATED";

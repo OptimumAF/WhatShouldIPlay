@@ -29,6 +29,7 @@ Live site:
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay with odds + source details in both web and desktop apps
 - Progressive Web App support (installable web app + offline shell cache)
+- Optional web notifications for trend updates and spin reminders
 - Scheduled data refresh and deterministic static hosting
 
 ## Technology

@@ -369,6 +369,11 @@ button.ghost {
   color: #15304c;
 }
 
+button.compact {
+  padding: 0.35rem 0.68rem;
+  font-size: 0.82rem;
+}
+
 .button-link {
   display: inline-flex;
   align-items: center;
@@ -537,6 +542,50 @@ button.ghost {
   color: #10314c;
 }
 
+.exclude-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.exclude-list {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.6rem;
+  background: #f8fbfe;
+}
+
+.exclude-list strong {
+  display: block;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #10314c;
+}
+
+.exclude-list ul {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.36rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.exclude-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.exclude-list li span {
+  font-size: 0.9rem;
+  color: #163652;
+}
+
 .winner-overlay {
   position: fixed;
   inset: 0;
@@ -659,5 +708,16 @@ button.ghost {
   .panel,
   .hero {
     border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel {
+    transition: none !important;
+  }
+
+  .winner-popup,
+  .winner-glow {
+    animation: none !important;
   }
 }

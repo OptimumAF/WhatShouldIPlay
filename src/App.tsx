@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
-import { SW_SKIP_WAITING_MESSAGE, SW_UPDATE_READY_EVENT } from "./lib/pwa";
+import {
+  SW_NOTIFICATION_PREFS_MESSAGE,
+  SW_SKIP_WAITING_MESSAGE,
+  SW_TOP_GAMES_UPDATED_MESSAGE,
+  SW_UPDATE_READY_EVENT,
+} from "./lib/pwa";
 import { Wheel } from "./components/Wheel";
 import type { GameEntry, SourceId, TopGamesPayload } from "./types";
 
@@ -94,10 +99,26 @@ const storedSteamImportSchema = z.object({
     .default([]),
 });
 
+const storedExclusionsSchema = z.object({
+  excludePlayed: z.boolean().default(true),
+  excludeCompleted: z.boolean().default(true),
+  playedGames: z.array(z.string()).default([]),
+  completedGames: z.array(z.string()).default([]),
+});
+
+const storedNotificationSettingsSchema = z.object({
+  notificationsEnabled: z.boolean().default(false),
+  trendNotifications: z.boolean().default(true),
+  reminderNotifications: z.boolean().default(false),
+  reminderIntervalMinutes: z.number().default(120),
+});
+
 const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
 const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
 const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
+const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
+const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
@@ -147,6 +168,20 @@ interface StoredSteamImport {
   steamApiKey: string;
   steamId: string;
   steamImportGames: GameEntry[];
+}
+
+interface StoredExclusions {
+  excludePlayed: boolean;
+  excludeCompleted: boolean;
+  playedGames: string[];
+  completedGames: string[];
+}
+
+interface StoredNotificationSettings {
+  notificationsEnabled: boolean;
+  trendNotifications: boolean;
+  reminderNotifications: boolean;
+  reminderIntervalMinutes: number;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -246,6 +281,20 @@ const fallbackSteamImport: StoredSteamImport = {
   steamImportGames: [],
 };
 
+const fallbackExclusions: StoredExclusions = {
+  excludePlayed: true,
+  excludeCompleted: true,
+  playedGames: [],
+  completedGames: [],
+};
+
+const fallbackNotificationSettings: StoredNotificationSettings = {
+  notificationsEnabled: false,
+  trendNotifications: true,
+  reminderNotifications: false,
+  reminderIntervalMinutes: 120,
+};
+
 async function fetchTopGames(): Promise<TopGamesPayload> {
   const url = `${import.meta.env.BASE_URL}data/top-games.json`;
   const response = await fetch(url, { cache: "no-store" });
@@ -325,11 +374,44 @@ const sanitizeSteamImport = (input: StoredSteamImport | null): StoredSteamImport
   };
 };
 
+const sanitizeExclusions = (input: StoredExclusions | null): StoredExclusions => {
+  if (!input) return fallbackExclusions;
+  const parsed = storedExclusionsSchema.safeParse(input);
+  if (!parsed.success) return fallbackExclusions;
+
+  const completedGames = normalizeGames(parsed.data.completedGames);
+  const completedSet = new Set(completedGames.map((name) => name.toLowerCase()));
+  const playedGames = normalizeGames(parsed.data.playedGames).filter((name) => !completedSet.has(name.toLowerCase()));
+
+  return {
+    excludePlayed: parsed.data.excludePlayed,
+    excludeCompleted: parsed.data.excludeCompleted,
+    playedGames,
+    completedGames,
+  };
+};
+
+const sanitizeNotificationSettings = (input: StoredNotificationSettings | null): StoredNotificationSettings => {
+  if (!input) return fallbackNotificationSettings;
+  const parsed = storedNotificationSettingsSchema.safeParse(input);
+  if (!parsed.success) return fallbackNotificationSettings;
+  return {
+    notificationsEnabled: parsed.data.notificationsEnabled,
+    trendNotifications: parsed.data.trendNotifications,
+    reminderNotifications: parsed.data.reminderNotifications,
+    reminderIntervalMinutes: Math.max(15, Math.min(720, Math.round(parsed.data.reminderIntervalMinutes))),
+  };
+};
+
 export default function App() {
   const initialSettings = sanitizeSettings(readStorage<StoredSettings | null>(SETTINGS_STORAGE_KEY, null));
   const initialHistory = readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []);
   const initialManualGames = normalizeGames(readStorage<string[]>(MANUAL_GAMES_STORAGE_KEY, []));
   const initialSteamImport = sanitizeSteamImport(readStorage<StoredSteamImport | null>(STEAM_IMPORT_STORAGE_KEY, null));
+  const initialExclusions = sanitizeExclusions(readStorage<StoredExclusions | null>(EXCLUSION_STORAGE_KEY, null));
+  const initialNotifications = sanitizeNotificationSettings(
+    readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
+  );
 
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
@@ -344,6 +426,17 @@ export default function App() {
   const [steamId, setSteamId] = useState(initialSteamImport.steamId);
   const [steamImportStatus, setSteamImportStatus] = useState<string>("");
   const [steamImportLoading, setSteamImportLoading] = useState(false);
+  const [excludePlayed, setExcludePlayed] = useState(initialExclusions.excludePlayed);
+  const [excludeCompleted, setExcludeCompleted] = useState(initialExclusions.excludeCompleted);
+  const [playedGames, setPlayedGames] = useState<string[]>(initialExclusions.playedGames);
+  const [completedGames, setCompletedGames] = useState<string[]>(initialExclusions.completedGames);
+  const [exclusionInput, setExclusionInput] = useState("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(initialNotifications.notificationsEnabled);
+  const [trendNotifications, setTrendNotifications] = useState(initialNotifications.trendNotifications);
+  const [reminderNotifications, setReminderNotifications] = useState(initialNotifications.reminderNotifications);
+  const [reminderIntervalMinutes, setReminderIntervalMinutes] = useState(initialNotifications.reminderIntervalMinutes);
+  const [notificationStatus, setNotificationStatus] = useState("");
+  const [freshTrendsNotice, setFreshTrendsNotice] = useState(false);
 
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -359,6 +452,7 @@ export default function App() {
   const [updateInProgress, setUpdateInProgress] = useState(false);
   const [dismissedUpdate, setDismissedUpdate] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -422,18 +516,37 @@ export default function App() {
     return [...byName.values()];
   }, [allEntries, enabledSources, sourceWeights, weightedMode]);
 
+  const statusBlockedNames = useMemo(() => {
+    const blocked = new Set<string>();
+    if (excludePlayed) {
+      playedGames.forEach((name) => blocked.add(name.toLowerCase()));
+    }
+    if (excludeCompleted) {
+      completedGames.forEach((name) => blocked.add(name.toLowerCase()));
+    }
+    return blocked;
+  }, [completedGames, excludeCompleted, excludePlayed, playedGames]);
+
+  const poolAfterStatusExclusions = useMemo(
+    () => basePool.filter((candidate) => !statusBlockedNames.has(candidate.name.toLowerCase())),
+    [basePool, statusBlockedNames],
+  );
+
   const blockedNames = useMemo(
     () => new Set(spinHistory.slice(0, cooldownSpins).map((item) => item.name.toLowerCase())),
     [spinHistory, cooldownSpins],
   );
 
   const poolAfterCooldown = useMemo(
-    () => basePool.filter((candidate) => !blockedNames.has(candidate.name.toLowerCase())),
-    [basePool, blockedNames],
+    () => poolAfterStatusExclusions.filter((candidate) => !blockedNames.has(candidate.name.toLowerCase())),
+    [blockedNames, poolAfterStatusExclusions],
   );
 
-  const cooldownSaturated = cooldownSpins > 0 && basePool.length > 0 && poolAfterCooldown.length === 0;
-  const activePool = cooldownSaturated ? basePool : poolAfterCooldown;
+  const cooldownSaturated = cooldownSpins > 0 && poolAfterStatusExclusions.length > 0 && poolAfterCooldown.length === 0;
+  const statusExhausted = poolAfterStatusExclusions.length === 0 && basePool.length > 0 && statusBlockedNames.size > 0;
+  const activePool = statusExhausted ? [] : cooldownSaturated ? poolAfterStatusExclusions : poolAfterCooldown;
+  const statusExcludedCount = Math.max(0, basePool.length - poolAfterStatusExclusions.length);
+  const cooldownExcludedCount = Math.max(0, poolAfterStatusExclusions.length - poolAfterCooldown.length);
 
   useEffect(() => {
     localStorage.setItem(
@@ -466,6 +579,104 @@ export default function App() {
       } satisfies StoredSteamImport),
     );
   }, [steamApiKey, steamId, steamImportGames]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      EXCLUSION_STORAGE_KEY,
+      JSON.stringify({
+        excludePlayed,
+        excludeCompleted,
+        playedGames,
+        completedGames,
+      } satisfies StoredExclusions),
+    );
+  }, [completedGames, excludeCompleted, excludePlayed, playedGames]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      NOTIFICATION_STORAGE_KEY,
+      JSON.stringify({
+        notificationsEnabled,
+        trendNotifications,
+        reminderNotifications,
+        reminderIntervalMinutes,
+      } satisfies StoredNotificationSettings),
+    );
+  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const postPrefs = async () => {
+      const payload = {
+        enabled: notificationsEnabled,
+        newTrends: trendNotifications,
+      };
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        registration.active?.postMessage({ type: SW_NOTIFICATION_PREFS_MESSAGE, payload });
+        navigator.serviceWorker.controller?.postMessage({ type: SW_NOTIFICATION_PREFS_MESSAGE, payload });
+      } catch {
+        // Best effort only.
+      }
+    };
+
+    void postPrefs();
+  }, [notificationsEnabled, trendNotifications]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const onServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== SW_TOP_GAMES_UPDATED_MESSAGE) return;
+      setFreshTrendsNotice(true);
+    };
+
+    navigator.serviceWorker.addEventListener("message", onServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onServiceWorkerMessage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showWinnerPopup) return;
+    winnerPopupCloseRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowWinnerPopup(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showWinnerPopup]);
+
+  useEffect(() => {
+    if (!notificationsEnabled || !reminderNotifications) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") return;
+
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.showNotification("Play something now?", {
+            body: "You set a reminder to spin WhatShouldIPlay.",
+            tag: "pickagame-reminder",
+          });
+        })
+        .catch(() => {
+          // Ignore transient notification failures.
+        });
+    }, Math.max(15, reminderIntervalMinutes) * 60 * 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications]);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -553,6 +764,44 @@ export default function App() {
     setSteamImportGames([]);
     setSteamImportStatus("");
     markCustom();
+  };
+
+  const markGamesPlayed = (names: string[]) => {
+    const incoming = normalizeGames(names);
+    if (incoming.length === 0) return;
+    const completedSet = new Set(completedGames.map((name) => name.toLowerCase()));
+    setPlayedGames((current) =>
+      normalizeGames([...current, ...incoming]).filter((name) => !completedSet.has(name.toLowerCase())),
+    );
+  };
+
+  const markGamesCompleted = (names: string[]) => {
+    const incoming = normalizeGames(names);
+    if (incoming.length === 0) return;
+    const incomingSet = new Set(incoming.map((name) => name.toLowerCase()));
+    setCompletedGames((current) => normalizeGames([...current, ...incoming]));
+    setPlayedGames((current) => current.filter((name) => !incomingSet.has(name.toLowerCase())));
+  };
+
+  const removePlayedGame = (name: string) => {
+    const key = name.toLowerCase();
+    setPlayedGames((current) => current.filter((entry) => entry.toLowerCase() !== key));
+  };
+
+  const removeCompletedGame = (name: string) => {
+    const key = name.toLowerCase();
+    setCompletedGames((current) => current.filter((entry) => entry.toLowerCase() !== key));
+  };
+
+  const addExclusionFromInput = (target: "played" | "completed") => {
+    const incoming = normalizeGames(exclusionInput.split(/\r?\n|,/g));
+    if (incoming.length === 0) return;
+    if (target === "played") {
+      markGamesPlayed(incoming);
+    } else {
+      markGamesCompleted(incoming);
+    }
+    setExclusionInput("");
   };
 
   const importSteamLibrary = async () => {
@@ -699,6 +948,35 @@ export default function App() {
     }
   };
 
+  const setNotificationsEnabledWithPermission = async (enabled: boolean) => {
+    if (!enabled) {
+      setNotificationsEnabled(false);
+      setNotificationStatus("Notifications disabled.");
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      setNotificationsEnabled(false);
+      setNotificationStatus("Notifications are not supported in this browser.");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      setNotificationsEnabled(true);
+      setNotificationStatus("Notifications enabled.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setNotificationsEnabled(true);
+      setNotificationStatus("Notifications enabled.");
+    } else {
+      setNotificationsEnabled(false);
+      setNotificationStatus("Notification permission was denied.");
+    }
+  };
+
   return (
     <main className="layout">
       <a className="skip-link" href="#main-content">
@@ -741,6 +1019,20 @@ export default function App() {
             </button>
             <button type="button" className="ghost" onClick={() => setDismissedUpdate(true)} disabled={updateInProgress}>
               Later
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {freshTrendsNotice ? (
+        <section className="update-banner" aria-live="polite">
+          <div>
+            <strong>Fresh trend data loaded</strong>
+            <p>Top game rankings were updated in the background.</p>
+          </div>
+          <div className="button-row">
+            <button type="button" className="ghost" onClick={() => setFreshTrendsNotice(false)}>
+              Dismiss
             </button>
           </div>
         </section>
@@ -924,6 +1216,142 @@ export default function App() {
               </p>
             ) : null}
           </section>
+
+          <section className="panel" aria-labelledby="exclusion-heading">
+            <h2 id="exclusion-heading">Played / Completed</h2>
+            <p className="muted">Mark titles to temporarily remove them from spins.</p>
+            <div className="odds-controls">
+              <label className="inline-check">
+                <input type="checkbox" checked={excludePlayed} onChange={(event) => setExcludePlayed(event.target.checked)} />
+                Exclude played
+              </label>
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={excludeCompleted}
+                  onChange={(event) => setExcludeCompleted(event.target.checked)}
+                />
+                Exclude completed
+              </label>
+            </div>
+            <label htmlFor="exclusion-input" className="sr-only">
+              Game names to exclude
+            </label>
+            <textarea
+              id="exclusion-input"
+              rows={3}
+              value={exclusionInput}
+              onChange={(event) => setExclusionInput(event.target.value)}
+              placeholder="Enter game names (comma or newline)"
+            />
+            <div className="button-row">
+              <button type="button" onClick={() => addExclusionFromInput("played")} disabled={!exclusionInput.trim()}>
+                Mark Played
+              </button>
+              <button type="button" className="ghost" onClick={() => addExclusionFromInput("completed")} disabled={!exclusionInput.trim()}>
+                Mark Completed
+              </button>
+            </div>
+            <div className="exclude-grid">
+              <div className="exclude-list">
+                <strong>Played ({playedGames.length})</strong>
+                {playedGames.length === 0 ? (
+                  <p className="muted">No played games tracked.</p>
+                ) : (
+                  <ul>
+                    {playedGames.slice(0, 30).map((name) => (
+                      <li key={`played-${name}`}>
+                        <span>{name}</span>
+                        <button type="button" className="ghost compact" onClick={() => removePlayedGame(name)}>
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {playedGames.length > 0 ? (
+                  <button type="button" className="ghost compact" onClick={() => setPlayedGames([])}>
+                    Clear Played
+                  </button>
+                ) : null}
+              </div>
+              <div className="exclude-list">
+                <strong>Completed ({completedGames.length})</strong>
+                {completedGames.length === 0 ? (
+                  <p className="muted">No completed games tracked.</p>
+                ) : (
+                  <ul>
+                    {completedGames.slice(0, 30).map((name) => (
+                      <li key={`completed-${name}`}>
+                        <span>{name}</span>
+                        <button type="button" className="ghost compact" onClick={() => removeCompletedGame(name)}>
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {completedGames.length > 0 ? (
+                  <button type="button" className="ghost compact" onClick={() => setCompletedGames([])}>
+                    Clear Completed
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel" aria-labelledby="notification-heading">
+            <h2 id="notification-heading">Notifications</h2>
+            <p className="muted">Enable reminders and alerts when trend data refreshes.</p>
+            <div className="odds-controls">
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(event) => {
+                    void setNotificationsEnabledWithPermission(event.target.checked);
+                  }}
+                />
+                Notifications enabled
+              </label>
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={trendNotifications}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => setTrendNotifications(event.target.checked)}
+                />
+                New trends alerts
+              </label>
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={reminderNotifications}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => setReminderNotifications(event.target.checked)}
+                />
+                Spin reminders
+              </label>
+              <label className="cooldown-control">
+                Reminder interval (minutes)
+                <input
+                  type="range"
+                  min={15}
+                  max={720}
+                  step={15}
+                  disabled={!notificationsEnabled || !reminderNotifications}
+                  value={reminderIntervalMinutes}
+                  onChange={(event) => setReminderIntervalMinutes(Number(event.target.value))}
+                />
+                <strong>{reminderIntervalMinutes}</strong>
+              </label>
+            </div>
+            {notificationStatus ? (
+              <p className="status" role="status" aria-live="polite">
+                {notificationStatus}
+              </p>
+            ) : null}
+          </section>
         </aside>
 
         <div className="content-stack">
@@ -931,8 +1359,12 @@ export default function App() {
             <h2 id="wheel-heading">Wheel</h2>
             <p className="muted">
               {activePool.length} games in this spin pool
-              {cooldownSpins > 0 ? ` (${Math.max(0, basePool.length - activePool.length)} on cooldown)` : ""}.
+              {statusExcludedCount > 0 ? ` (${statusExcludedCount} excluded by played/completed)` : ""}
+              {cooldownSpins > 0 ? ` (${cooldownExcludedCount} on cooldown)` : ""}.
             </p>
+            {statusExhausted ? (
+              <p className="status">All games are excluded by played/completed rules. Adjust exclusions to spin again.</p>
+            ) : null}
             {cooldownSaturated ? (
               <p className="status">Cooldown exhausted the pool, so all entries were temporarily re-enabled.</p>
             ) : null}
@@ -952,6 +1384,14 @@ export default function App() {
                 <div className="winner-stats">
                   <span>Sources: {sourceLabelList(winnerMeta.sources)}</span>
                   <span>Odds: {formatOdds(winnerMeta.odds)}</span>
+                </div>
+                <div className="button-row">
+                  <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
+                    Mark Played
+                  </button>
+                  <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
+                    Mark Completed
+                  </button>
                 </div>
               </div>
             ) : null}
@@ -1011,6 +1451,7 @@ export default function App() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="winner-title"
+            aria-describedby="winner-description"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="winner-glow" />
@@ -1026,7 +1467,7 @@ export default function App() {
                 <strong>{sourceLabelList(winnerMeta.sources)}</strong>
               </div>
             </div>
-            <p>Commit to it. Queue it up now.</p>
+            <p id="winner-description">Commit to it. Queue it up now.</p>
             <div className="button-row">
               {winnerMeta.appId ? (
                 <a className="button-link" href={`https://store.steampowered.com/app/${winnerMeta.appId}/`} target="_blank" rel="noreferrer">
@@ -1038,7 +1479,13 @@ export default function App() {
                   View Source
                 </a>
               ) : null}
-              <button type="button" onClick={() => setShowWinnerPopup(false)}>
+              <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
+                Mark Played
+              </button>
+              <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
+                Mark Completed
+              </button>
+              <button type="button" onClick={() => setShowWinnerPopup(false)} ref={winnerPopupCloseRef}>
                 Nice
               </button>
             </div>

@@ -33,4 +33,22 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Lighthouse Accessibility Gate
+        run: npx -y @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+
+      - name: Axe Accessibility Gate
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID' EXIT
+
+          for i in {1..45}; do
+            if curl -fsS http://127.0.0.1:4173 > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          npx -y @axe-core/cli@4.10.2 http://127.0.0.1:4173 --exit
+
 

@@ -284,7 +284,7 @@ const defaultEnabledSources: EnabledSources = {
   steamcharts: true,
   steamdb: true,
   twitchmetrics: true,
-  itchio: true,
+  itchio: false,
   manual: true,
   steamImport: true,
 };
@@ -454,15 +454,30 @@ const sanitizeFilters = (input: AdvancedFilters | null | undefined): AdvancedFil
 
 const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
   if (!input) return fallbackSettings;
+  const activePreset = input.activePreset || fallbackSettings.activePreset;
+  const matchedPreset = activePreset === "custom" ? undefined : modePresets.find((preset) => preset.id === activePreset);
+  const fallbackCooldown =
+    typeof input.cooldownSpins === "number" && Number.isFinite(input.cooldownSpins)
+      ? Math.max(0, Math.min(20, Math.round(input.cooldownSpins)))
+      : fallbackSettings.cooldownSpins;
+
+  if (matchedPreset) {
+    return {
+      enabledSources: { ...matchedPreset.enabledSources },
+      sourceWeights: { ...matchedPreset.sourceWeights },
+      weightedMode: matchedPreset.weightedMode,
+      cooldownSpins: matchedPreset.cooldownSpins,
+      activePreset,
+      filters: sanitizeFilters(input.filters),
+    };
+  }
+
   return {
     enabledSources: { ...defaultEnabledSources, ...(input.enabledSources ?? {}) },
     sourceWeights: { ...defaultSourceWeights, ...(input.sourceWeights ?? {}) },
     weightedMode: typeof input.weightedMode === "boolean" ? input.weightedMode : fallbackSettings.weightedMode,
-    cooldownSpins:
-      typeof input.cooldownSpins === "number" && Number.isFinite(input.cooldownSpins)
-        ? Math.max(0, Math.min(20, Math.round(input.cooldownSpins)))
-        : fallbackSettings.cooldownSpins,
-    activePreset: input.activePreset || fallbackSettings.activePreset,
+    cooldownSpins: fallbackCooldown,
+    activePreset,
     filters: sanitizeFilters(input.filters),
   };
 };
@@ -598,7 +613,7 @@ export default function App() {
   const [swUpdateReady, setSwUpdateReady] = useState(false);
   const [updateInProgress, setUpdateInProgress] = useState(false);
   const [dismissedUpdate, setDismissedUpdate] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const topGamesQuery = useQuery({

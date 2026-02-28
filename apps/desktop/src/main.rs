@@ -90,7 +90,7 @@ fn App() -> Element {
     let mut pending_winner_odds = use_signal(|| 0.0_f64);
     let mut spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let mut show_winner_popup = use_signal(|| false);
-    let mut show_sidebar = use_signal(|| true);
+    let mut show_sidebar = use_signal(|| false);
 
     let full_pool = build_weighted_pool(
         include_steamcharts(),

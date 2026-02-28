@@ -397,6 +397,11 @@ body {
   transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
+.source-card:has(input:focus-visible) {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--interactive-ring);
+}
+
 .source-card strong {
   display: inline-block;
   text-transform: uppercase;
@@ -465,6 +470,7 @@ select {
   color: var(--ink);
   background: var(--surface-elevated);
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  min-height: 2.5rem;
 }
 
 .steam-grid {
@@ -497,6 +503,7 @@ select {
   border-radius: 999px;
   padding: var(--space-1) var(--space-3);
   width: fit-content;
+  min-height: 2.5rem;
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
@@ -508,6 +515,7 @@ select {
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   padding: var(--space-1) var(--space-2);
+  min-height: 2.5rem;
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
@@ -593,6 +601,7 @@ button {
   cursor: pointer;
   font-weight: 700;
   transition: transform 160ms ease, filter 160ms ease, box-shadow 180ms ease, background 180ms ease, color 180ms ease;
+  min-height: 2.5rem;
 }
 
 button:disabled {
@@ -1059,6 +1068,11 @@ button:active:not(:disabled),
   cursor: help;
 }
 
+.help-tip:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .help-tip-bubble {
   position: absolute;
   top: calc(100% + 0.4rem);
@@ -1089,6 +1103,12 @@ input[type="checkbox"],
 input[type="radio"],
 input[type="range"] {
   accent-color: var(--accent-2);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
 }
 
 input:focus-visible,

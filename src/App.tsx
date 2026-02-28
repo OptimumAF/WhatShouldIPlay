@@ -305,6 +305,11 @@ interface ToastMessage {
   text: string;
 }
 
+interface ScreenReaderAnnouncement {
+  id: number;
+  text: string;
+}
+
 interface OnboardingStep {
   title: string;
   description: string;
@@ -751,9 +756,12 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(!initialOnboardingDone);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [screenReaderPolite, setScreenReaderPolite] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
+  const [screenReaderAssertive, setScreenReaderAssertive] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
   const toastTimeoutsRef = useRef<number[]>([]);
   const lastTopGamesErrorRef = useRef("");
+  const announcementCounterRef = useRef(0);
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -768,6 +776,18 @@ export default function App() {
     setToasts((current) => current.filter((toast) => toast.id !== id));
   }, []);
 
+  const announceForScreenReader = useCallback((tone: ToastMessage["tone"], text: string) => {
+    const cleaned = text.trim();
+    if (!cleaned) return;
+    announcementCounterRef.current += 1;
+    const payload = { id: announcementCounterRef.current, text: cleaned };
+    if (tone === "error") {
+      setScreenReaderAssertive(payload);
+      return;
+    }
+    setScreenReaderPolite(payload);
+  }, []);
+
   const pushToast = useCallback(
     (tone: ToastMessage["tone"], text: string) => {
       const id =
@@ -775,12 +795,13 @@ export default function App() {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       setToasts((current) => [...current, { id, tone, text }]);
+      announceForScreenReader(tone, text);
       const timeoutId = window.setTimeout(() => {
         dismissToast(id);
       }, 5200);
       toastTimeoutsRef.current.push(timeoutId);
     },
-    [dismissToast],
+    [announceForScreenReader, dismissToast],
   );
 
   const completeOnboarding = useCallback(
@@ -1419,6 +1440,10 @@ export default function App() {
         },
         ...current,
       ]);
+      announceForScreenReader(
+        "success",
+        `Winner selected: ${finalWinner}. Odds ${formatOdds(finalMeta.odds)}. Sources ${sourceLabelList(finalMeta.sources)}.`,
+      );
       setWinnerPulse((current) => current + 1);
       setShowWinnerPopup(true);
       window.setTimeout(() => {
@@ -1755,6 +1780,12 @@ export default function App() {
       <a className="skip-link" href="#main-content">
         {t("skipToMain")}
       </a>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        <span key={screenReaderPolite.id}>{screenReaderPolite.text}</span>
+      </div>
+      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+        <span key={screenReaderAssertive.id}>{screenReaderAssertive.text}</span>
+      </div>
       <header className="hero">
         <p className="kicker">{t("appName")}</p>
         <h1>{t("heroTitle")}</h1>

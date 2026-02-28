@@ -171,6 +171,7 @@ const cloudSyncSnapshotSchema = z.object({
       enabledSources: z.record(z.string(), z.boolean()).optional(),
       sourceWeights: z.record(z.string(), z.number()).optional(),
       weightedMode: z.boolean().optional(),
+      adaptiveRecommendations: z.boolean().optional(),
       cooldownSpins: z.number().optional(),
       spinSpeedProfile: z.enum(["cinematic", "balanced", "rapid"]).optional(),
       reducedSpinAnimation: z.boolean().optional(),
@@ -256,6 +257,7 @@ interface StoredSettings {
   enabledSources: EnabledSources;
   sourceWeights: SourceWeights;
   weightedMode: boolean;
+  adaptiveRecommendations: boolean;
   cooldownSpins: number;
   spinSpeedProfile: SpinSpeedProfile;
   reducedSpinAnimation: boolean;
@@ -445,6 +447,7 @@ const fallbackSettings: StoredSettings = {
   enabledSources: defaultEnabledSources,
   sourceWeights: defaultSourceWeights,
   weightedMode: true,
+  adaptiveRecommendations: false,
   cooldownSpins: 2,
   spinSpeedProfile: "balanced",
   reducedSpinAnimation: false,
@@ -573,12 +576,17 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
     typeof partialSettings.reducedSpinAnimation === "boolean"
       ? partialSettings.reducedSpinAnimation
       : fallbackSettings.reducedSpinAnimation;
+  const adaptiveRecommendations =
+    typeof partialSettings.adaptiveRecommendations === "boolean"
+      ? partialSettings.adaptiveRecommendations
+      : fallbackSettings.adaptiveRecommendations;
 
   if (matchedPreset) {
     return {
       enabledSources: { ...matchedPreset.enabledSources },
       sourceWeights: { ...matchedPreset.sourceWeights },
       weightedMode: matchedPreset.weightedMode,
+      adaptiveRecommendations,
       cooldownSpins: matchedPreset.cooldownSpins,
       spinSpeedProfile,
       reducedSpinAnimation,
@@ -591,6 +599,7 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
     enabledSources: { ...defaultEnabledSources, ...(input.enabledSources ?? {}) },
     sourceWeights: { ...defaultSourceWeights, ...(input.sourceWeights ?? {}) },
     weightedMode: typeof input.weightedMode === "boolean" ? input.weightedMode : fallbackSettings.weightedMode,
+    adaptiveRecommendations,
     cooldownSpins: fallbackCooldown,
     spinSpeedProfile,
     reducedSpinAnimation,
@@ -733,6 +742,7 @@ export default function App() {
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
   const [weightedMode, setWeightedMode] = useState(initialSettings.weightedMode);
+  const [adaptiveRecommendations, setAdaptiveRecommendations] = useState(initialSettings.adaptiveRecommendations);
   const [cooldownSpins, setCooldownSpins] = useState(initialSettings.cooldownSpins);
   const [spinSpeedProfile, setSpinSpeedProfile] = useState<SpinSpeedProfile>(initialSettings.spinSpeedProfile);
   const [reducedSpinAnimation, setReducedSpinAnimation] = useState(initialSettings.reducedSpinAnimation);
@@ -921,6 +931,81 @@ export default function App() {
     return [...byName.values()];
   }, [allEntries, enabledSources, sourceWeights, weightedMode]);
 
+  const sourceBehaviorMultipliers = useMemo<SourceWeights>(() => {
+    const scores = sourceKeys.reduce<Record<SourceToggleKey, number>>(
+      (accumulator, source) => ({ ...accumulator, [source]: 0 }),
+      {} as Record<SourceToggleKey, number>,
+    );
+    const sourcesByName = new Map<string, Set<SourceToggleKey>>();
+
+    allEntries.forEach((entry) => {
+      const source = entry.source as SourceToggleKey;
+      if (!sourceKeys.includes(source)) return;
+      const key = entry.name.trim().toLowerCase();
+      if (!key) return;
+      if (!sourcesByName.has(key)) {
+        sourcesByName.set(key, new Set<SourceToggleKey>());
+      }
+      sourcesByName.get(key)?.add(source);
+    });
+
+    const addNamedSignal = (names: string[], scoreDelta: number) => {
+      names.forEach((name) => {
+        const key = name.trim().toLowerCase();
+        if (!key) return;
+        const sources = sourcesByName.get(key);
+        if (!sources) return;
+        sources.forEach((source) => {
+          scores[source] += scoreDelta;
+        });
+      });
+    };
+
+    addNamedSignal(playedGames, 1.4);
+    addNamedSignal(completedGames, 2.2);
+
+    spinHistory.slice(0, 20).forEach((entry, index) => {
+      const recency = Math.max(0.22, 1 - index / 24);
+      entry.sources.forEach((source) => {
+        const key = source as SourceToggleKey;
+        if (!sourceKeys.includes(key)) return;
+        scores[key] += 0.55 * recency;
+      });
+    });
+
+    const maxScore = Math.max(0, ...Object.values(scores));
+    if (maxScore <= 0) {
+      return sourceKeys.reduce<SourceWeights>(
+        (accumulator, source) => ({ ...accumulator, [source]: 1 }),
+        {} as SourceWeights,
+      );
+    }
+
+    return sourceKeys.reduce<SourceWeights>((accumulator, source) => {
+      const normalized = scores[source] / maxScore;
+      const multiplier = Number((0.78 + normalized * 0.62).toFixed(2));
+      return {
+        ...accumulator,
+        [source]: Math.max(0.72, Math.min(1.45, multiplier)),
+      };
+    }, {} as SourceWeights);
+  }, [allEntries, completedGames, playedGames, spinHistory]);
+
+  const behaviorSignalsCount = playedGames.length + completedGames.length + Math.min(spinHistory.length, 20);
+
+  const suggestedSourceWeights = useMemo<SourceWeights>(
+    () =>
+      sourceKeys.reduce<SourceWeights>((accumulator, source) => {
+        const suggested = defaultSourceWeights[source] * sourceBehaviorMultipliers[source];
+        const normalized = Number(suggested.toFixed(1));
+        return {
+          ...accumulator,
+          [source]: Math.max(0.1, Math.min(3, normalized)),
+        };
+      }, {} as SourceWeights),
+    [sourceBehaviorMultipliers],
+  );
+
   const availableTags = useMemo(
     () =>
       [...new Set(basePool.flatMap((candidate) => candidate.tags ?? []))]
@@ -1014,9 +1099,23 @@ export default function App() {
     ? []
     : statusExhausted
       ? []
-      : cooldownSaturated
-        ? poolAfterStatusExclusions
-        : poolAfterCooldown;
+        : cooldownSaturated
+          ? poolAfterStatusExclusions
+          : poolAfterCooldown;
+  const adaptivePoolWeights = useMemo(
+    () =>
+      activePool.map((candidate) => {
+        if (!adaptiveRecommendations) return candidate.weight;
+        const sourceMultiplier =
+          candidate.sources.reduce((sum, source) => {
+            const sourceKey = source as SourceToggleKey;
+            const multiplier = sourceBehaviorMultipliers[sourceKey] ?? 1;
+            return sum + multiplier;
+          }, 0) / Math.max(candidate.sources.length, 1);
+        return Math.max(0.05, candidate.weight * sourceMultiplier);
+      }),
+    [activePool, adaptiveRecommendations, sourceBehaviorMultipliers],
+  );
   const filterExcludedCount = Math.max(0, basePool.length - poolAfterAdvancedFilters.length);
   const statusExcludedCount = Math.max(0, poolAfterAdvancedFilters.length - poolAfterStatusExclusions.length);
   const cooldownExcludedCount = Math.max(0, poolAfterStatusExclusions.length - poolAfterCooldown.length);
@@ -1034,6 +1133,7 @@ export default function App() {
         enabledSources,
         sourceWeights,
         weightedMode,
+        adaptiveRecommendations,
         cooldownSpins,
         spinSpeedProfile,
         reducedSpinAnimation,
@@ -1041,7 +1141,17 @@ export default function App() {
         filters,
       } satisfies StoredSettings),
     );
-  }, [activePreset, cooldownSpins, enabledSources, filters, reducedSpinAnimation, sourceWeights, spinSpeedProfile, weightedMode]);
+  }, [
+    activePreset,
+    adaptiveRecommendations,
+    cooldownSpins,
+    enabledSources,
+    filters,
+    reducedSpinAnimation,
+    sourceWeights,
+    spinSpeedProfile,
+    weightedMode,
+  ]);
 
   useEffect(() => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(spinHistory.slice(0, 50)));
@@ -1351,6 +1461,15 @@ export default function App() {
     setActivePreset(preset.id);
   };
 
+  const applySuggestedWeights = () => {
+    setSourceWeights(suggestedSourceWeights);
+    if (!weightedMode) {
+      setWeightedMode(true);
+    }
+    markCustom();
+    pushToast("success", "Applied behavior-based source weight suggestions.");
+  };
+
   const addManualGames = () => {
     const incoming = normalizeGames(manualInput.split(/\r?\n|,/g));
     setManualGames((current) => normalizeGames([...current, ...incoming]));
@@ -1482,16 +1601,17 @@ export default function App() {
     if (spinning || activePool.length === 0) {
       return;
     }
-
-    const weights = weightedMode ? activePool.map((candidate) => candidate.weight) : undefined;
-    const result = pickSpinWithWeights(activePool.length, rotation, weights, spinMotion);
+    const behaviorWeighted = weightedMode || adaptiveRecommendations;
+    const spinWeights = behaviorWeighted ? adaptivePoolWeights : undefined;
+    const result = pickSpinWithWeights(activePool.length, rotation, spinWeights, spinMotion);
     const selected = activePool[result.winnerIndex];
     if (!selected) return;
 
-    const totalWeight = weightedMode
-      ? activePool.reduce((sum, candidate) => sum + candidate.weight, 0)
+    const selectedWeight = spinWeights?.[result.winnerIndex] ?? 1;
+    const totalWeight = behaviorWeighted
+      ? (spinWeights?.reduce((sum, value) => sum + value, 0) ?? activePool.length)
       : activePool.length;
-    const odds = weightedMode ? selected.weight / Math.max(totalWeight, 0.0001) : 1 / activePool.length;
+    const odds = behaviorWeighted ? selectedWeight / Math.max(totalWeight, 0.0001) : 1 / activePool.length;
 
     setPendingWinner(selected.name);
     setPendingWinnerMeta({
@@ -1600,6 +1720,7 @@ export default function App() {
       enabledSources,
       sourceWeights,
       weightedMode,
+      adaptiveRecommendations,
       cooldownSpins,
       spinSpeedProfile,
       reducedSpinAnimation,
@@ -1639,6 +1760,7 @@ export default function App() {
       setEnabledSources(sanitized.enabledSources);
       setSourceWeights(sanitized.sourceWeights);
       setWeightedMode(sanitized.weightedMode);
+      setAdaptiveRecommendations(sanitized.adaptiveRecommendations);
       setCooldownSpins(sanitized.cooldownSpins);
       setSpinSpeedProfile(sanitized.spinSpeedProfile);
       setReducedSpinAnimation(sanitized.reducedSpinAnimation);
@@ -2168,6 +2290,35 @@ export default function App() {
               </label>
             </div>
 
+            <div className="odds-controls">
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={adaptiveRecommendations}
+                  onChange={(event) => {
+                    setAdaptiveRecommendations(event.target.checked);
+                    markCustom();
+                  }}
+                />
+                <span>Adaptive recommendations</span>
+                <HelpTip text="Learns from played/completed history and recent spins to bias odds toward sources you engage with." />
+              </label>
+              <button
+                type="button"
+                className="ghost"
+                onClick={applySuggestedWeights}
+                disabled={behaviorSignalsCount < 3}
+              >
+                <span className="button-label">
+                  <WandSparkles className="ui-icon" aria-hidden="true" />
+                  Apply Suggested Weights
+                </span>
+              </button>
+            </div>
+            <p className="muted">
+              Behavior signals tracked: {behaviorSignalsCount}. Suggestions become available after at least 3 signals.
+            </p>
+
             <div className="spin-motion-grid">
               <label className="filter-field">
                 <span>Spin Speed Profile</span>
@@ -2227,6 +2378,20 @@ export default function App() {
                   />
                   <strong>{sourceWeights[source].toFixed(1)}x</strong>
                 </label>
+              ))}
+            </div>
+
+            <div className="weights-grid">
+              <p className="muted">
+                Suggested multipliers
+                <HelpTip text="Based on your played/completed decisions and recent winners. Use Apply Suggested Weights to adopt them." />
+              </p>
+              {sourceKeys.map((source) => (
+                <div key={`suggested-${source}`} className="weight-row suggested-row" aria-live="polite">
+                  <span>{sourceLabels[source]}</span>
+                  <div className="suggested-bar" aria-hidden="true" />
+                  <strong>{suggestedSourceWeights[source].toFixed(1)}x</strong>
+                </div>
               ))}
             </div>
 

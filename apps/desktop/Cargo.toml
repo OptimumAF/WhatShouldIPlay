@@ -23,3 +23,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.48", features = ["time"] }
 walkdir = { version = "2.5", optional = true }
+
+[package.metadata.bundle]
+name = "WhatShouldIPlay"
+identifier = "io.optimumaf.whatshouldiplay"
+short_description = "Desktop game picker with a spin wheel and multi-source game pool"
+long_description = "Spin a weighted game wheel using live trend sources, Steam import, and local launcher scans."
+category = "Game"

@@ -1,4 +1,4 @@
-export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "manual" | "scan" | "steamImport";
+export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "itchio" | "manual" | "scan" | "steamImport";
 export type GamePlatform = "windows" | "mac" | "linux";
 export type GameLength = "short" | "medium" | "long";
 
@@ -18,7 +18,7 @@ export interface GameEntry {
 }
 
 export interface SourcePayload {
-  id: "steamcharts" | "steamdb" | "twitchmetrics";
+  id: "steamcharts" | "steamdb" | "twitchmetrics" | "itchio";
   label: string;
   fetchedAt: string;
   note?: string;
@@ -27,5 +27,5 @@ export interface SourcePayload {
 
 export interface TopGamesPayload {
   generatedAt: string;
-  sources: Record<"steamcharts" | "steamdb" | "twitchmetrics", SourcePayload>;
+  sources: Record<"steamcharts" | "steamdb" | "twitchmetrics" | "itchio", SourcePayload>;
 }

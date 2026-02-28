@@ -9,7 +9,7 @@ const resources = {
       skipToMain: "Skip to main content",
       heroTitle: "Spin For Your Next Game",
       heroDescription:
-        "Mix top games from SteamCharts, SteamDB/Steam charts data, TwitchMetrics, Steam account import, and your own list. Then spin.",
+        "Mix top games from SteamCharts, SteamDB/Steam charts data, TwitchMetrics, itch.io, Steam account import, and your own list. Then spin.",
       hideSettings: "Hide Settings",
       showSettings: "Show Settings",
       installApp: "Install App",
@@ -102,7 +102,7 @@ const resources = {
       skipToMain: "Saltar al contenido principal",
       heroTitle: "Gira Para Tu Proximo Juego",
       heroDescription:
-        "Mezcla juegos top de SteamCharts, datos de SteamDB/Steam charts, TwitchMetrics, importacion de Steam y tu propia lista. Luego gira.",
+        "Mezcla juegos top de SteamCharts, datos de SteamDB/Steam charts, TwitchMetrics, itch.io, importacion de Steam y tu propia lista. Luego gira.",
       hideSettings: "Ocultar ajustes",
       showSettings: "Mostrar ajustes",
       installApp: "Instalar app",

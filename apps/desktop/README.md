@@ -7,7 +7,8 @@ This app can:
 - Add manual game lists.
 - Scan local machine game hints from:
   - Steam manifests
-  - Common install folders (Epic/GOG/XboxGames/Games)
+  - Epic Games Launcher manifests (`ProgramData\\Epic\\...\\Manifests`)
+  - Common install folders (Epic, GOG, Ubisoft, Xbox app paths, and `C:\\Games`)
 - Apply mode presets, weighted odds, and cooldown anti-repeat behavior.
 - Track spin history and show richer winner details.
 - Spin a wheel and pick what game to play.
@@ -30,6 +31,15 @@ cargo run
 ```bash
 cargo build --release
 ```
+
+## Native Packaging (CI)
+
+Version tags (`v*`) and manual workflow runs execute `.github/workflows/package-desktop.yml`
+to produce native desktop packages:
+
+- Windows `.msi`
+- Linux `.deb`
+- macOS `.app.zip`
 
 ## Optional: Enable CI Code Signing
 

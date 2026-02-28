@@ -55,6 +55,13 @@ const payloadSchema = z.object({
       note: z.string().optional(),
       games: z.array(payloadGameSchema),
     }),
+    itchio: z.object({
+      id: z.literal("itchio"),
+      label: z.string(),
+      fetchedAt: z.string(),
+      note: z.string().optional(),
+      games: z.array(payloadGameSchema),
+    }),
   }),
 });
 
@@ -111,14 +118,62 @@ const storedNotificationSettingsSchema = z.object({
   reminderIntervalMinutes: z.number().default(120),
 });
 
+const storedCloudSyncSchema = z.object({
+  provider: z.literal("githubGist").default("githubGist"),
+  gistId: z.string().default(""),
+  gistToken: z.string().default(""),
+});
+
+const spinHistorySchema = z.array(
+  z.object({
+    name: z.string(),
+    sources: z.array(z.string()),
+    odds: z.number(),
+    appId: z.number().optional(),
+    url: z.string().optional(),
+    spunAt: z.string(),
+  }),
+);
+
+const cloudSyncSnapshotSchema = z.object({
+  version: z.number().default(1),
+  exportedAt: z.string().optional(),
+  settings: z
+    .object({
+      enabledSources: z.record(z.string(), z.boolean()).optional(),
+      sourceWeights: z.record(z.string(), z.number()).optional(),
+      weightedMode: z.boolean().optional(),
+      cooldownSpins: z.number().optional(),
+      activePreset: z.string().optional(),
+      filters: z
+        .object({
+          platform: z.string().optional(),
+          tag: z.string().optional(),
+          length: z.string().optional(),
+          releaseFrom: z.string().optional(),
+          releaseTo: z.string().optional(),
+          freeOnly: z.boolean().optional(),
+          maxPriceUsd: z.number().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  spinHistory: spinHistorySchema.optional(),
+  manualGames: z.array(z.string()).optional(),
+  steamImport: storedSteamImportSchema.optional(),
+  exclusions: storedExclusionsSchema.optional(),
+  notifications: storedNotificationSettingsSchema.optional(),
+});
+
 const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
 const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
 const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
+const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
 
-const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "manual", "steamImport"] as const;
+const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
 
 type EnabledSources = Record<SourceToggleKey, boolean>;
@@ -202,6 +257,12 @@ interface StoredNotificationSettings {
   reminderIntervalMinutes: number;
 }
 
+interface StoredCloudSync {
+  provider: "githubGist";
+  gistId: string;
+  gistToken: string;
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{
@@ -214,6 +275,7 @@ const sourceLabels: Record<SourceToggleKey, string> = {
   steamcharts: "SteamCharts",
   steamdb: "SteamDB",
   twitchmetrics: "TwitchMetrics",
+  itchio: "itch.io",
   manual: "Manual",
   steamImport: "Steam Library",
 };
@@ -222,6 +284,7 @@ const defaultEnabledSources: EnabledSources = {
   steamcharts: true,
   steamdb: true,
   twitchmetrics: true,
+  itchio: true,
   manual: true,
   steamImport: true,
 };
@@ -230,6 +293,7 @@ const defaultSourceWeights: SourceWeights = {
   steamcharts: 1.2,
   steamdb: 1.15,
   twitchmetrics: 1,
+  itchio: 0.95,
   manual: 0.9,
   steamImport: 1.35,
 };
@@ -270,6 +334,7 @@ const modePresets: ModePreset[] = [
       steamcharts: false,
       steamdb: false,
       twitchmetrics: false,
+      itchio: false,
       manual: true,
       steamImport: true,
     },
@@ -277,6 +342,7 @@ const modePresets: ModePreset[] = [
       steamcharts: 0.6,
       steamdb: 0.6,
       twitchmetrics: 0.6,
+      itchio: 0.8,
       manual: 1.1,
       steamImport: 1.8,
     },
@@ -322,6 +388,12 @@ const fallbackNotificationSettings: StoredNotificationSettings = {
   trendNotifications: true,
   reminderNotifications: false,
   reminderIntervalMinutes: 120,
+};
+
+const fallbackCloudSync: StoredCloudSync = {
+  provider: "githubGist",
+  gistId: "",
+  gistToken: "",
 };
 
 async function fetchTopGames(): Promise<TopGamesPayload> {
@@ -458,6 +530,17 @@ const sanitizeNotificationSettings = (input: StoredNotificationSettings | null):
   };
 };
 
+const sanitizeCloudSync = (input: StoredCloudSync | null): StoredCloudSync => {
+  if (!input) return fallbackCloudSync;
+  const parsed = storedCloudSyncSchema.safeParse(input);
+  if (!parsed.success) return fallbackCloudSync;
+  return {
+    provider: "githubGist",
+    gistId: parsed.data.gistId.trim(),
+    gistToken: parsed.data.gistToken.trim(),
+  };
+};
+
 export default function App() {
   const { t, i18n } = useTranslation();
 
@@ -469,6 +552,7 @@ export default function App() {
   const initialNotifications = sanitizeNotificationSettings(
     readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
   );
+  const initialCloudSync = sanitizeCloudSync(readStorage<StoredCloudSync | null>(CLOUD_SYNC_STORAGE_KEY, null));
 
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
@@ -495,6 +579,11 @@ export default function App() {
   const [reminderIntervalMinutes, setReminderIntervalMinutes] = useState(initialNotifications.reminderIntervalMinutes);
   const [notificationStatus, setNotificationStatus] = useState("");
   const [freshTrendsNotice, setFreshTrendsNotice] = useState(false);
+  const [cloudProvider] = useState<StoredCloudSync["provider"]>(initialCloudSync.provider);
+  const [gistId, setGistId] = useState(initialCloudSync.gistId);
+  const [gistToken, setGistToken] = useState(initialCloudSync.gistToken);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState("");
+  const [cloudSyncLoading, setCloudSyncLoading] = useState(false);
 
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -536,6 +625,7 @@ export default function App() {
       entries.push(...topGames.sources.steamcharts.games);
       entries.push(...topGames.sources.steamdb.games);
       entries.push(...topGames.sources.twitchmetrics.games);
+      entries.push(...topGames.sources.itchio.games);
     }
     entries.push(...manualEntries);
     entries.push(...steamImportGames);
@@ -754,6 +844,17 @@ export default function App() {
       } satisfies StoredNotificationSettings),
     );
   }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      CLOUD_SYNC_STORAGE_KEY,
+      JSON.stringify({
+        provider: cloudProvider,
+        gistId,
+        gistToken,
+      } satisfies StoredCloudSync),
+    );
+  }, [cloudProvider, gistId, gistToken]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -1125,6 +1226,227 @@ export default function App() {
     } else {
       setNotificationsEnabled(false);
       setNotificationStatus(t("notificationsDeniedStatus"));
+    }
+  };
+
+  const buildCloudSnapshot = () => ({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: {
+      enabledSources,
+      sourceWeights,
+      weightedMode,
+      cooldownSpins,
+      activePreset,
+      filters,
+    } satisfies StoredSettings,
+    spinHistory: spinHistory.slice(0, 50),
+    manualGames,
+    steamImport: {
+      steamApiKey,
+      steamId,
+      steamImportGames,
+    } satisfies StoredSteamImport,
+    exclusions: {
+      excludePlayed,
+      excludeCompleted,
+      playedGames,
+      completedGames,
+    } satisfies StoredExclusions,
+    notifications: {
+      notificationsEnabled,
+      trendNotifications,
+      reminderNotifications,
+      reminderIntervalMinutes,
+    } satisfies StoredNotificationSettings,
+  });
+
+  const applyCloudSnapshot = (rawSnapshot: unknown) => {
+    const parsed = cloudSyncSnapshotSchema.safeParse(rawSnapshot);
+    if (!parsed.success) {
+      throw new Error("Cloud snapshot format is invalid.");
+    }
+    const snapshot = parsed.data;
+
+    if (snapshot.settings) {
+      const sanitized = sanitizeSettings(snapshot.settings as StoredSettings);
+      setEnabledSources(sanitized.enabledSources);
+      setSourceWeights(sanitized.sourceWeights);
+      setWeightedMode(sanitized.weightedMode);
+      setCooldownSpins(sanitized.cooldownSpins);
+      setActivePreset(sanitized.activePreset);
+      setFilters(sanitizeFilters(sanitized.filters));
+    }
+
+    if (snapshot.spinHistory) {
+      const history = snapshot.spinHistory.map((entry) => ({
+        ...entry,
+        sources: entry.sources as SourceId[],
+      }));
+      setSpinHistory(history.slice(0, 50));
+    }
+
+    if (snapshot.manualGames) {
+      setManualGames(normalizeGames(snapshot.manualGames));
+    }
+
+    if (snapshot.steamImport) {
+      const sanitized = sanitizeSteamImport(snapshot.steamImport as StoredSteamImport);
+      setSteamApiKey(sanitized.steamApiKey);
+      setSteamId(sanitized.steamId);
+      setSteamImportGames(sanitized.steamImportGames);
+    }
+
+    if (snapshot.exclusions) {
+      const sanitized = sanitizeExclusions(snapshot.exclusions as StoredExclusions);
+      setExcludePlayed(sanitized.excludePlayed);
+      setExcludeCompleted(sanitized.excludeCompleted);
+      setPlayedGames(sanitized.playedGames);
+      setCompletedGames(sanitized.completedGames);
+    }
+
+    if (snapshot.notifications) {
+      const sanitized = sanitizeNotificationSettings(snapshot.notifications as StoredNotificationSettings);
+      setNotificationsEnabled(sanitized.notificationsEnabled);
+      setTrendNotifications(sanitized.trendNotifications);
+      setReminderNotifications(sanitized.reminderNotifications);
+      setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
+    }
+  };
+
+  const pushCloudSync = async () => {
+    const token = gistToken.trim();
+    if (!token) {
+      setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      return;
+    }
+    if (!gistId.trim()) {
+      setCloudSyncStatus("Enter a Gist ID or create one first.");
+      return;
+    }
+
+    setCloudSyncLoading(true);
+    setCloudSyncStatus("Uploading sync snapshot...");
+    try {
+      const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+          accept: "application/vnd.github+json",
+        },
+        body: JSON.stringify({
+          files: {
+            "whatshouldiplay-sync.json": {
+              content: JSON.stringify(buildCloudSnapshot(), null, 2),
+            },
+          },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud sync upload failed (${response.status}).`);
+      }
+      setCloudSyncStatus("Cloud sync uploaded.");
+    } catch (error) {
+      setCloudSyncStatus((error as Error).message);
+    } finally {
+      setCloudSyncLoading(false);
+    }
+  };
+
+  const createCloudSyncGist = async () => {
+    const token = gistToken.trim();
+    if (!token) {
+      setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      return;
+    }
+
+    setCloudSyncLoading(true);
+    setCloudSyncStatus("Creating secret gist...");
+    try {
+      const response = await fetch("https://api.github.com/gists", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+          accept: "application/vnd.github+json",
+        },
+        body: JSON.stringify({
+          description: "WhatShouldIPlay cloud sync",
+          public: false,
+          files: {
+            "whatshouldiplay-sync.json": {
+              content: JSON.stringify(buildCloudSnapshot(), null, 2),
+            },
+          },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Could not create gist (${response.status}).`);
+      }
+      const json = (await response.json()) as { id?: string };
+      if (!json.id) {
+        throw new Error("GitHub API did not return gist id.");
+      }
+      setGistId(json.id);
+      setCloudSyncStatus(`Created sync gist ${json.id}.`);
+    } catch (error) {
+      setCloudSyncStatus((error as Error).message);
+    } finally {
+      setCloudSyncLoading(false);
+    }
+  };
+
+  const pullCloudSync = async () => {
+    const token = gistToken.trim();
+    if (!token) {
+      setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      return;
+    }
+    if (!gistId.trim()) {
+      setCloudSyncStatus("Enter a Gist ID to pull from cloud.");
+      return;
+    }
+
+    setCloudSyncLoading(true);
+    setCloudSyncStatus("Downloading sync snapshot...");
+    try {
+      const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: "application/vnd.github+json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud sync download failed (${response.status}).`);
+      }
+      const json = (await response.json()) as {
+        files?: Record<string, { content?: string; raw_url?: string }>;
+      };
+      const file =
+        json.files?.["whatshouldiplay-sync.json"] ??
+        Object.values(json.files ?? {})[0];
+      if (!file) {
+        throw new Error("No sync file found in gist.");
+      }
+      let content = file.content ?? "";
+      if (!content && file.raw_url) {
+        const raw = await fetch(file.raw_url);
+        if (!raw.ok) {
+          throw new Error(`Failed to load gist raw file (${raw.status}).`);
+        }
+        content = await raw.text();
+      }
+      if (!content) {
+        throw new Error("Sync file content is empty.");
+      }
+      const parsed = JSON.parse(content) as unknown;
+      applyCloudSnapshot(parsed);
+      setCloudSyncStatus("Cloud sync downloaded and applied.");
+    } catch (error) {
+      setCloudSyncStatus((error as Error).message);
+    } finally {
+      setCloudSyncLoading(false);
     }
   };
 
@@ -1636,6 +1958,54 @@ export default function App() {
             {notificationStatus ? (
               <p className="status" role="status" aria-live="polite">
                 {notificationStatus}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="panel" aria-labelledby="cloud-sync-heading">
+            <h2 id="cloud-sync-heading">Cloud Sync (Optional)</h2>
+            <p className="muted">
+              Sync your settings/history across devices using a private GitHub Gist. Your token is stored locally in
+              this browser only.
+            </p>
+            <div className="steam-grid">
+              <label htmlFor="cloud-token" className="sr-only">
+                GitHub token with gist scope
+              </label>
+              <input
+                id="cloud-token"
+                type="password"
+                placeholder="GitHub token (gist scope)"
+                value={gistToken}
+                onChange={(event) => setGistToken(event.target.value)}
+                autoComplete="off"
+              />
+              <label htmlFor="cloud-gist-id" className="sr-only">
+                Sync Gist ID
+              </label>
+              <input
+                id="cloud-gist-id"
+                type="text"
+                placeholder="Gist ID"
+                value={gistId}
+                onChange={(event) => setGistId(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={createCloudSyncGist} disabled={cloudSyncLoading}>
+                {cloudSyncLoading ? "Working..." : "Create Gist + Push"}
+              </button>
+              <button type="button" className="ghost" onClick={pushCloudSync} disabled={cloudSyncLoading}>
+                Push Sync
+              </button>
+              <button type="button" className="ghost" onClick={pullCloudSync} disabled={cloudSyncLoading}>
+                Pull Sync
+              </button>
+            </div>
+            {cloudSyncStatus ? (
+              <p className="status" role="status" aria-live="polite">
+                {cloudSyncStatus}
               </p>
             ) : null}
           </section>

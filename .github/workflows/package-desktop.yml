@@ -1,0 +1,119 @@
+name: Package Desktop Installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  attestations: write
+  id-token: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            bundle_format: msi
+            artifact_glob: "apps/desktop/target/release/bundle/msi/*.msi"
+          - os: ubuntu-latest
+            platform: linux
+            bundle_format: deb
+            artifact_glob: "apps/desktop/target/release/bundle/deb/*.deb"
+          - os: macos-latest
+            platform: macos
+            bundle_format: osx
+            artifact_glob: "apps/desktop/target/release/bundle/osx/*.app"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux desktop dependencies
+        if: ${{ matrix.platform == 'linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install WiX Toolset
+        if: ${{ matrix.platform == 'windows' }}
+        shell: pwsh
+        run: choco install wixtoolset --yes --no-progress
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop
+
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle --locked
+
+      - name: Build installer package
+        run: cargo bundle --release --format ${{ matrix.bundle_format }}
+        working-directory: apps/desktop
+
+      - name: Zip macOS app bundle
+        if: ${{ matrix.platform == 'macos' }}
+        shell: bash
+        run: |
+          app_path=$(ls apps/desktop/target/release/bundle/osx/*.app | head -n1)
+          zip_path="${app_path}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$zip_path"
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $out = "apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt"
+          $glob = "${{ matrix.artifact_glob }}"
+          if ("${{ matrix.platform }}" -eq "macos") {
+            $glob = "apps/desktop/target/release/bundle/osx/*.app.zip"
+          }
+          $files = Get-ChildItem $glob
+          if (-not $files) { throw "No packaged artifacts found for ${{ matrix.platform }}." }
+          $lines = $files | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash *$($_.Name)"
+          }
+          $lines | Set-Content -Path $out -Encoding ascii
+
+      - name: Attest packaged artifacts (Windows/Linux)
+        if: ${{ matrix.platform != 'macos' }}
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            ${{ matrix.artifact_glob }}
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+
+      - name: Attest packaged artifacts (macOS)
+        if: ${{ matrix.platform == 'macos' }}
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            apps/desktop/target/release/bundle/osx/*.app.zip
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+
+      - name: Upload packaged artifacts (Windows/Linux)
+        if: ${{ matrix.platform != 'macos' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pick-a-game-desktop-package-${{ matrix.platform }}-${{ github.run_number }}
+          path: |
+            ${{ matrix.artifact_glob }}
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+
+      - name: Upload packaged artifacts (macOS)
+        if: ${{ matrix.platform == 'macos' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pick-a-game-desktop-package-${{ matrix.platform }}-${{ github.run_number }}
+          path: |
+            apps/desktop/target/release/bundle/osx/*.app.zip
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt

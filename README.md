@@ -20,8 +20,9 @@ Live site:
   - SteamCharts
   - SteamDB (with Steam charts API fallback)
   - TwitchMetrics
+  - itch.io top rated
   - Manual game entry
-  - Desktop-only local scan (Steam manifests + common install folders)
+  - Desktop-only local scan (Steam manifests + Epic manifests + common Epic/GOG/Ubisoft/Xbox install folders)
 - Mode presets (`Balanced Mix`, `Quick Pick`, `No Repeats`, `Owned Focus`)
 - Weighted wheel odds with per-source weighting controls
 - Spin history + configurable cooldown to reduce immediate repeats
@@ -29,6 +30,7 @@ Live site:
 - Steam account import using Steam Web API key + SteamID64
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay with odds + source details in both web and desktop apps
+- Optional cloud sync across devices via user-provided private GitHub Gist
 - Progressive Web App support (installable web app + offline shell cache)
 - Optional web notifications for trend updates and spin reminders
 - Multi-language web UI support (English and Spanish)
@@ -116,6 +118,8 @@ cargo build --release
 - `refresh-data.yml`: Scheduled source data refresh every 6 hours
 - `deploy-pages.yml`: Web build and Pages deploy on `master`
 - `build-desktop.yml`: Windows/macOS/Linux desktop artifact builds on push/PR to `master`
+- `package-desktop.yml`: Native desktop package build on version tags (`v*`) and manual runs
+- `release-desktop-signed.yml`: Enforced Windows signed release pipeline on version tags (`v*`)
 - `web-ci.yml`: Web quality checks on push/PR
 
 ## Data Source Caveats

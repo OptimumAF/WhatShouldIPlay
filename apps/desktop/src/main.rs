@@ -634,7 +634,7 @@ fn App() -> Element {
                     }
                 }
                 p { class: "muted", "Manual games: {manual_games().len()} | Scanned games: {scanned_games().len()}" }
-                p { class: "muted", "Desktop scan checks Steam manifests + common game install folders. Shortcut crawling is disabled by default." }
+                p { class: "muted", "Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default." }
             }
 
                     section { class: "panel",
@@ -1223,6 +1223,10 @@ fn dedupe_and_sort(items: Vec<String>) -> Vec<String> {
 fn scan_installed_games() -> Vec<String> {
     let mut games = Vec::new();
     games.extend(scan_steam_manifests());
+    games.extend(scan_epic_launcher_manifests());
+    games.extend(scan_gog_install_dirs());
+    games.extend(scan_ubisoft_install_dirs());
+    games.extend(scan_xbox_install_dirs());
     games.extend(scan_common_install_dirs());
     #[cfg(feature = "deep-shortcut-scan")]
     games.extend(scan_shortcuts());
@@ -1300,19 +1304,145 @@ fn steam_root_candidates() -> Vec<PathBuf> {
     candidates
 }
 
+fn scan_epic_launcher_manifests() -> Vec<String> {
+    let mut manifest_roots = Vec::<PathBuf>::new();
+    if let Ok(program_data) = std::env::var("ProgramData") {
+        manifest_roots.push(
+            PathBuf::from(program_data)
+                .join("Epic")
+                .join("EpicGamesLauncher")
+                .join("Data")
+                .join("Manifests"),
+        );
+    }
+    if let Ok(all_users_profile) = std::env::var("ALLUSERSPROFILE") {
+        manifest_roots.push(
+            PathBuf::from(all_users_profile)
+                .join("Epic")
+                .join("EpicGamesLauncher")
+                .join("Data")
+                .join("Manifests"),
+        );
+    }
+
+    let mut discovered = Vec::new();
+    for root in manifest_roots {
+        if !root.exists() {
+            continue;
+        }
+        let entries = match fs::read_dir(&root) {
+            Ok(read_dir) => read_dir,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let ext = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_ascii_lowercase())
+                .unwrap_or_default();
+            if ext != "item" && ext != "manifest" {
+                continue;
+            }
+            let content = match fs::read_to_string(&path) {
+                Ok(value) => value,
+                Err(_) => continue,
+            };
+            let json = match serde_json::from_str::<Value>(&content) {
+                Ok(value) => value,
+                Err(_) => continue,
+            };
+            let name = json
+                .get("DisplayName")
+                .and_then(|value| value.as_str())
+                .or_else(|| json.get("AppName").and_then(|value| value.as_str()))
+                .or_else(|| json.get("CatalogItemId").and_then(|value| value.as_str()));
+            if let Some(name) = name {
+                let cleaned = normalize_name(name);
+                if !cleaned.is_empty() {
+                    discovered.push(cleaned);
+                }
+            }
+        }
+    }
+
+    discovered
+}
+
+fn scan_gog_install_dirs() -> Vec<String> {
+    let mut roots = Vec::<PathBuf>::new();
+    if let Ok(program_files) = std::env::var("ProgramFiles") {
+        roots.push(PathBuf::from(&program_files).join("GOG Galaxy").join("Games"));
+        roots.push(PathBuf::from(&program_files).join("GOG Games"));
+    }
+    if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
+        roots.push(PathBuf::from(&program_files_x86).join("GOG Galaxy").join("Games"));
+        roots.push(PathBuf::from(&program_files_x86).join("GOG Games"));
+    }
+
+    scan_child_directories(roots)
+}
+
+fn scan_ubisoft_install_dirs() -> Vec<String> {
+    let mut roots = Vec::<PathBuf>::new();
+    if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
+        roots.push(
+            PathBuf::from(&program_files_x86)
+                .join("Ubisoft")
+                .join("Ubisoft Game Launcher")
+                .join("games"),
+        );
+        roots.push(PathBuf::from(&program_files_x86).join("Ubisoft").join("games"));
+    }
+    if let Ok(program_files) = std::env::var("ProgramFiles") {
+        roots.push(
+            PathBuf::from(&program_files)
+                .join("Ubisoft")
+                .join("Ubisoft Game Launcher")
+                .join("games"),
+        );
+        roots.push(PathBuf::from(&program_files).join("Ubisoft").join("games"));
+    }
+
+    scan_child_directories(roots)
+}
+
+fn scan_xbox_install_dirs() -> Vec<String> {
+    let mut roots = Vec::<PathBuf>::new();
+    roots.push(PathBuf::from("C:\\XboxGames"));
+    if let Ok(program_files) = std::env::var("ProgramFiles") {
+        roots.push(PathBuf::from(program_files).join("ModifiableWindowsApps"));
+    }
+    if let Some(home) = dirs::home_dir() {
+        roots.push(
+            home.join("AppData")
+                .join("Local")
+                .join("Packages")
+                .join("Microsoft.GamingApp_8wekyb3d8bbwe")
+                .join("LocalCache")
+                .join("Local")
+                .join("Microsoft")
+                .join("WritablePackageRoot"),
+        );
+    }
+
+    scan_child_directories(roots)
+}
+
 fn scan_common_install_dirs() -> Vec<String> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files) = std::env::var("ProgramFiles") {
         roots.push(PathBuf::from(&program_files).join("Epic Games"));
-        roots.push(PathBuf::from(&program_files).join("GOG Galaxy").join("Games"));
     }
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
         roots.push(PathBuf::from(&program_files_x86).join("Epic Games"));
-        roots.push(PathBuf::from(&program_files_x86).join("GOG Galaxy").join("Games"));
     }
-    roots.push(PathBuf::from("C:\\XboxGames"));
     roots.push(PathBuf::from("C:\\Games"));
 
+    scan_child_directories(roots)
+}
+
+fn scan_child_directories(roots: Vec<PathBuf>) -> Vec<String> {
     let mut names = Vec::new();
     for root in roots {
         if !root.exists() {

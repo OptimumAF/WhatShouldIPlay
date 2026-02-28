@@ -14,6 +14,22 @@ Each push to `master` also generates:
 - `SHA256SUMS.txt` for artifact integrity checks.
 - A GitHub artifact attestation (SLSA provenance) for the `.exe` and checksum file.
 
+Native installer packaging is produced by `package-desktop.yml` on version tags
+(`v*`) and manual runs:
+
+- Windows: `.msi`
+- Linux: `.deb`
+- macOS: `.app.zip` (app bundle zipped for transport)
+
+Signed Windows release publishing is handled by `release-desktop-signed.yml`
+on version tags (`v*`). It requires:
+
+- `WINDOWS_CERT_BASE64` secret
+- `WINDOWS_CERT_PASSWORD` secret
+
+The workflow will fail early if these secrets are missing to avoid unsigned
+production releases.
+
 For tagged releases:
 
 1. Update `CHANGELOG.md`.

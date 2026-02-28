@@ -216,6 +216,47 @@ function parseTwitchMetrics(html) {
   return dedupeByName(games).slice(0, TOP_N);
 }
 
+function parseItchioTopRated(html) {
+  const $ = cheerio.load(html);
+  const games = [];
+
+  $(".game_cell").each((index, element) => {
+    if (games.length >= TOP_N) return;
+    const name = normalizeName($(element).find(".game_title a.title").first().text());
+    if (!name) return;
+
+    const href = $(element).find(".game_title a.title").first().attr("href");
+    const genre = normalizeName($(element).find(".game_genre").first().text());
+    const priceText = normalizeName($(element).find(".price_value").first().text()).replace(/[$,]/g, "");
+    const ratingCountText = normalizeName($(element).find(".rating_count").first().text()).replace(/[(),]/g, "");
+
+    const platforms = [];
+    if ($(element).find(".game_platform .icon-windows8").length > 0) platforms.push("windows");
+    if ($(element).find(".game_platform .icon-apple").length > 0) platforms.push("mac");
+    if ($(element).find(".game_platform .icon-tux").length > 0) platforms.push("linux");
+
+    const parsedPrice = Number.parseFloat(priceText);
+    const hasPrice = Number.isFinite(parsedPrice);
+    const score = Number.parseInt(ratingCountText, 10) || undefined;
+    const tags = genre ? [genre] : undefined;
+
+    games.push({
+      name,
+      source: "itchio",
+      rank: index + 1,
+      score,
+      url: href?.startsWith("http") ? href : href ? `https://itch.io${href}` : undefined,
+      platforms: platforms.length > 0 ? platforms : undefined,
+      tags,
+      priceUsd: hasPrice ? parsedPrice : 0,
+      isFree: !hasPrice || parsedPrice === 0,
+      estimatedLength: inferEstimatedLength(tags ?? []),
+    });
+  });
+
+  return dedupeByName(games).slice(0, TOP_N);
+}
+
 function parseSteamDbPage(html) {
   if (/cf_chl_opt|Enable JavaScript and cookies to continue|Just a moment/i.test(html)) {
     throw new Error("SteamDB blocked request with Cloudflare challenge");
@@ -357,6 +398,7 @@ async function run() {
   let steamchartsSource;
   let steamdbSource;
   let twitchmetricsSource;
+  let itchioSource;
 
   try {
     const steamchartsHtml = await fetchText("https://steamcharts.com/top");
@@ -395,12 +437,25 @@ async function run() {
     twitchmetricsSource = fallbackSource("twitchmetrics", "TwitchMetrics", error);
   }
 
+  try {
+    const itchioHtml = await fetchText("https://itch.io/games/top-rated");
+    itchioSource = {
+      id: "itchio",
+      label: "itch.io",
+      fetchedAt: now,
+      games: parseItchioTopRated(itchioHtml),
+    };
+  } catch (error) {
+    itchioSource = fallbackSource("itchio", "itch.io", error);
+  }
+
   const payload = {
     generatedAt: now,
     sources: {
       steamcharts: steamchartsSource,
       steamdb: steamdbSource,
       twitchmetrics: twitchmetricsSource,
+      itchio: itchioSource,
     },
   };
 

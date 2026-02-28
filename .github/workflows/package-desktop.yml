@@ -77,6 +77,10 @@ jobs:
         shell: pwsh
         run: |
           $out = "apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt"
+          $outDir = Split-Path -Parent $out
+          if (-not [string]::IsNullOrWhiteSpace($outDir)) {
+            New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          }
           $glob = "${{ matrix.artifact_glob }}"
           if ("${{ matrix.platform }}" -eq "macos") {
             $glob = "apps/desktop/target/release/bundle/osx/*.app.zip"

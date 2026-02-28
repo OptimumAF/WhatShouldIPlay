@@ -149,6 +149,12 @@ fn App() -> Element {
             (angle, flip, pool_game.name.clone())
         })
         .collect::<Vec<_>>();
+    let steamcharts_weight_label = format!("{:.1}x", steamcharts_weight());
+    let steamdb_weight_label = format!("{:.1}x", steamdb_weight());
+    let twitch_weight_label = format!("{:.1}x", twitch_weight());
+    let steam_import_weight_label = format!("{:.1}x", steam_import_weight());
+    let manual_weight_label = format!("{:.1}x", manual_weight());
+    let scanned_weight_label = format!("{:.1}x", scanned_weight());
 
     rsx! {
         style { "{DESKTOP_CSS}" }
@@ -276,7 +282,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", steamcharts_weight()) }
+                        strong { "{steamcharts_weight_label}" }
                     }
                     label { class: "control-row",
                         span { "SteamDB weight" }
@@ -292,7 +298,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", steamdb_weight()) }
+                        strong { "{steamdb_weight_label}" }
                     }
                     label { class: "control-row",
                         span { "Twitch weight" }
@@ -308,7 +314,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", twitch_weight()) }
+                        strong { "{twitch_weight_label}" }
                     }
                     label { class: "control-row",
                         span { "Steam import weight" }
@@ -324,7 +330,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", steam_import_weight()) }
+                        strong { "{steam_import_weight_label}" }
                     }
                     label { class: "control-row",
                         span { "Manual weight" }
@@ -340,7 +346,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", manual_weight()) }
+                        strong { "{manual_weight_label}" }
                     }
                     label { class: "control-row",
                         span { "Scanned weight" }
@@ -356,7 +362,7 @@ fn App() -> Element {
                                 }
                             }
                         }
-                        strong { format!("{:.1}x", scanned_weight()) }
+                        strong { "{scanned_weight_label}" }
                     }
                 }
             }

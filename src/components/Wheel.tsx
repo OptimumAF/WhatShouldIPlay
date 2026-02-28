@@ -25,9 +25,15 @@ export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
 
   return (
     <div className="wheel-shell">
-      <div className="wheel-pointer" />
+      <div className="wheel-pointer" aria-hidden="true" />
       <div
         className="wheel"
+        role="img"
+        aria-label={
+          games.length > 0
+            ? `Selection wheel containing ${games.length} games`
+            : "Selection wheel with no games loaded"
+        }
         style={
           {
             "--segment-angle": `${segment}deg`,
@@ -39,7 +45,7 @@ export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
         }
         onTransitionEnd={onSpinEnd}
       >
-        <div className="wheel-hub" />
+        <div className="wheel-hub" aria-hidden="true" />
         {games.length > 0 ? (
           games.map((game, index) => {
             const angle = index * segment + segment / 2;

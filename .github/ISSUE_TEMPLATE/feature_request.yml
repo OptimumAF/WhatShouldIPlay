@@ -1,7 +1,7 @@
 name: Feature Request
 description: Suggest an improvement
 title: "[Feature]: "
-labels: ["enhancement"]
+labels: ["enhancement", "needs-design"]
 assignees:
   - OptimumAF
 body:
@@ -41,4 +41,25 @@ body:
         - Other
     validations:
       required: true
-
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Suggested Milestone
+      description: Select the roadmap milestone this best aligns to.
+      options:
+        - M1 Core UX Hardening
+        - M2 Discovery and Integrations
+        - M3 Accounts and Sync
+        - M4 Release and Trust
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Rough Effort
+      options:
+        - Small (1-2 PRs)
+        - Medium (multi-file feature)
+        - Large (cross-app/project-wide)
+        - Unknown

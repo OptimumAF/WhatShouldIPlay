@@ -639,6 +639,9 @@ export default function App() {
 
   return (
     <main className="layout">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <header className="hero">
         <p className="kicker">PickAGame</p>
         <h1>Spin For Your Next Game</h1>
@@ -647,7 +650,13 @@ export default function App() {
           list. Then spin.
         </p>
         <div className="hero-actions">
-          <button type="button" className="ghost" onClick={() => setSidebarOpen((current) => !current)}>
+          <button
+            type="button"
+            className="ghost"
+            aria-controls="settings-sidebar"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen((current) => !current)}
+          >
             {sidebarOpen ? "Hide Settings" : "Show Settings"}
           </button>
           {installPrompt ? (
@@ -658,10 +667,14 @@ export default function App() {
         </div>
       </header>
 
-      <div className={clsx("workspace", !sidebarOpen && "sidebar-collapsed")}>
-        <aside className={clsx("settings-sidebar", !sidebarOpen && "is-collapsed")}>
-          <section className="panel">
-            <h2>Mode Presets</h2>
+      <div className={clsx("workspace", !sidebarOpen && "sidebar-collapsed")} id="main-content">
+        <aside
+          id="settings-sidebar"
+          aria-label="Game settings"
+          className={clsx("settings-sidebar", !sidebarOpen && "is-collapsed")}
+        >
+          <section className="panel" aria-labelledby="mode-presets-heading">
+            <h2 id="mode-presets-heading">Mode Presets</h2>
             <div className="preset-grid">
               {modePresets.map((preset) => (
                 <button
@@ -677,8 +690,8 @@ export default function App() {
             </div>
           </section>
 
-          <section className="panel">
-            <h2>Sources</h2>
+          <section className="panel" aria-labelledby="sources-heading">
+            <h2 id="sources-heading">Sources</h2>
             <div className="grid-sources">
               {sourceKeys.map((source) => {
                 const sourceMeta =
@@ -772,24 +785,40 @@ export default function App() {
               ))}
             </div>
 
-            {topGamesQuery.isLoading ? <p className="status">Loading source data...</p> : null}
-            {topGamesQuery.isError ? <p className="status error">{(topGamesQuery.error as Error).message}</p> : null}
+            {topGamesQuery.isLoading ? (
+              <p className="status" role="status" aria-live="polite">
+                Loading source data...
+              </p>
+            ) : null}
+            {topGamesQuery.isError ? (
+              <p className="status error" role="alert">
+                {(topGamesQuery.error as Error).message}
+              </p>
+            ) : null}
           </section>
 
-          <section className="panel">
-            <h2>Steam Account Import</h2>
+          <section className="panel" aria-labelledby="steam-import-heading">
+            <h2 id="steam-import-heading">Steam Account Import</h2>
             <p className="muted">
               Import owned games using Steam Web API key + SteamID64. Profile and game details must be public.
             </p>
             <div className="steam-grid">
+              <label htmlFor="steam-api-key" className="sr-only">
+                Steam Web API Key
+              </label>
               <input
+                id="steam-api-key"
                 type="password"
                 placeholder="Steam Web API Key"
                 value={steamApiKey}
                 onChange={(event) => setSteamApiKey(event.target.value)}
                 autoComplete="off"
               />
+              <label htmlFor="steam-id64" className="sr-only">
+                SteamID64
+              </label>
               <input
+                id="steam-id64"
                 type="text"
                 placeholder="SteamID64"
                 value={steamId}
@@ -798,20 +827,29 @@ export default function App() {
               />
             </div>
             <div className="button-row">
-              <button type="button" onClick={importSteamLibrary} disabled={steamImportLoading}>
+              <button
+                type="button"
+                onClick={importSteamLibrary}
+                disabled={steamImportLoading}
+                aria-describedby="steam-import-status"
+              >
                 {steamImportLoading ? "Importing..." : "Import Steam Library"}
               </button>
               <button type="button" className="ghost" onClick={clearSteamImport}>
                 Clear Import
               </button>
             </div>
-            {steamImportStatus ? <p className="status">{steamImportStatus}</p> : null}
+            {steamImportStatus ? (
+              <p id="steam-import-status" className="status" role="status" aria-live="polite">
+                {steamImportStatus}
+              </p>
+            ) : null}
           </section>
         </aside>
 
         <div className="content-stack">
-          <section className="panel">
-            <h2>Wheel</h2>
+          <section className="panel" aria-labelledby="wheel-heading">
+            <h2 id="wheel-heading">Wheel</h2>
             <p className="muted">
               {activePool.length} games in this spin pool
               {cooldownSpins > 0 ? ` (${Math.max(0, basePool.length - activePool.length)} on cooldown)` : ""}.
@@ -840,10 +878,14 @@ export default function App() {
             ) : null}
           </section>
 
-          <section className="panel">
-            <h2>Manual List</h2>
+          <section className="panel" aria-labelledby="manual-heading">
+            <h2 id="manual-heading">Manual List</h2>
             <p className="muted">Add games by newline or comma.</p>
+            <label htmlFor="manual-input" className="sr-only">
+              Manual game list
+            </label>
             <textarea
+              id="manual-input"
               rows={5}
               value={manualInput}
               onChange={(event) => setManualInput(event.target.value)}
@@ -859,12 +901,12 @@ export default function App() {
             </div>
           </section>
 
-          <section className="panel">
-            <h2>Spin History</h2>
+          <section className="panel" aria-labelledby="history-heading">
+            <h2 id="history-heading">Spin History</h2>
             {spinHistory.length === 0 ? (
               <p className="muted">No spins yet.</p>
             ) : (
-              <ul className="history-list">
+              <ul className="history-list" aria-label="Recent spin results">
                 {spinHistory.slice(0, 10).map((item, index) => (
                   <li key={`${item.name}-${item.spunAt}-${index}`}>
                     <div>
@@ -884,10 +926,17 @@ export default function App() {
 
       {showWinnerPopup && winner && winnerMeta ? (
         <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>
-          <div className="winner-popup" key={winnerPulse} onClick={(event) => event.stopPropagation()}>
+          <div
+            className="winner-popup"
+            key={winnerPulse}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="winner-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="winner-glow" />
             <p className="winner-tag">Winner</p>
-            <h3>{winner}</h3>
+            <h3 id="winner-title">{winner}</h3>
             <div className="winner-moment-grid">
               <div>
                 <span>Spin Odds</span>

@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Result};
 use dioxus::prelude::*;
-use rand::Rng;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -8,7 +7,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeSet, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 
 const USER_AGENT: &str =
@@ -77,6 +76,11 @@ fn App() -> Element {
     } else {
         wheel_gradient(pool.len())
     };
+    let wheel_labels = pool
+        .iter()
+        .enumerate()
+        .map(|(index, game)| (index as f64 * segment_angle + (segment_angle / 2.0), game.clone()))
+        .collect::<Vec<_>>();
 
     rsx! {
         style { "{DESKTOP_CSS}" }
@@ -206,8 +210,7 @@ fn App() -> Element {
                         if pool.is_empty() {
                             div { class: "wheel-empty", "Add or load games first" }
                         } else {
-                            for (index, game) in pool.iter().enumerate() {
-                                let label_angle = index as f64 * segment_angle + (segment_angle / 2.0);
+                            for (label_angle, game) in wheel_labels.iter() {
                                 div {
                                     class: "wheel-label",
                                     style: format!(
@@ -748,12 +751,12 @@ fn steam_root_candidates() -> Vec<PathBuf> {
 fn scan_common_install_dirs() -> Vec<String> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files) = std::env::var("ProgramFiles") {
-        roots.push(PathBuf::from(program_files).join("Epic Games"));
-        roots.push(PathBuf::from(program_files).join("GOG Galaxy").join("Games"));
+        roots.push(PathBuf::from(&program_files).join("Epic Games"));
+        roots.push(PathBuf::from(&program_files).join("GOG Galaxy").join("Games"));
     }
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
-        roots.push(PathBuf::from(program_files_x86).join("Epic Games"));
-        roots.push(PathBuf::from(program_files_x86).join("GOG Galaxy").join("Games"));
+        roots.push(PathBuf::from(&program_files_x86).join("Epic Games"));
+        roots.push(PathBuf::from(&program_files_x86).join("GOG Galaxy").join("Games"));
     }
     roots.push(PathBuf::from("C:\\XboxGames"));
     roots.push(PathBuf::from("C:\\Games"));

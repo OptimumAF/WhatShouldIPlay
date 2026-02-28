@@ -7,8 +7,14 @@ This app can:
 - Scan local machine game hints from:
   - Steam manifests
   - Common install folders (Epic/GOG/XboxGames/Games)
-  - Desktop / Start Menu shortcuts
 - Spin a wheel and pick what game to play.
+
+By default, shortcut crawling is disabled to reduce antivirus false-positive risk.
+If you explicitly want shortcut scanning, build with:
+
+```bash
+cargo run --features deep-shortcut-scan
+```
 
 ## Run
 
@@ -21,4 +27,3 @@ cargo run
 ```bash
 cargo build --release
 ```
-

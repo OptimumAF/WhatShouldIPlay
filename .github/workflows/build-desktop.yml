@@ -31,8 +31,32 @@ jobs:
         run: cargo build --release
         working-directory: apps/desktop
 
-      - name: Upload executable
+      - name: Sign executable (optional)
+        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem apps/desktop/target/release/*.exe | Select-Object -First 1
+          if (-not $exe) { throw "No executable found to sign." }
+          $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+          if (-not $signtool) { throw "signtool.exe not found on runner." }
+          $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}"))
+          & $signtool sign /fd SHA256 /f $certPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 $exe.FullName
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $out = "apps/desktop/target/release/SHA256SUMS.txt"
+          $lines = Get-ChildItem apps/desktop/target/release/*.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash *$($_.Name)"
+          }
+          $lines | Set-Content -Path $out -Encoding ascii
+
+      - name: Upload executable + checksums
         uses: actions/upload-artifact@v4
         with:
           name: pick-a-game-desktop-windows-${{ github.run_number }}
-          path: apps/desktop/target/release/*.exe
+          path: |
+            apps/desktop/target/release/*.exe
+            apps/desktop/target/release/SHA256SUMS.txt

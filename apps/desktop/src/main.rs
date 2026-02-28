@@ -99,7 +99,7 @@ fn App() -> Element {
             section { class: "hero",
                 p { class: "kicker", "PickAGame Desktop" }
                 h1 { "Spin For Your Next Game" }
-                p { "Load top games from SteamCharts, SteamDB/Steam API, TwitchMetrics, add manual entries, or scan your PC for installed games." }
+                p { "Load top games from SteamCharts, SteamDB/Steam API, TwitchMetrics, add manual entries, or scan known game library folders on your PC." }
                 p { class: "status", "Status: {status}" }
             }
 
@@ -181,7 +181,7 @@ fn App() -> Element {
                             let games = scan_installed_games();
                             scanned_games.set(games);
                         },
-                        "Scan PC for Games"
+                        "Scan Game Libraries"
                     }
                     button {
                         class: "ghost",
@@ -190,6 +190,7 @@ fn App() -> Element {
                     }
                 }
                 p { class: "muted", "Manual games: {manual_games().len()} | Scanned games: {scanned_games().len()}" }
+                p { class: "muted", "Desktop scan checks Steam manifests + common game install folders. Shortcut crawling is disabled by default." }
             }
 
             section { class: "panel",
@@ -685,6 +686,7 @@ fn scan_installed_games() -> Vec<String> {
     let mut games = Vec::new();
     games.extend(scan_steam_manifests());
     games.extend(scan_common_install_dirs());
+    #[cfg(feature = "deep-shortcut-scan")]
     games.extend(scan_shortcuts());
     dedupe_and_sort(games)
 }
@@ -795,6 +797,7 @@ fn scan_common_install_dirs() -> Vec<String> {
     names
 }
 
+#[cfg(feature = "deep-shortcut-scan")]
 fn scan_shortcuts() -> Vec<String> {
     let mut names = Vec::new();
 

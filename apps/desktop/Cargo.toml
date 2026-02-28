@@ -2,6 +2,14 @@
 name = "pick-a-game-desktop"
 version = "0.1.0"
 edition = "2021"
+description = "Desktop game picker with a spin wheel and multi-source game pool"
+license = "MIT"
+repository = "https://github.com/OptimumAF/WhatShouldIPlay"
+homepage = "https://optimumaf.github.io/WhatShouldIPlay/"
+
+[features]
+default = []
+deep-shortcut-scan = ["dep:walkdir"]
 
 [dependencies]
 anyhow = "1.0"
@@ -14,4 +22,4 @@ scraper = "0.24"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.48", features = ["time"] }
-walkdir = "2.5"
+walkdir = { version = "2.5", optional = true }

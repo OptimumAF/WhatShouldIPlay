@@ -21,7 +21,7 @@ Live site:
   - SteamDB (with Steam charts API fallback)
   - TwitchMetrics
   - Manual game entry
-  - Desktop-only local scan
+  - Desktop-only local scan (Steam manifests + common install folders)
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay in both web and desktop apps
 - Scheduled data refresh and deterministic static hosting
@@ -72,6 +72,13 @@ npm run build:all
 ```bash
 cd apps/desktop
 cargo run
+```
+
+Enable optional shortcut crawling scan:
+
+```bash
+cd apps/desktop
+cargo run --features deep-shortcut-scan
 ```
 
 Release build:

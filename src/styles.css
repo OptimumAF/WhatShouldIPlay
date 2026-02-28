@@ -239,15 +239,18 @@ button.ghost {
 .wheel-label span {
   position: absolute;
   left: 50%;
-  top: 7%;
-  transform: translateX(-50%) rotate(calc(-1 * var(--label-angle)));
+  top: 20%;
+  transform: translateX(-50%) rotate(var(--label-flip, 0deg));
   transform-origin: center;
-  font-size: clamp(0.62rem, 1.4vw, 0.84rem);
+  font-size: clamp(0.56rem, 1.15vw, 0.82rem);
   font-weight: 700;
-  max-width: 44%;
-  line-height: 1.1;
+  max-width: 38%;
+  line-height: 1.05;
   text-align: center;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
+  text-wrap: balance;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.8),
+    0 0 6px rgba(255, 255, 255, 0.35);
 }
 
 .winner {

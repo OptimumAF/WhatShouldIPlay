@@ -43,6 +43,7 @@ export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
         {games.length > 0 ? (
           games.map((game, index) => {
             const angle = index * segment + segment / 2;
+            const flip = angle > 90 && angle < 270 ? 180 : 0;
             return (
             <div
               key={`${game}-${index}`}
@@ -50,6 +51,7 @@ export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
               style={
                 {
                   "--label-angle": `${angle}deg`,
+                  "--label-flip": `${flip}deg`,
                 } as CSSProperties
               }
             >

@@ -21,7 +21,7 @@ jobs:
       WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ github.event.inputs.tag }}
 
@@ -93,7 +93,7 @@ jobs:
           $lines | Set-Content -Path $out -Encoding ascii
 
       - name: Attest signed release artifacts
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             apps/desktop/target/release/*.exe
@@ -106,3 +106,4 @@ jobs:
           files: |
             apps/desktop/target/release/*.exe
             apps/desktop/target/release/SHA256SUMS.txt
+

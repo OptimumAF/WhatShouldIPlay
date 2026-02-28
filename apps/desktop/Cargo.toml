@@ -15,10 +15,10 @@ deep-shortcut-scan = ["dep:walkdir"]
 anyhow = "1.0"
 dioxus = { version = "0.7", features = ["desktop"] }
 dirs = "6.0"
-rand = "0.9"
+rand = "0.10"
 regex = "1.12"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-scraper = "0.24"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-tls"] }
+scraper = "0.25"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.48", features = ["time"] }
@@ -30,3 +30,8 @@ identifier = "io.optimumaf.whatshouldiplay"
 short_description = "Desktop game picker with a spin wheel and multi-source game pool"
 long_description = "Spin a weighted game wheel using live trend sources, Steam import, and local launcher scans."
 category = "Game"
+
+[target.'cfg(windows)'.build-dependencies]
+ico = "0.4"
+resvg = { version = "0.45", default-features = false }
+winres = "0.1"

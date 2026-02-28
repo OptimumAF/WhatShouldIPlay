@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -95,7 +95,7 @@ jobs:
 
       - name: Attest packaged artifacts (Windows/Linux)
         if: ${{ matrix.platform != 'macos' }}
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             ${{ matrix.artifact_glob }}
@@ -103,7 +103,7 @@ jobs:
 
       - name: Attest packaged artifacts (macOS)
         if: ${{ matrix.platform == 'macos' }}
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             apps/desktop/target/release/bundle/osx/*.app.zip
@@ -111,7 +111,7 @@ jobs:
 
       - name: Upload packaged artifacts (Windows/Linux)
         if: ${{ matrix.platform != 'macos' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pick-a-game-desktop-package-${{ matrix.platform }}-${{ github.run_number }}
           path: |
@@ -120,9 +120,10 @@ jobs:
 
       - name: Upload packaged artifacts (macOS)
         if: ${{ matrix.platform == 'macos' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pick-a-game-desktop-package-${{ matrix.platform }}-${{ github.run_number }}
           path: |
             apps/desktop/target/release/bundle/osx/*.app.zip
             apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+

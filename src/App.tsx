@@ -26,6 +26,7 @@ import {
   Trash2,
   Upload,
   WandSparkles,
+  X,
 } from "lucide-react";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import {
@@ -779,6 +780,7 @@ export default function App() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(initialThemeMode);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("play");
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!initialOnboardingDone);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -1122,10 +1124,33 @@ export default function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    if (activeTab === "settings") {
-      setSidebarOpen(true);
+    const mediaQuery = window.matchMedia("(max-width: 980px)");
+    const applyLayoutMode = () => {
+      setIsMobileLayout(mediaQuery.matches);
+    };
+    applyLayoutMode();
+    mediaQuery.addEventListener("change", applyLayoutMode);
+    return () => {
+      mediaQuery.removeEventListener("change", applyLayoutMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "settings") return;
+    setSidebarOpen(true);
+    if (isMobileLayout && !showOnboarding) {
+      setActiveTab("play");
     }
-  }, [activeTab]);
+  }, [activeTab, isMobileLayout, showOnboarding]);
+
+  useEffect(() => {
+    if (!isMobileLayout || !sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileLayout, sidebarOpen]);
 
   useEffect(() => {
     return () => {
@@ -1822,11 +1847,13 @@ export default function App() {
           revolutions: spinProfileConfig.revolutions,
           jitterRatio: spinProfileConfig.jitterRatio,
         };
-  const showSettingsPane = activeTab === "play" || activeTab === "settings";
+  const showSettingsPane = isMobileLayout ? sidebarOpen : activeTab === "play" || activeTab === "settings";
   const showPlayPane = activeTab === "play";
-  const showLibraryPane = activeTab === "play" || activeTab === "library";
-  const showHistoryPane = activeTab === "play" || activeTab === "history";
+  const showLibraryPane = isMobileLayout ? activeTab === "library" : activeTab === "play" || activeTab === "library";
+  const showHistoryPane = isMobileLayout ? activeTab === "history" : activeTab === "play" || activeTab === "history";
   const settingsSidebarVisible = sidebarOpen && showSettingsPane;
+  const settingsSheetMode = isMobileLayout && settingsSidebarVisible;
+  const settingsTabActive = activeTab === "settings" || settingsSheetMode;
   const historyDisplayItems = spinHistory.slice(0, 10).map((item, index) => ({
     key: `${item.name}-${item.spunAt}-${index}`,
     name: item.name,
@@ -1954,9 +1981,15 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={clsx("ghost", activeTab === "settings" && "is-active")}
-            onClick={() => setActiveTab("settings")}
-            aria-pressed={activeTab === "settings"}
+            className={clsx("ghost", settingsTabActive && "is-active")}
+            onClick={() => {
+              if (isMobileLayout) {
+                setSidebarOpen(true);
+                return;
+              }
+              setActiveTab("settings");
+            }}
+            aria-pressed={settingsTabActive}
           >
             <span className="button-label">
               <Settings2 className="ui-icon" aria-hidden="true" />
@@ -1997,6 +2030,15 @@ export default function App() {
         </section>
       ) : null}
 
+      {settingsSheetMode ? (
+        <button
+          type="button"
+          className="settings-sheet-backdrop"
+          aria-label={t("hideSettings")}
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
       <div
         className={clsx(
           "workspace",
@@ -2010,7 +2052,20 @@ export default function App() {
           id="settings-sidebar"
           aria-label="Game settings"
           className={clsx("settings-sidebar", !settingsSidebarVisible && "is-collapsed")}
+          role={settingsSheetMode ? "dialog" : undefined}
+          aria-modal={settingsSheetMode ? true : undefined}
         >
+          {settingsSheetMode ? (
+            <div className="settings-sheet-head">
+              <strong>Settings</strong>
+              <button type="button" className="ghost compact settings-sheet-close" onClick={() => setSidebarOpen(false)}>
+                <span className="button-label">
+                  <X className="ui-icon" aria-hidden="true" />
+                  {t("hideSettings")}
+                </span>
+              </button>
+            </div>
+          ) : null}
           <section className="panel" aria-labelledby="mode-presets-heading">
             <h2 id="mode-presets-heading" className="section-heading">
               <span className="heading-label">

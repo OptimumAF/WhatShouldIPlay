@@ -210,6 +210,14 @@ body {
   display: none;
 }
 
+.settings-sheet-backdrop {
+  display: none;
+}
+
+.settings-sheet-head {
+  display: none;
+}
+
 .content-stack {
   display: grid;
   gap: var(--space-4);
@@ -1179,6 +1187,17 @@ textarea:focus-visible,
   }
 }
 
+@keyframes settings-sheet-in {
+  0% {
+    transform: translateY(22px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 1120px) {
   .layout {
     padding: var(--space-5) var(--space-3) var(--space-8);
@@ -1208,8 +1227,58 @@ textarea:focus-visible,
     grid-template-columns: 1fr;
   }
 
+  .settings-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 34;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: var(--overlay-scrim);
+    backdrop-filter: blur(3px);
+  }
+
   .settings-sidebar {
-    position: static;
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    z-index: 35;
+    max-height: 84vh;
+    overflow-y: auto;
+    padding: var(--space-3);
+    gap: var(--space-3);
+    animation: settings-sheet-in 220ms ease-out;
+  }
+
+  .settings-sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .settings-sheet-head strong {
+    text-transform: uppercase;
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    color: var(--ink-strong);
+  }
+
+  .settings-sheet-close {
+    min-width: 112px;
+  }
+
+  .settings-sidebar .panel {
+    border-radius: var(--radius-lg);
   }
 
   .task-nav {
@@ -1230,10 +1299,6 @@ textarea:focus-visible,
 
   .workspace {
     grid-template-columns: 1fr;
-  }
-
-  .settings-sidebar {
-    position: static;
   }
 
   .panel,

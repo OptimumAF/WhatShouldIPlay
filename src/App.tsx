@@ -3,6 +3,31 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
+import {
+  Ban,
+  BellRing,
+  ChevronsUpDown,
+  Cloud,
+  Database,
+  Download,
+  Eraser,
+  FilePlus2,
+  Filter,
+  Gamepad2,
+  History,
+  KeyRound,
+  Library,
+  List,
+  PanelLeft,
+  Play,
+  Plus,
+  RotateCw,
+  Settings2,
+  SlidersHorizontal,
+  Trash2,
+  Upload,
+  WandSparkles,
+} from "lucide-react";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
@@ -1742,7 +1767,10 @@ export default function App() {
               })
             }
           >
-            {sidebarOpen ? t("hideSettings") : t("showSettings")}
+            <span className="button-label">
+              <PanelLeft className="ui-icon" aria-hidden="true" />
+              {sidebarOpen ? t("hideSettings") : t("showSettings")}
+            </span>
           </button>
           <button
             type="button"
@@ -1752,11 +1780,17 @@ export default function App() {
               setShowOnboarding(true);
             }}
           >
-            Quick Tour
+            <span className="button-label">
+              <WandSparkles className="ui-icon" aria-hidden="true" />
+              Quick Tour
+            </span>
           </button>
           {installPrompt ? (
             <button type="button" className="ghost" onClick={handleInstall}>
-              {t("installApp")}
+              <span className="button-label">
+                <Download className="ui-icon" aria-hidden="true" />
+                {t("installApp")}
+              </span>
             </button>
           ) : null}
           <label className="lang-picker">
@@ -1793,7 +1827,10 @@ export default function App() {
             onClick={() => setActiveTab("play")}
             aria-pressed={activeTab === "play"}
           >
-            Play
+            <span className="button-label">
+              <Play className="ui-icon" aria-hidden="true" />
+              Play
+            </span>
           </button>
           <button
             type="button"
@@ -1801,7 +1838,10 @@ export default function App() {
             onClick={() => setActiveTab("library")}
             aria-pressed={activeTab === "library"}
           >
-            Library
+            <span className="button-label">
+              <Library className="ui-icon" aria-hidden="true" />
+              Library
+            </span>
           </button>
           <button
             type="button"
@@ -1809,7 +1849,10 @@ export default function App() {
             onClick={() => setActiveTab("history")}
             aria-pressed={activeTab === "history"}
           >
-            History
+            <span className="button-label">
+              <History className="ui-icon" aria-hidden="true" />
+              History
+            </span>
           </button>
           <button
             type="button"
@@ -1817,7 +1860,10 @@ export default function App() {
             onClick={() => setActiveTab("settings")}
             aria-pressed={activeTab === "settings"}
           >
-            Settings
+            <span className="button-label">
+              <Settings2 className="ui-icon" aria-hidden="true" />
+              Settings
+            </span>
           </button>
         </nav>
       </header>
@@ -1868,7 +1914,12 @@ export default function App() {
           className={clsx("settings-sidebar", !settingsSidebarVisible && "is-collapsed")}
         >
           <section className="panel" aria-labelledby="mode-presets-heading">
-            <h2 id="mode-presets-heading">{t("presets")}</h2>
+            <h2 id="mode-presets-heading" className="section-heading">
+              <span className="heading-label">
+                <SlidersHorizontal className="ui-icon" aria-hidden="true" />
+                {t("presets")}
+              </span>
+            </h2>
             <div className="preset-grid">
               {modePresets.map((preset) => (
                 <button
@@ -1886,7 +1937,10 @@ export default function App() {
 
           <section className="panel" aria-labelledby="sources-heading">
             <h2 id="sources-heading" className="section-heading">
-              <span>{t("sources")}</span>
+              <span className="heading-label">
+                <Database className="ui-icon" aria-hidden="true" />
+                {t("sources")}
+              </span>
               <HelpTip text="Enable sources you trust. Games from multiple enabled sources are merged and gain combined weight." />
             </h2>
             <div className="grid-sources">
@@ -2037,7 +2091,10 @@ export default function App() {
 
           <section className="panel" aria-labelledby="advanced-filters-heading">
             <h2 id="advanced-filters-heading" className="section-heading">
-              <span>Advanced Options</span>
+              <span className="heading-label">
+                <Settings2 className="ui-icon" aria-hidden="true" />
+                Advanced Options
+              </span>
               <HelpTip text="Advanced controls include filters, exclusions, notifications, and cloud sync. Expand only when needed." />
             </h2>
             <p className="muted">Filters, exclusions, notifications, and cloud sync are hidden by default.</p>
@@ -2049,14 +2106,20 @@ export default function App() {
                 aria-controls="advanced-settings-stack"
                 onClick={() => setShowAdvancedSettings((current) => !current)}
               >
-                {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
+                <span className="button-label">
+                  <ChevronsUpDown className="ui-icon" aria-hidden="true" />
+                  {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
+                </span>
               </button>
             </div>
           </section>
 
           <section className="panel" aria-labelledby="steam-import-heading">
             <h2 id="steam-import-heading" className="section-heading">
-              <span>{t("steamImportTitle")}</span>
+              <span className="heading-label">
+                <KeyRound className="ui-icon" aria-hidden="true" />
+                {t("steamImportTitle")}
+              </span>
               <HelpTip text="Imports owned games from Steam Web API using your API key and SteamID64. Profile privacy must allow owned games." />
             </h2>
             <p className="muted">
@@ -2093,10 +2156,16 @@ export default function App() {
                 disabled={steamImportLoading}
                 aria-describedby="steam-import-status"
               >
-                {steamImportLoading ? t("importing") : t("importSteamLibrary")}
+                <span className="button-label">
+                  <Download className="ui-icon" aria-hidden="true" />
+                  {steamImportLoading ? t("importing") : t("importSteamLibrary")}
+                </span>
               </button>
               <button type="button" className="ghost" onClick={clearSteamImport}>
-                {t("clearImport")}
+                <span className="button-label">
+                  <Trash2 className="ui-icon" aria-hidden="true" />
+                  {t("clearImport")}
+                </span>
               </button>
             </div>
             {steamImportLoading ? (
@@ -2115,7 +2184,10 @@ export default function App() {
           <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
           <section className="panel" aria-labelledby="filters-heading">
             <h2 id="filters-heading" className="section-heading">
-              <span>Advanced Filters</span>
+              <span className="heading-label">
+                <Filter className="ui-icon" aria-hidden="true" />
+                Advanced Filters
+              </span>
               <HelpTip text="Filters narrow the candidate pool before cooldown and exclusion logic runs." />
             </h2>
             <p className="muted">Filter by platform, tags, length, release window, and price.</p>
@@ -2235,14 +2307,20 @@ export default function App() {
                   markCustom();
                 }}
               >
-                Reset Filters
+                <span className="button-label">
+                  <RotateCw className="ui-icon" aria-hidden="true" />
+                  Reset Filters
+                </span>
               </button>
             </div>
           </section>
 
           <section className="panel" aria-labelledby="exclusion-heading">
             <h2 id="exclusion-heading" className="section-heading">
-              <span>{t("playedCompletedTitle")}</span>
+              <span className="heading-label">
+                <Ban className="ui-icon" aria-hidden="true" />
+                {t("playedCompletedTitle")}
+              </span>
               <HelpTip text="Use this to block games you already played or completed so they no longer appear on spins." />
             </h2>
             <p className="muted">{t("playedCompletedDescription")}</p>
@@ -2274,10 +2352,16 @@ export default function App() {
             />
             <div className="button-row">
               <button type="button" onClick={() => addExclusionFromInput("played")} disabled={!exclusionInput.trim()}>
-                {t("markPlayed")}
+                <span className="button-label">
+                  <Plus className="ui-icon" aria-hidden="true" />
+                  {t("markPlayed")}
+                </span>
               </button>
               <button type="button" className="ghost" onClick={() => addExclusionFromInput("completed")} disabled={!exclusionInput.trim()}>
-                {t("markCompleted")}
+                <span className="button-label">
+                  <Plus className="ui-icon" aria-hidden="true" />
+                  {t("markCompleted")}
+                </span>
               </button>
             </div>
             <div className="exclude-grid">
@@ -2330,7 +2414,10 @@ export default function App() {
 
           <section className="panel" aria-labelledby="notification-heading">
             <h2 id="notification-heading" className="section-heading">
-              <span>{t("notificationsTitle")}</span>
+              <span className="heading-label">
+                <BellRing className="ui-icon" aria-hidden="true" />
+                {t("notificationsTitle")}
+              </span>
               <HelpTip text="Browser notifications can alert you about trend refreshes and spin reminders when enabled." />
             </h2>
             <p className="muted">{t("notificationsDescription")}</p>
@@ -2390,7 +2477,10 @@ export default function App() {
 
           <section className="panel" aria-labelledby="cloud-sync-heading">
             <h2 id="cloud-sync-heading" className="section-heading">
-              <span>Cloud Sync (Optional)</span>
+              <span className="heading-label">
+                <Cloud className="ui-icon" aria-hidden="true" />
+                Cloud Sync (Optional)
+              </span>
               <HelpTip text="Syncs settings/history through a private GitHub Gist. Token stays in your local browser storage." />
             </h2>
             <p className="muted">
@@ -2423,13 +2513,22 @@ export default function App() {
             </div>
             <div className="button-row">
               <button type="button" onClick={createCloudSyncGist} disabled={cloudSyncLoading}>
-                {cloudSyncLoading ? "Working..." : "Create Gist + Push"}
+                <span className="button-label">
+                  <FilePlus2 className="ui-icon" aria-hidden="true" />
+                  {cloudSyncLoading ? "Working..." : "Create Gist + Push"}
+                </span>
               </button>
               <button type="button" className="ghost" onClick={pushCloudSync} disabled={cloudSyncLoading}>
-                Push Sync
+                <span className="button-label">
+                  <Upload className="ui-icon" aria-hidden="true" />
+                  Push Sync
+                </span>
               </button>
               <button type="button" className="ghost" onClick={pullCloudSync} disabled={cloudSyncLoading}>
-                Pull Sync
+                <span className="button-label">
+                  <Download className="ui-icon" aria-hidden="true" />
+                  Pull Sync
+                </span>
               </button>
             </div>
             {cloudSyncLoading ? (
@@ -2450,7 +2549,12 @@ export default function App() {
         <div className="content-stack">
           {showPlayPane ? (
             <section className="panel" aria-labelledby="wheel-heading">
-              <h2 id="wheel-heading">{t("wheelTitle")}</h2>
+              <h2 id="wheel-heading" className="section-heading">
+                <span className="heading-label">
+                  <Gamepad2 className="ui-icon" aria-hidden="true" />
+                  {t("wheelTitle")}
+                </span>
+              </h2>
               <p className="muted">
                 {t("poolSummary", {
                   count: activePool.length,
@@ -2474,10 +2578,16 @@ export default function App() {
               />
               <div className="button-row">
                 <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
-                  {spinning ? t("spinning") : t("spinTheWheel")}
+                  <span className="button-label">
+                    <RotateCw className="ui-icon" aria-hidden="true" />
+                    {spinning ? t("spinning") : t("spinTheWheel")}
+                  </span>
                 </button>
                 <button type="button" className="ghost" onClick={clearHistory}>
-                  {t("clearHistory")}
+                  <span className="button-label">
+                    <Eraser className="ui-icon" aria-hidden="true" />
+                    {t("clearHistory")}
+                  </span>
                 </button>
               </div>
               {winner && winnerMeta ? (
@@ -2507,7 +2617,12 @@ export default function App() {
 
           {showLibraryPane ? (
             <section className="panel" aria-labelledby="manual-heading">
-              <h2 id="manual-heading">{t("manualListTitle")}</h2>
+              <h2 id="manual-heading" className="section-heading">
+                <span className="heading-label">
+                  <List className="ui-icon" aria-hidden="true" />
+                  {t("manualListTitle")}
+                </span>
+              </h2>
               <p className="muted">{t("manualListDescription")}</p>
               <label htmlFor="manual-input" className="sr-only">
                 {t("manualListTitle")}
@@ -2521,10 +2636,16 @@ export default function App() {
               />
               <div className="button-row">
                 <button type="button" onClick={addManualGames}>
-                  {t("addGames")}
+                  <span className="button-label">
+                    <Plus className="ui-icon" aria-hidden="true" />
+                    {t("addGames")}
+                  </span>
                 </button>
                 <button type="button" className="ghost" onClick={clearManualGames}>
-                  {t("clearManual")}
+                  <span className="button-label">
+                    <Trash2 className="ui-icon" aria-hidden="true" />
+                    {t("clearManual")}
+                  </span>
                 </button>
               </div>
             </section>
@@ -2532,7 +2653,12 @@ export default function App() {
 
           {showHistoryPane ? (
             <section className="panel" aria-labelledby="history-heading">
-              <h2 id="history-heading">{t("spinHistoryTitle")}</h2>
+              <h2 id="history-heading" className="section-heading">
+                <span className="heading-label">
+                  <History className="ui-icon" aria-hidden="true" />
+                  {t("spinHistoryTitle")}
+                </span>
+              </h2>
               {spinHistory.length === 0 ? (
                 <p className="muted">{t("noSpins")}</p>
               ) : (
@@ -2555,7 +2681,12 @@ export default function App() {
 
           {activeTab === "settings" ? (
             <section className="panel" aria-label="Settings guidance">
-              <h2>Settings</h2>
+              <h2 className="section-heading">
+                <span className="heading-label">
+                  <Settings2 className="ui-icon" aria-hidden="true" />
+                  Settings
+                </span>
+              </h2>
               <p className="muted">
                 Configure sources, weights, imports, and advanced options from the left sidebar. Then return to Play
                 to spin.

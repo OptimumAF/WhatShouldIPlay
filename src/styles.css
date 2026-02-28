@@ -327,6 +327,12 @@ body {
   gap: 0.45rem;
 }
 
+.heading-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .preset-grid {
   display: grid;
   gap: var(--space-2);
@@ -576,6 +582,10 @@ select {
 button {
   border: 0;
   border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   font: inherit;
   padding: 0.62rem var(--space-4);
   background: var(--accent);
@@ -604,6 +614,7 @@ button.compact {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   border-radius: 999px;
   text-decoration: none;
   font-weight: 700;
@@ -616,6 +627,24 @@ button.compact {
 .button-link.ghost-link {
   background: var(--ghost-bg);
   color: var(--ghost-ink);
+}
+
+.button-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ui-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  stroke-width: 2.1;
+}
+
+button.compact .ui-icon {
+  width: 0.86rem;
+  height: 0.86rem;
 }
 
 button:not(:disabled):hover,

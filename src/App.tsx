@@ -180,6 +180,7 @@ type SourceToggleKey = (typeof sourceKeys)[number];
 type EnabledSources = Record<SourceToggleKey, boolean>;
 type SourceWeights = Record<SourceToggleKey, number>;
 type ThemeMode = "system" | "light" | "dark" | "high-contrast";
+type WorkspaceTab = "play" | "library" | "history" | "settings";
 
 interface PoolGame {
   name: string;
@@ -565,6 +566,17 @@ const sanitizeThemeMode = (input: ThemeMode | null): ThemeMode => {
   return "system";
 };
 
+function HelpTip({ text }: { text: string }) {
+  return (
+    <span className="help-tip" tabIndex={0} aria-label={text}>
+      ?
+      <span role="tooltip" className="help-tip-bubble">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 export default function App() {
   const { t, i18n } = useTranslation();
 
@@ -626,6 +638,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(initialThemeMode);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("play");
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const topGamesQuery = useQuery({
@@ -908,6 +921,12 @@ export default function App() {
       mediaQuery.removeEventListener("change", onThemeChange);
     };
   }, [themeMode]);
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      setSidebarOpen(true);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -1509,6 +1528,11 @@ export default function App() {
   const cooldownExcludedSuffix =
     cooldownSpins > 0 ? t("cooldownExcludedSuffix", { count: cooldownExcludedCount }) : "";
   const exclusionSummarySuffix = `${filterExcludedSuffix}${statusExcludedSuffix}`;
+  const showSettingsPane = activeTab === "play" || activeTab === "settings";
+  const showPlayPane = activeTab === "play";
+  const showLibraryPane = activeTab === "play" || activeTab === "library";
+  const showHistoryPane = activeTab === "play" || activeTab === "history";
+  const settingsSidebarVisible = sidebarOpen && showSettingsPane;
 
   return (
     <main className="layout">
@@ -1524,8 +1548,16 @@ export default function App() {
             type="button"
             className="ghost"
             aria-controls="settings-sidebar"
-            aria-expanded={sidebarOpen}
-            onClick={() => setSidebarOpen((current) => !current)}
+            aria-expanded={settingsSidebarVisible}
+            onClick={() =>
+              setSidebarOpen((current) => {
+                const next = !current;
+                if (!next && activeTab === "settings") {
+                  setActiveTab("play");
+                }
+                return next;
+              })
+            }
           >
             {sidebarOpen ? t("hideSettings") : t("showSettings")}
           </button>
@@ -1561,6 +1593,40 @@ export default function App() {
             </select>
           </label>
         </div>
+        <nav className="task-nav" aria-label="Primary workspace sections">
+          <button
+            type="button"
+            className={clsx("ghost", activeTab === "play" && "is-active")}
+            onClick={() => setActiveTab("play")}
+            aria-pressed={activeTab === "play"}
+          >
+            Play
+          </button>
+          <button
+            type="button"
+            className={clsx("ghost", activeTab === "library" && "is-active")}
+            onClick={() => setActiveTab("library")}
+            aria-pressed={activeTab === "library"}
+          >
+            Library
+          </button>
+          <button
+            type="button"
+            className={clsx("ghost", activeTab === "history" && "is-active")}
+            onClick={() => setActiveTab("history")}
+            aria-pressed={activeTab === "history"}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            className={clsx("ghost", activeTab === "settings" && "is-active")}
+            onClick={() => setActiveTab("settings")}
+            aria-pressed={activeTab === "settings"}
+          >
+            Settings
+          </button>
+        </nav>
       </header>
 
       {swUpdateReady && !dismissedUpdate ? (
@@ -1594,11 +1660,19 @@ export default function App() {
         </section>
       ) : null}
 
-      <div className={clsx("workspace", !sidebarOpen && "sidebar-collapsed")} id="main-content">
+      <div
+        className={clsx(
+          "workspace",
+          !settingsSidebarVisible && "sidebar-collapsed",
+          !showSettingsPane && "settings-tab-hidden",
+          `tab-${activeTab}`,
+        )}
+        id="main-content"
+      >
         <aside
           id="settings-sidebar"
           aria-label="Game settings"
-          className={clsx("settings-sidebar", !sidebarOpen && "is-collapsed")}
+          className={clsx("settings-sidebar", !settingsSidebarVisible && "is-collapsed")}
         >
           <section className="panel" aria-labelledby="mode-presets-heading">
             <h2 id="mode-presets-heading">{t("presets")}</h2>
@@ -1626,7 +1700,7 @@ export default function App() {
                     ? manualGames.length
                     : source === "steamImport"
                       ? steamImportGames.length
-                      : topGames?.sources[source].games.length;
+                      : (topGames?.sources[source].games.length ?? 0);
                 const note =
                   source === "manual"
                     ? "Your custom list"
@@ -1635,6 +1709,7 @@ export default function App() {
                       : topGames?.sources[source].note;
                 const fetchedAt =
                   source === "manual" || source === "steamImport" ? null : topGames?.sources[source].fetchedAt;
+                const loadingSource = topGamesQuery.isLoading && source !== "manual" && source !== "steamImport";
 
                 return (
                   <label key={source} className={clsx("source-card", enabledSources[source] && "is-enabled")}>
@@ -1651,7 +1726,7 @@ export default function App() {
                     />
                     <div>
                       <strong>{sourceLabels[source]}</strong>
-                      <p>{sourceMeta} games loaded</p>
+                      {loadingSource ? <span className="mini-skeleton" aria-hidden="true" /> : <p>{sourceMeta} games loaded</p>}
                       {fetchedAt ? <small>Updated {new Date(fetchedAt).toLocaleString()}</small> : null}
                       {note ? <small>{note}</small> : null}
                     </div>
@@ -1670,10 +1745,12 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                {t("weightedWheel")}
+                <span>{t("weightedWheel")}</span>
+                <HelpTip text="Weighted mode increases odds for games from stronger sources and higher-ranked entries." />
               </label>
               <label className="cooldown-control">
-                {t("cooldownSpins")}
+                <span>{t("cooldownSpins")}</span>
+                <HelpTip text="Cooldown avoids selecting games that recently won. Increase this for more variety." />
                 <input
                   type="range"
                   min={0}
@@ -1782,6 +1859,12 @@ export default function App() {
                 {t("clearImport")}
               </button>
             </div>
+            {steamImportLoading ? (
+              <p className="status progress-status" role="status" aria-live="polite">
+                <span className="progress-dot" aria-hidden="true" />
+                Importing your Steam library...
+              </p>
+            ) : null}
             {steamImportStatus ? (
               <p id="steam-import-status" className="status" role="status" aria-live="polite">
                 {steamImportStatus}
@@ -1882,6 +1965,9 @@ export default function App() {
                     markCustom();
                   }}
                 />
+                <small className="filter-help">
+                  Games above this price are excluded unless marked as free.
+                </small>
               </label>
 
               <label className="inline-check">
@@ -2087,6 +2173,12 @@ export default function App() {
                 Pull Sync
               </button>
             </div>
+            {cloudSyncLoading ? (
+              <p className="status progress-status" role="status" aria-live="polite">
+                <span className="progress-dot" aria-hidden="true" />
+                Syncing with GitHub Gist...
+              </p>
+            ) : null}
             {cloudSyncStatus ? (
               <p className="status" role="status" aria-live="polite">
                 {cloudSyncStatus}
@@ -2097,98 +2189,119 @@ export default function App() {
         </aside>
 
         <div className="content-stack">
-          <section className="panel" aria-labelledby="wheel-heading">
-            <h2 id="wheel-heading">{t("wheelTitle")}</h2>
-            <p className="muted">
-              {t("poolSummary", {
-                count: activePool.length,
-                statusExcluded: exclusionSummarySuffix,
-                cooldownExcluded: cooldownExcludedSuffix,
-              })}
-            </p>
-            {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
-            {statusExhausted ? (
-              <p className="status">{t("statusExhausted")}</p>
-            ) : null}
-            {cooldownSaturated ? (
-              <p className="status">{t("cooldownExhausted")}</p>
-            ) : null}
-            <Wheel games={activePool.map((candidate) => candidate.name)} rotation={rotation} spinning={spinning} onSpinEnd={onSpinEnd} />
-            <div className="button-row">
-              <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
-                {spinning ? t("spinning") : t("spinTheWheel")}
-              </button>
-              <button type="button" className="ghost" onClick={clearHistory}>
-                {t("clearHistory")}
-              </button>
-            </div>
-            {winner && winnerMeta ? (
-              <div className="winner winner-rich">
-                <p>{t("youShouldPlay")}</p>
-                <strong>{winner}</strong>
-                <div className="winner-stats">
-                  <span>
-                    {t("sourceLabel")}: {sourceLabelList(winnerMeta.sources)}
-                  </span>
-                  <span>
-                    {t("spinOdds")}: {formatOdds(winnerMeta.odds)}
-                  </span>
-                </div>
-                <div className="button-row">
-                  <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
-                    {t("winnerActions.played")}
-                  </button>
-                  <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
-                    {t("winnerActions.completed")}
-                  </button>
-                </div>
+          {showPlayPane ? (
+            <section className="panel" aria-labelledby="wheel-heading">
+              <h2 id="wheel-heading">{t("wheelTitle")}</h2>
+              <p className="muted">
+                {t("poolSummary", {
+                  count: activePool.length,
+                  statusExcluded: exclusionSummarySuffix,
+                  cooldownExcluded: cooldownExcludedSuffix,
+                })}
+              </p>
+              {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
+              {statusExhausted ? (
+                <p className="status">{t("statusExhausted")}</p>
+              ) : null}
+              {cooldownSaturated ? (
+                <p className="status">{t("cooldownExhausted")}</p>
+              ) : null}
+              <Wheel
+                games={activePool.map((candidate) => candidate.name)}
+                rotation={rotation}
+                spinning={spinning}
+                onSpinEnd={onSpinEnd}
+              />
+              <div className="button-row">
+                <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
+                  {spinning ? t("spinning") : t("spinTheWheel")}
+                </button>
+                <button type="button" className="ghost" onClick={clearHistory}>
+                  {t("clearHistory")}
+                </button>
               </div>
-            ) : null}
-          </section>
+              {winner && winnerMeta ? (
+                <div className="winner winner-rich">
+                  <p>{t("youShouldPlay")}</p>
+                  <strong>{winner}</strong>
+                  <div className="winner-stats">
+                    <span>
+                      {t("sourceLabel")}: {sourceLabelList(winnerMeta.sources)}
+                    </span>
+                    <span>
+                      {t("spinOdds")}: {formatOdds(winnerMeta.odds)}
+                    </span>
+                  </div>
+                  <div className="button-row">
+                    <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
+                      {t("winnerActions.played")}
+                    </button>
+                    <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
+                      {t("winnerActions.completed")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
-          <section className="panel" aria-labelledby="manual-heading">
-            <h2 id="manual-heading">{t("manualListTitle")}</h2>
-            <p className="muted">{t("manualListDescription")}</p>
-            <label htmlFor="manual-input" className="sr-only">
-              {t("manualListTitle")}
-            </label>
-            <textarea
-              id="manual-input"
-              rows={5}
-              value={manualInput}
-              onChange={(event) => setManualInput(event.target.value)}
-              placeholder="Helldivers 2&#10;Hades II&#10;Monster Hunter Wilds"
-            />
-            <div className="button-row">
-              <button type="button" onClick={addManualGames}>
-                {t("addGames")}
-              </button>
-              <button type="button" className="ghost" onClick={clearManualGames}>
-                {t("clearManual")}
-              </button>
-            </div>
-          </section>
+          {showLibraryPane ? (
+            <section className="panel" aria-labelledby="manual-heading">
+              <h2 id="manual-heading">{t("manualListTitle")}</h2>
+              <p className="muted">{t("manualListDescription")}</p>
+              <label htmlFor="manual-input" className="sr-only">
+                {t("manualListTitle")}
+              </label>
+              <textarea
+                id="manual-input"
+                rows={5}
+                value={manualInput}
+                onChange={(event) => setManualInput(event.target.value)}
+                placeholder="Helldivers 2&#10;Hades II&#10;Monster Hunter Wilds"
+              />
+              <div className="button-row">
+                <button type="button" onClick={addManualGames}>
+                  {t("addGames")}
+                </button>
+                <button type="button" className="ghost" onClick={clearManualGames}>
+                  {t("clearManual")}
+                </button>
+              </div>
+            </section>
+          ) : null}
 
-          <section className="panel" aria-labelledby="history-heading">
-            <h2 id="history-heading">{t("spinHistoryTitle")}</h2>
-            {spinHistory.length === 0 ? (
-              <p className="muted">{t("noSpins")}</p>
-            ) : (
-              <ul className="history-list" aria-label="Recent spin results">
-                {spinHistory.slice(0, 10).map((item, index) => (
-                  <li key={`${item.name}-${item.spunAt}-${index}`}>
-                    <div>
-                      <strong>{item.name}</strong>
-                      <small>
-                        {new Date(item.spunAt).toLocaleString()} | {sourceLabelList(item.sources)}
-                      </small>
-                    </div>
-                    <span>{formatOdds(item.odds)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          {showHistoryPane ? (
+            <section className="panel" aria-labelledby="history-heading">
+              <h2 id="history-heading">{t("spinHistoryTitle")}</h2>
+              {spinHistory.length === 0 ? (
+                <p className="muted">{t("noSpins")}</p>
+              ) : (
+                <ul className="history-list" aria-label="Recent spin results">
+                  {spinHistory.slice(0, 10).map((item, index) => (
+                    <li key={`${item.name}-${item.spunAt}-${index}`}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <small>
+                          {new Date(item.spunAt).toLocaleString()} | {sourceLabelList(item.sources)}
+                        </small>
+                      </div>
+                      <span>{formatOdds(item.odds)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
+          {activeTab === "settings" ? (
+            <section className="panel" aria-label="Settings guidance">
+              <h2>Settings</h2>
+              <p className="muted">
+                Configure sources, weights, imports, and advanced options from the left sidebar. Then return to Play
+                to spin.
+              </p>
+            </section>
+          ) : null}
         </div>
       </div>
 

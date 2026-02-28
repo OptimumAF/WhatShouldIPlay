@@ -50,6 +50,30 @@ fn main() {
     dioxus::launch(App);
 }
 
+fn host_platform_class() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "os-windows"
+    } else if cfg!(target_os = "macos") {
+        "os-macos"
+    } else if cfg!(target_os = "linux") {
+        "os-linux"
+    } else {
+        "os-generic"
+    }
+}
+
+fn host_platform_label() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "Windows"
+    } else if cfg!(target_os = "macos") {
+        "macOS"
+    } else if cfg!(target_os = "linux") {
+        "Linux"
+    } else {
+        "Desktop"
+    }
+}
+
 #[component]
 fn App() -> Element {
     let mut steamcharts_games = use_signal(Vec::<GameItem>::new);
@@ -198,14 +222,17 @@ fn App() -> Element {
         "transform {:.0}ms cubic-bezier(.17,.67,.11,.99)",
         spin_duration_ms
     );
+    let platform_class = host_platform_class();
+    let platform_label = host_platform_label();
 
     rsx! {
         style { "{DESKTOP_CSS}" }
-        main { class: "layout",
+        main { class: format!("layout {}", platform_class),
             section { class: "hero",
                 p { class: "kicker", "PickAGame Desktop" }
                 h1 { "Spin For Your Next Game" }
                 p { "Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner." }
+                p { class: "muted", "Platform style: {platform_label}" }
                 p { class: "status", "Status: {status}" }
                 div { class: "button-row",
                     button {
@@ -1732,6 +1759,21 @@ const DESKTOP_CSS: &str = r#"
 :root {
   --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
   --font-display: "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", sans-serif;
+  --panel-bg: rgba(255, 255, 255, 0.86);
+  --panel-border: rgba(15, 32, 50, 0.16);
+  --field-border: rgba(15, 32, 50, 0.2);
+  --control-border: rgba(15, 32, 50, 0.18);
+  --button-accent: #f25f5c;
+  --button-accent-ink: #ffffff;
+  --button-ghost-bg: #dbe9f2;
+  --button-ghost-ink: #10314c;
+  --content-ink: #0f2032;
+  --subtle-ink: #3c556f;
+  --kicker-ink: #1f3f5b;
+  --suggested-bg: rgba(36, 123, 160, 0.08);
+  --suggested-fill-start: rgba(36, 123, 160, 0.4);
+  --suggested-fill-end: #247ba0;
+  --shadow-soft: none;
   --line-height: 1.45;
   --text-xs: 0.78rem;
   --text-sm: 0.88rem;
@@ -1752,12 +1794,55 @@ const DESKTOP_CSS: &str = r#"
   --radius-xl: 20px;
 }
 
+.layout.os-windows {
+  --font-body: "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Segoe UI Semibold", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --button-accent: #d8534f;
+  --button-ghost-bg: #dbe9f2;
+  --button-ghost-ink: #10314c;
+}
+
+.layout.os-macos {
+  --font-body: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-display: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --panel-bg: rgba(255, 255, 255, 0.82);
+  --panel-border: rgba(31, 41, 55, 0.14);
+  --field-border: rgba(31, 41, 55, 0.2);
+  --control-border: rgba(31, 41, 55, 0.16);
+  --button-accent: #0a84ff;
+  --button-ghost-bg: rgba(9, 132, 255, 0.14);
+  --button-ghost-ink: #0a3f73;
+  --shadow-soft: 0 10px 22px rgba(17, 24, 39, 0.08);
+}
+
+.layout.os-linux {
+  --font-body: "Noto Sans", "Ubuntu", "Cantarell", sans-serif;
+  --font-display: "Noto Sans", "Ubuntu", "Cantarell", sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-border: rgba(15, 32, 50, 0.24);
+  --field-border: rgba(15, 32, 50, 0.26);
+  --control-border: rgba(15, 32, 50, 0.24);
+  --button-accent: #2c7a7b;
+  --button-ghost-bg: #deecec;
+  --button-ghost-ink: #134143;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--line-height);
-  color: #0f2032;
+  color: var(--content-ink);
   background:
     radial-gradient(circle at 8% 14%, #ffe066 0%, transparent 34%),
     radial-gradient(circle at 90% 20%, #70c1b3 0%, transparent 34%),
@@ -1798,10 +1883,11 @@ body {
 
 .hero,
 .panel {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(15, 32, 50, 0.16);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
+  box-shadow: var(--shadow-soft);
 }
 
 .hero h1 {
@@ -1819,7 +1905,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: var(--text-xs);
-  color: #1f3f5b;
+  color: var(--kicker-ink);
 }
 
 h2 {
@@ -1832,13 +1918,13 @@ h2 {
 .muted,
 .status {
   margin: var(--space-2) 0 0;
-  color: #3c556f;
+  color: var(--subtle-ink);
   font-size: var(--text-sm);
 }
 
 textarea {
   width: 100%;
-  border: 1px solid rgba(15, 32, 50, 0.2);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-sm);
   margin-top: var(--space-2);
   padding: var(--space-3);
@@ -1848,7 +1934,7 @@ textarea {
 
 input {
   width: 100%;
-  border: 1px solid rgba(15, 32, 50, 0.2);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font: inherit;
@@ -1856,7 +1942,7 @@ input {
 
 select {
   width: 100%;
-  border: 1px solid rgba(15, 32, 50, 0.2);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font: inherit;
@@ -1877,7 +1963,7 @@ select {
 }
 
 .control-row {
-  border: 1px solid rgba(15, 32, 50, 0.18);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
   padding: var(--space-1) var(--space-2);
   display: grid;
@@ -1887,18 +1973,18 @@ select {
 }
 
 .control-row span {
-  color: #2f4f6b;
+  color: var(--subtle-ink);
   font-size: var(--text-sm);
 }
 
 .control-row.suggested-row {
-  background: rgba(36, 123, 160, 0.08);
+  background: var(--suggested-bg);
 }
 
 .suggested-bar {
   height: 0.45rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(36, 123, 160, 0.4), #247ba0);
+  background: linear-gradient(90deg, var(--suggested-fill-start), var(--suggested-fill-end));
 }
 
 .button-row {
@@ -1914,13 +2000,13 @@ button {
   padding: 0.6rem var(--space-4);
   font-weight: 700;
   cursor: pointer;
-  background: #f25f5c;
-  color: white;
+  background: var(--button-accent);
+  color: var(--button-accent-ink);
 }
 
 button.ghost {
-  background: #dbe9f2;
-  color: #10314c;
+  background: var(--button-ghost-bg);
+  color: var(--button-ghost-ink);
 }
 
 button:disabled {

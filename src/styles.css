@@ -129,6 +129,16 @@ body {
   gap: 0.55rem;
 }
 
+.lang-picker select {
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: #dae7f0;
+  color: #15304c;
+  padding: 0.5rem 0.8rem;
+  font: inherit;
+  font-weight: 700;
+}
+
 .update-banner {
   display: grid;
   gap: 0.55rem;
@@ -269,7 +279,9 @@ textarea {
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+input[type="date"],
+select {
   width: 100%;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -319,6 +331,25 @@ input[type="password"] {
   margin-top: 0.72rem;
   display: grid;
   gap: 0.45rem;
+}
+
+.filters-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.filter-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.filter-field span {
+  font-size: 0.82rem;
+  color: #2f4f6b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .weight-row {

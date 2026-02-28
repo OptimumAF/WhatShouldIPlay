@@ -1,4 +1,6 @@
 export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "manual" | "scan" | "steamImport";
+export type GamePlatform = "windows" | "mac" | "linux";
+export type GameLength = "short" | "medium" | "long";
 
 export interface GameEntry {
   name: string;
@@ -7,6 +9,12 @@ export interface GameEntry {
   score?: number;
   appId?: number;
   url?: string;
+  platforms?: GamePlatform[];
+  tags?: string[];
+  releaseDate?: string;
+  priceUsd?: number;
+  isFree?: boolean;
+  estimatedLength?: GameLength;
 }
 
 export interface SourcePayload {

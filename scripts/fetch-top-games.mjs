@@ -11,6 +11,7 @@ const outputPath = path.join(projectRoot, "public", "data", "top-games.json");
 const TOP_N = 30;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
+const METADATA_CONCURRENCY = 8;
 
 const nonGameTwitchEntries = new Set([
   "Just Chatting",
@@ -73,6 +74,97 @@ function dedupeByName(games) {
     output.push(game);
   }
   return output;
+}
+
+function dedupeStrings(values) {
+  return [...new Set(values.filter(Boolean).map((value) => normalizeName(value)))];
+}
+
+function parseReleaseDate(rawValue) {
+  if (!rawValue || /coming soon|tba|to be announced/i.test(rawValue)) {
+    return undefined;
+  }
+  const parsed = new Date(rawValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+  return parsed.toISOString().slice(0, 10);
+}
+
+function inferEstimatedLength(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) return undefined;
+  const joined = tags.join(" ").toLowerCase();
+  const longSignals = ["rpg", "strategy", "simulation", "open world", "mmo", "grand strategy", "4x"];
+  const shortSignals = ["fps", "shooter", "battle royale", "moba", "racing", "sports", "fighting", "arena"];
+
+  if (longSignals.some((signal) => joined.includes(signal))) return "long";
+  if (shortSignals.some((signal) => joined.includes(signal))) return "short";
+  return "medium";
+}
+
+async function fetchSteamAppMetadata(appId) {
+  const data = await fetchJson(
+    `https://store.steampowered.com/api/appdetails?appids=${appId}&filters=basic,genres,categories,release_date,price_overview,is_free`,
+  );
+  const appData = data?.[appId]?.success ? data[appId]?.data : null;
+  if (!appData) return null;
+
+  const tags = dedupeStrings([
+    ...(Array.isArray(appData.genres) ? appData.genres.map((genre) => genre.description ?? "") : []),
+    ...(Array.isArray(appData.categories) ? appData.categories.map((category) => category.description ?? "") : []),
+  ]);
+  const releaseDate = parseReleaseDate(appData.release_date?.date ?? "");
+  const priceUsd =
+    typeof appData.price_overview?.final === "number"
+      ? appData.price_overview.final / 100
+      : appData.is_free
+        ? 0
+        : undefined;
+
+  const platforms = ["windows", "mac", "linux"].filter((key) => appData.platforms?.[key]);
+
+  return {
+    platforms: platforms.length > 0 ? platforms : undefined,
+    tags: tags.length > 0 ? tags : undefined,
+    releaseDate,
+    priceUsd,
+    isFree: appData.is_free === true || priceUsd === 0,
+    estimatedLength: inferEstimatedLength(tags),
+  };
+}
+
+async function buildAppMetadataMap(appIds) {
+  const uniqueAppIds = [...new Set(appIds.filter(Number.isFinite))];
+  const map = new Map();
+
+  for (let start = 0; start < uniqueAppIds.length; start += METADATA_CONCURRENCY) {
+    const batch = uniqueAppIds.slice(start, start + METADATA_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (appId) => {
+        try {
+          const metadata = await fetchSteamAppMetadata(appId);
+          if (metadata) {
+            map.set(appId, metadata);
+          }
+        } catch {
+          // Skip metadata for individual apps on transient API failures.
+        }
+      }),
+    );
+  }
+
+  return map;
+}
+
+function enrichSourceWithMetadata(source, metadataByAppId) {
+  return {
+    ...source,
+    games: source.games.map((game) => {
+      if (!game.appId) return game;
+      const metadata = metadataByAppId.get(game.appId);
+      return metadata ? { ...game, ...metadata } : game;
+    }),
+  };
 }
 
 function parseSteamCharts(html) {
@@ -311,6 +403,14 @@ async function run() {
       twitchmetrics: twitchmetricsSource,
     },
   };
+
+  const appIds = [
+    ...steamchartsSource.games.map((game) => game.appId),
+    ...steamdbSource.games.map((game) => game.appId),
+  ];
+  const metadataByAppId = await buildAppMetadataMap(appIds);
+  payload.sources.steamcharts = enrichSourceWithMetadata(payload.sources.steamcharts, metadataByAppId);
+  payload.sources.steamdb = enrichSourceWithMetadata(payload.sources.steamdb, metadataByAppId);
 
   await writeFile(outputPath, JSON.stringify(payload, null, 2), "utf8");
   console.log(`Wrote ${outputPath}`);

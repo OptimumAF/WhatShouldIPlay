@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
@@ -10,7 +11,25 @@ import {
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
 import { Wheel } from "./components/Wheel";
-import type { GameEntry, SourceId, TopGamesPayload } from "./types";
+import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
+
+const platformSchema = z.enum(["windows", "mac", "linux"]);
+const gameLengthSchema = z.enum(["short", "medium", "long"]);
+
+const payloadGameSchema = z.object({
+  name: z.string(),
+  source: z.string(),
+  rank: z.number().optional(),
+  score: z.number().optional(),
+  appId: z.number().optional(),
+  url: z.string().optional(),
+  platforms: z.array(platformSchema).optional(),
+  tags: z.array(z.string()).optional(),
+  releaseDate: z.string().optional(),
+  priceUsd: z.number().optional(),
+  isFree: z.boolean().optional(),
+  estimatedLength: gameLengthSchema.optional(),
+});
 
 const payloadSchema = z.object({
   generatedAt: z.string(),
@@ -20,48 +39,21 @@ const payloadSchema = z.object({
       label: z.string(),
       fetchedAt: z.string(),
       note: z.string().optional(),
-      games: z.array(
-        z.object({
-          name: z.string(),
-          source: z.string(),
-          rank: z.number().optional(),
-          score: z.number().optional(),
-          appId: z.number().optional(),
-          url: z.string().optional(),
-        }),
-      ),
+      games: z.array(payloadGameSchema),
     }),
     steamdb: z.object({
       id: z.literal("steamdb"),
       label: z.string(),
       fetchedAt: z.string(),
       note: z.string().optional(),
-      games: z.array(
-        z.object({
-          name: z.string(),
-          source: z.string(),
-          rank: z.number().optional(),
-          score: z.number().optional(),
-          appId: z.number().optional(),
-          url: z.string().optional(),
-        }),
-      ),
+      games: z.array(payloadGameSchema),
     }),
     twitchmetrics: z.object({
       id: z.literal("twitchmetrics"),
       label: z.string(),
       fetchedAt: z.string(),
       note: z.string().optional(),
-      games: z.array(
-        z.object({
-          name: z.string(),
-          source: z.string(),
-          rank: z.number().optional(),
-          score: z.number().optional(),
-          appId: z.number().optional(),
-          url: z.string().optional(),
-        }),
-      ),
+      games: z.array(payloadGameSchema),
     }),
   }),
 });
@@ -94,6 +86,12 @@ const storedSteamImportSchema = z.object({
         score: z.number().optional(),
         appId: z.number().optional(),
         url: z.string().optional(),
+        platforms: z.array(platformSchema).optional(),
+        tags: z.array(z.string()).optional(),
+        releaseDate: z.string().optional(),
+        priceUsd: z.number().optional(),
+        isFree: z.boolean().optional(),
+        estimatedLength: gameLengthSchema.optional(),
       }),
     )
     .default([]),
@@ -132,6 +130,12 @@ interface PoolGame {
   weight: number;
   appId?: number;
   url?: string;
+  platforms?: GamePlatform[];
+  tags?: string[];
+  releaseDate?: string;
+  priceUsd?: number;
+  isFree?: boolean;
+  estimatedLength?: GameLength;
 }
 
 interface WinnerInfo {
@@ -162,6 +166,20 @@ interface StoredSettings {
   weightedMode: boolean;
   cooldownSpins: number;
   activePreset: string;
+  filters: AdvancedFilters;
+}
+
+type PlatformFilter = "any" | GamePlatform;
+type LengthFilter = "any" | GameLength;
+
+interface AdvancedFilters {
+  platform: PlatformFilter;
+  tag: string;
+  length: LengthFilter;
+  releaseFrom: string;
+  releaseTo: string;
+  freeOnly: boolean;
+  maxPriceUsd: number;
 }
 
 interface StoredSteamImport {
@@ -267,12 +285,23 @@ const modePresets: ModePreset[] = [
   },
 ];
 
+const defaultFilters: AdvancedFilters = {
+  platform: "any",
+  tag: "any",
+  length: "any",
+  releaseFrom: "",
+  releaseTo: "",
+  freeOnly: false,
+  maxPriceUsd: 70,
+};
+
 const fallbackSettings: StoredSettings = {
   enabledSources: defaultEnabledSources,
   sourceWeights: defaultSourceWeights,
   weightedMode: true,
   cooldownSpins: 2,
   activePreset: "balanced",
+  filters: defaultFilters,
 };
 
 const fallbackSteamImport: StoredSteamImport = {
@@ -332,6 +361,25 @@ const gameWeight = (entry: GameEntry, sourceWeights: SourceWeights, weightedMode
   return Math.max(0.1, sourceWeight * rankBoost * scoreBoost);
 };
 
+const sanitizeFilters = (input: AdvancedFilters | null | undefined): AdvancedFilters => {
+  if (!input) return defaultFilters;
+  const validPlatforms: PlatformFilter[] = ["any", "windows", "mac", "linux"];
+  const validLengths: LengthFilter[] = ["any", "short", "medium", "long"];
+
+  return {
+    platform: validPlatforms.includes(input.platform) ? input.platform : defaultFilters.platform,
+    tag: typeof input.tag === "string" && input.tag.trim() ? input.tag.trim() : "any",
+    length: validLengths.includes(input.length) ? input.length : defaultFilters.length,
+    releaseFrom: typeof input.releaseFrom === "string" ? input.releaseFrom : "",
+    releaseTo: typeof input.releaseTo === "string" ? input.releaseTo : "",
+    freeOnly: Boolean(input.freeOnly),
+    maxPriceUsd:
+      typeof input.maxPriceUsd === "number" && Number.isFinite(input.maxPriceUsd)
+        ? Math.max(0, Math.min(120, input.maxPriceUsd))
+        : defaultFilters.maxPriceUsd,
+  };
+};
+
 const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
   if (!input) return fallbackSettings;
   return {
@@ -343,6 +391,7 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
         ? Math.max(0, Math.min(20, Math.round(input.cooldownSpins)))
         : fallbackSettings.cooldownSpins,
     activePreset: input.activePreset || fallbackSettings.activePreset,
+    filters: sanitizeFilters(input.filters),
   };
 };
 
@@ -364,6 +413,12 @@ const sanitizeSteamImport = (input: StoredSteamImport | null): StoredSteamImport
       score: entry.score,
       appId: entry.appId,
       url: entry.url,
+      platforms: entry.platforms,
+      tags: entry.tags,
+      releaseDate: entry.releaseDate,
+      priceUsd: entry.priceUsd,
+      isFree: entry.isFree,
+      estimatedLength: entry.estimatedLength,
     });
   });
 
@@ -404,6 +459,8 @@ const sanitizeNotificationSettings = (input: StoredNotificationSettings | null):
 };
 
 export default function App() {
+  const { t, i18n } = useTranslation();
+
   const initialSettings = sanitizeSettings(readStorage<StoredSettings | null>(SETTINGS_STORAGE_KEY, null));
   const initialHistory = readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []);
   const initialManualGames = normalizeGames(readStorage<string[]>(MANUAL_GAMES_STORAGE_KEY, []));
@@ -418,6 +475,7 @@ export default function App() {
   const [weightedMode, setWeightedMode] = useState(initialSettings.weightedMode);
   const [cooldownSpins, setCooldownSpins] = useState(initialSettings.cooldownSpins);
   const [activePreset, setActivePreset] = useState(initialSettings.activePreset);
+  const [filters, setFilters] = useState<AdvancedFilters>(sanitizeFilters(initialSettings.filters));
 
   const [manualInput, setManualInput] = useState("");
   const [manualGames, setManualGames] = useState<string[]>(initialManualGames);
@@ -502,6 +560,18 @@ export default function App() {
         }
         current.appId ||= entry.appId;
         current.url ||= entry.url;
+        if (entry.platforms?.length) {
+          current.platforms = [...new Set([...(current.platforms ?? []), ...entry.platforms])];
+        }
+        if (entry.tags?.length) {
+          current.tags = [...new Set([...(current.tags ?? []), ...entry.tags])];
+        }
+        current.releaseDate ||= entry.releaseDate;
+        current.priceUsd = current.priceUsd ?? entry.priceUsd;
+        if (typeof current.isFree !== "boolean") {
+          current.isFree = entry.isFree;
+        }
+        current.estimatedLength ||= entry.estimatedLength;
       } else {
         byName.set(key, {
           name: cleaned,
@@ -509,12 +579,68 @@ export default function App() {
           weight: computedWeight,
           appId: entry.appId,
           url: entry.url,
+          platforms: entry.platforms,
+          tags: entry.tags,
+          releaseDate: entry.releaseDate,
+          priceUsd: entry.priceUsd,
+          isFree: entry.isFree,
+          estimatedLength: entry.estimatedLength,
         });
       }
     }
 
     return [...byName.values()];
   }, [allEntries, enabledSources, sourceWeights, weightedMode]);
+
+  const availableTags = useMemo(
+    () =>
+      [...new Set(basePool.flatMap((candidate) => candidate.tags ?? []))]
+        .filter((tag) => tag.trim().length > 0)
+        .sort((a, b) => a.localeCompare(b)),
+    [basePool],
+  );
+
+  const poolAfterAdvancedFilters = useMemo(
+    () =>
+      basePool.filter((candidate) => {
+        if (filters.platform !== "any" && !(candidate.platforms ?? []).includes(filters.platform)) {
+          return false;
+        }
+
+        if (filters.tag !== "any" && !(candidate.tags ?? []).some((tag) => tag.toLowerCase() === filters.tag.toLowerCase())) {
+          return false;
+        }
+
+        if (filters.length !== "any" && candidate.estimatedLength !== filters.length) {
+          return false;
+        }
+
+        if (filters.releaseFrom) {
+          if (!candidate.releaseDate || candidate.releaseDate < filters.releaseFrom) {
+            return false;
+          }
+        }
+
+        if (filters.releaseTo) {
+          if (!candidate.releaseDate || candidate.releaseDate > filters.releaseTo) {
+            return false;
+          }
+        }
+
+        if (filters.freeOnly && candidate.isFree !== true) {
+          return false;
+        }
+
+        if (!filters.freeOnly && filters.maxPriceUsd < defaultFilters.maxPriceUsd) {
+          if (candidate.isFree === true) return true;
+          if (typeof candidate.priceUsd !== "number") return false;
+          if (candidate.priceUsd > filters.maxPriceUsd) return false;
+        }
+
+        return true;
+      }),
+    [basePool, filters],
+  );
 
   const statusBlockedNames = useMemo(() => {
     const blocked = new Set<string>();
@@ -528,8 +654,8 @@ export default function App() {
   }, [completedGames, excludeCompleted, excludePlayed, playedGames]);
 
   const poolAfterStatusExclusions = useMemo(
-    () => basePool.filter((candidate) => !statusBlockedNames.has(candidate.name.toLowerCase())),
-    [basePool, statusBlockedNames],
+    () => poolAfterAdvancedFilters.filter((candidate) => !statusBlockedNames.has(candidate.name.toLowerCase())),
+    [poolAfterAdvancedFilters, statusBlockedNames],
   );
 
   const blockedNames = useMemo(
@@ -543,10 +669,34 @@ export default function App() {
   );
 
   const cooldownSaturated = cooldownSpins > 0 && poolAfterStatusExclusions.length > 0 && poolAfterCooldown.length === 0;
-  const statusExhausted = poolAfterStatusExclusions.length === 0 && basePool.length > 0 && statusBlockedNames.size > 0;
-  const activePool = statusExhausted ? [] : cooldownSaturated ? poolAfterStatusExclusions : poolAfterCooldown;
-  const statusExcludedCount = Math.max(0, basePool.length - poolAfterStatusExclusions.length);
+  const statusExhausted =
+    poolAfterStatusExclusions.length === 0 && poolAfterAdvancedFilters.length > 0 && statusBlockedNames.size > 0;
+  const advancedFilterExhausted =
+    poolAfterAdvancedFilters.length === 0 &&
+    basePool.length > 0 &&
+    (filters.platform !== "any" ||
+      filters.tag !== "any" ||
+      filters.length !== "any" ||
+      Boolean(filters.releaseFrom) ||
+      Boolean(filters.releaseTo) ||
+      filters.freeOnly ||
+      filters.maxPriceUsd < defaultFilters.maxPriceUsd);
+  const activePool = advancedFilterExhausted
+    ? []
+    : statusExhausted
+      ? []
+      : cooldownSaturated
+        ? poolAfterStatusExclusions
+        : poolAfterCooldown;
+  const filterExcludedCount = Math.max(0, basePool.length - poolAfterAdvancedFilters.length);
+  const statusExcludedCount = Math.max(0, poolAfterAdvancedFilters.length - poolAfterStatusExclusions.length);
   const cooldownExcludedCount = Math.max(0, poolAfterStatusExclusions.length - poolAfterCooldown.length);
+
+  useEffect(() => {
+    if (filters.tag === "any") return;
+    if (availableTags.some((tag) => tag.toLowerCase() === filters.tag.toLowerCase())) return;
+    setFilters((current) => ({ ...current, tag: "any" }));
+  }, [availableTags, filters.tag]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -557,9 +707,10 @@ export default function App() {
         weightedMode,
         cooldownSpins,
         activePreset,
+        filters,
       } satisfies StoredSettings),
     );
-  }, [activePreset, cooldownSpins, enabledSources, sourceWeights, weightedMode]);
+  }, [activePreset, cooldownSpins, enabledSources, filters, sourceWeights, weightedMode]);
 
   useEffect(() => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(spinHistory.slice(0, 50)));
@@ -951,44 +1102,48 @@ export default function App() {
   const setNotificationsEnabledWithPermission = async (enabled: boolean) => {
     if (!enabled) {
       setNotificationsEnabled(false);
-      setNotificationStatus("Notifications disabled.");
+      setNotificationStatus(t("notificationsDisabledStatus"));
       return;
     }
 
     if (!("Notification" in window)) {
       setNotificationsEnabled(false);
-      setNotificationStatus("Notifications are not supported in this browser.");
+      setNotificationStatus(t("notificationsUnsupportedStatus"));
       return;
     }
 
     if (Notification.permission === "granted") {
       setNotificationsEnabled(true);
-      setNotificationStatus("Notifications enabled.");
+      setNotificationStatus(t("notificationsEnabledStatus"));
       return;
     }
 
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       setNotificationsEnabled(true);
-      setNotificationStatus("Notifications enabled.");
+      setNotificationStatus(t("notificationsEnabledStatus"));
     } else {
       setNotificationsEnabled(false);
-      setNotificationStatus("Notification permission was denied.");
+      setNotificationStatus(t("notificationsDeniedStatus"));
     }
   };
+
+  const filterExcludedSuffix = filterExcludedCount > 0 ? t("filteredSuffix", { count: filterExcludedCount }) : "";
+  const statusExcludedSuffix =
+    statusExcludedCount > 0 ? t("statusExcludedSuffix", { count: statusExcludedCount }) : "";
+  const cooldownExcludedSuffix =
+    cooldownSpins > 0 ? t("cooldownExcludedSuffix", { count: cooldownExcludedCount }) : "";
+  const exclusionSummarySuffix = `${filterExcludedSuffix}${statusExcludedSuffix}`;
 
   return (
     <main className="layout">
       <a className="skip-link" href="#main-content">
-        Skip to main content
+        {t("skipToMain")}
       </a>
       <header className="hero">
-        <p className="kicker">PickAGame</p>
-        <h1>Spin For Your Next Game</h1>
-        <p>
-          Mix top games from SteamCharts, SteamDB/Steam charts data, TwitchMetrics, Steam account import, and your own
-          list. Then spin.
-        </p>
+        <p className="kicker">{t("appName")}</p>
+        <h1>{t("heroTitle")}</h1>
+        <p>{t("heroDescription")}</p>
         <div className="hero-actions">
           <button
             type="button"
@@ -997,28 +1152,40 @@ export default function App() {
             aria-expanded={sidebarOpen}
             onClick={() => setSidebarOpen((current) => !current)}
           >
-            {sidebarOpen ? "Hide Settings" : "Show Settings"}
+            {sidebarOpen ? t("hideSettings") : t("showSettings")}
           </button>
           {installPrompt ? (
             <button type="button" className="ghost" onClick={handleInstall}>
-              Install App
+              {t("installApp")}
             </button>
           ) : null}
+          <label className="lang-picker">
+            <span className="sr-only">{t("language.label")}</span>
+            <select
+              value={i18n.resolvedLanguage?.startsWith("es") ? "es" : "en"}
+              onChange={(event) => {
+                void i18n.changeLanguage(event.target.value);
+              }}
+            >
+              <option value="en">{t("language.english")}</option>
+              <option value="es">{t("language.spanish")}</option>
+            </select>
+          </label>
         </div>
       </header>
 
       {swUpdateReady && !dismissedUpdate ? (
         <section className="update-banner" aria-live="polite">
           <div>
-            <strong>Update ready</strong>
-            <p>A newer version is available. Apply it now to load the latest fixes and features.</p>
+            <strong>{t("updateReadyTitle")}</strong>
+            <p>{t("updateReadyDescription")}</p>
           </div>
           <div className="button-row">
             <button type="button" onClick={applyServiceWorkerUpdate} disabled={updateInProgress}>
-              {updateInProgress ? "Updating..." : "Update Now"}
+              {updateInProgress ? t("updating") : t("updateNow")}
             </button>
             <button type="button" className="ghost" onClick={() => setDismissedUpdate(true)} disabled={updateInProgress}>
-              Later
+              {t("later")}
             </button>
           </div>
         </section>
@@ -1027,12 +1194,12 @@ export default function App() {
       {freshTrendsNotice ? (
         <section className="update-banner" aria-live="polite">
           <div>
-            <strong>Fresh trend data loaded</strong>
-            <p>Top game rankings were updated in the background.</p>
+            <strong>{t("trendsReadyTitle")}</strong>
+            <p>{t("trendsReadyDescription")}</p>
           </div>
           <div className="button-row">
             <button type="button" className="ghost" onClick={() => setFreshTrendsNotice(false)}>
-              Dismiss
+              {t("dismiss")}
             </button>
           </div>
         </section>
@@ -1045,7 +1212,7 @@ export default function App() {
           className={clsx("settings-sidebar", !sidebarOpen && "is-collapsed")}
         >
           <section className="panel" aria-labelledby="mode-presets-heading">
-            <h2 id="mode-presets-heading">Mode Presets</h2>
+            <h2 id="mode-presets-heading">{t("presets")}</h2>
             <div className="preset-grid">
               {modePresets.map((preset) => (
                 <button
@@ -1062,7 +1229,7 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="sources-heading">
-            <h2 id="sources-heading">Sources</h2>
+            <h2 id="sources-heading">{t("sources")}</h2>
             <div className="grid-sources">
               {sourceKeys.map((source) => {
                 const sourceMeta =
@@ -1114,10 +1281,10 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                Weighted wheel
+                {t("weightedWheel")}
               </label>
               <label className="cooldown-control">
-                Cooldown spins
+                {t("cooldownSpins")}
                 <input
                   type="range"
                   min={0}
@@ -1158,7 +1325,7 @@ export default function App() {
 
             {topGamesQuery.isLoading ? (
               <p className="status" role="status" aria-live="polite">
-                Loading source data...
+                {t("loadingData")}
               </p>
             ) : null}
             {topGamesQuery.isError ? (
@@ -1168,30 +1335,150 @@ export default function App() {
             ) : null}
           </section>
 
+          <section className="panel" aria-labelledby="advanced-filters-heading">
+            <h2 id="advanced-filters-heading">Advanced Filters</h2>
+            <p className="muted">Filter by platform, tags, length, release window, and price.</p>
+            <div className="filters-grid">
+              <label className="filter-field">
+                <span>Platform</span>
+                <select
+                  value={filters.platform}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, platform: event.target.value as PlatformFilter }));
+                    markCustom();
+                  }}
+                >
+                  <option value="any">Any</option>
+                  <option value="windows">Windows</option>
+                  <option value="mac">macOS</option>
+                  <option value="linux">Linux</option>
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span>Genre / Tag</span>
+                <select
+                  value={filters.tag}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, tag: event.target.value }));
+                    markCustom();
+                  }}
+                >
+                  <option value="any">Any</option>
+                  {availableTags.slice(0, 250).map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span>Estimated Length</span>
+                <select
+                  value={filters.length}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, length: event.target.value as LengthFilter }));
+                    markCustom();
+                  }}
+                >
+                  <option value="any">Any</option>
+                  <option value="short">Short</option>
+                  <option value="medium">Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span>Release After</span>
+                <input
+                  type="date"
+                  value={filters.releaseFrom}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, releaseFrom: event.target.value }));
+                    markCustom();
+                  }}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span>Release Before</span>
+                <input
+                  type="date"
+                  value={filters.releaseTo}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, releaseTo: event.target.value }));
+                    markCustom();
+                  }}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span>Max Price (${filters.maxPriceUsd.toFixed(0)})</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={70}
+                  step={1}
+                  disabled={filters.freeOnly}
+                  value={filters.maxPriceUsd}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, maxPriceUsd: Number(event.target.value) }));
+                    markCustom();
+                  }}
+                />
+              </label>
+
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={filters.freeOnly}
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, freeOnly: event.target.checked }));
+                    markCustom();
+                  }}
+                />
+                Free only
+              </label>
+            </div>
+            <div className="button-row">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setFilters(defaultFilters);
+                  markCustom();
+                }}
+              >
+                Reset Filters
+              </button>
+            </div>
+          </section>
+
           <section className="panel" aria-labelledby="steam-import-heading">
-            <h2 id="steam-import-heading">Steam Account Import</h2>
+            <h2 id="steam-import-heading">{t("steamImportTitle")}</h2>
             <p className="muted">
-              Import owned games using Steam Web API key + SteamID64. Profile and game details must be public.
+              {t("steamImportDescription")}
             </p>
             <div className="steam-grid">
               <label htmlFor="steam-api-key" className="sr-only">
-                Steam Web API Key
+                {t("steamApiKey")}
               </label>
               <input
                 id="steam-api-key"
                 type="password"
-                placeholder="Steam Web API Key"
+                placeholder={t("steamApiKey")}
                 value={steamApiKey}
                 onChange={(event) => setSteamApiKey(event.target.value)}
                 autoComplete="off"
               />
               <label htmlFor="steam-id64" className="sr-only">
-                SteamID64
+                {t("steamId64")}
               </label>
               <input
                 id="steam-id64"
                 type="text"
-                placeholder="SteamID64"
+                placeholder={t("steamId64")}
                 value={steamId}
                 onChange={(event) => setSteamId(event.target.value)}
                 autoComplete="off"
@@ -1204,10 +1491,10 @@ export default function App() {
                 disabled={steamImportLoading}
                 aria-describedby="steam-import-status"
               >
-                {steamImportLoading ? "Importing..." : "Import Steam Library"}
+                {steamImportLoading ? t("importing") : t("importSteamLibrary")}
               </button>
               <button type="button" className="ghost" onClick={clearSteamImport}>
-                Clear Import
+                {t("clearImport")}
               </button>
             </div>
             {steamImportStatus ? (
@@ -1218,12 +1505,12 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="exclusion-heading">
-            <h2 id="exclusion-heading">Played / Completed</h2>
-            <p className="muted">Mark titles to temporarily remove them from spins.</p>
+            <h2 id="exclusion-heading">{t("playedCompletedTitle")}</h2>
+            <p className="muted">{t("playedCompletedDescription")}</p>
             <div className="odds-controls">
               <label className="inline-check">
                 <input type="checkbox" checked={excludePlayed} onChange={(event) => setExcludePlayed(event.target.checked)} />
-                Exclude played
+                {t("excludePlayed")}
               </label>
               <label className="inline-check">
                 <input
@@ -1231,39 +1518,39 @@ export default function App() {
                   checked={excludeCompleted}
                   onChange={(event) => setExcludeCompleted(event.target.checked)}
                 />
-                Exclude completed
+                {t("excludeCompleted")}
               </label>
             </div>
             <label htmlFor="exclusion-input" className="sr-only">
-              Game names to exclude
+              {t("gameNamesToExclude")}
             </label>
             <textarea
               id="exclusion-input"
               rows={3}
               value={exclusionInput}
               onChange={(event) => setExclusionInput(event.target.value)}
-              placeholder="Enter game names (comma or newline)"
+              placeholder={t("excludeInputPlaceholder")}
             />
             <div className="button-row">
               <button type="button" onClick={() => addExclusionFromInput("played")} disabled={!exclusionInput.trim()}>
-                Mark Played
+                {t("markPlayed")}
               </button>
               <button type="button" className="ghost" onClick={() => addExclusionFromInput("completed")} disabled={!exclusionInput.trim()}>
-                Mark Completed
+                {t("markCompleted")}
               </button>
             </div>
             <div className="exclude-grid">
               <div className="exclude-list">
-                <strong>Played ({playedGames.length})</strong>
+                <strong>{t("playedCount", { count: playedGames.length })}</strong>
                 {playedGames.length === 0 ? (
-                  <p className="muted">No played games tracked.</p>
+                  <p className="muted">{t("noPlayedTracked")}</p>
                 ) : (
                   <ul>
                     {playedGames.slice(0, 30).map((name) => (
                       <li key={`played-${name}`}>
                         <span>{name}</span>
                         <button type="button" className="ghost compact" onClick={() => removePlayedGame(name)}>
-                          Remove
+                          {t("remove")}
                         </button>
                       </li>
                     ))}
@@ -1271,21 +1558,21 @@ export default function App() {
                 )}
                 {playedGames.length > 0 ? (
                   <button type="button" className="ghost compact" onClick={() => setPlayedGames([])}>
-                    Clear Played
+                    {t("clearPlayed")}
                   </button>
                 ) : null}
               </div>
               <div className="exclude-list">
-                <strong>Completed ({completedGames.length})</strong>
+                <strong>{t("completedCount", { count: completedGames.length })}</strong>
                 {completedGames.length === 0 ? (
-                  <p className="muted">No completed games tracked.</p>
+                  <p className="muted">{t("noCompletedTracked")}</p>
                 ) : (
                   <ul>
                     {completedGames.slice(0, 30).map((name) => (
                       <li key={`completed-${name}`}>
                         <span>{name}</span>
                         <button type="button" className="ghost compact" onClick={() => removeCompletedGame(name)}>
-                          Remove
+                          {t("remove")}
                         </button>
                       </li>
                     ))}
@@ -1293,7 +1580,7 @@ export default function App() {
                 )}
                 {completedGames.length > 0 ? (
                   <button type="button" className="ghost compact" onClick={() => setCompletedGames([])}>
-                    Clear Completed
+                    {t("clearCompleted")}
                   </button>
                 ) : null}
               </div>
@@ -1301,8 +1588,8 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="notification-heading">
-            <h2 id="notification-heading">Notifications</h2>
-            <p className="muted">Enable reminders and alerts when trend data refreshes.</p>
+            <h2 id="notification-heading">{t("notificationsTitle")}</h2>
+            <p className="muted">{t("notificationsDescription")}</p>
             <div className="odds-controls">
               <label className="inline-check">
                 <input
@@ -1312,7 +1599,7 @@ export default function App() {
                     void setNotificationsEnabledWithPermission(event.target.checked);
                   }}
                 />
-                Notifications enabled
+                {t("notificationsEnabled")}
               </label>
               <label className="inline-check">
                 <input
@@ -1321,7 +1608,7 @@ export default function App() {
                   disabled={!notificationsEnabled}
                   onChange={(event) => setTrendNotifications(event.target.checked)}
                 />
-                New trends alerts
+                {t("newTrendsAlerts")}
               </label>
               <label className="inline-check">
                 <input
@@ -1330,10 +1617,10 @@ export default function App() {
                   disabled={!notificationsEnabled}
                   onChange={(event) => setReminderNotifications(event.target.checked)}
                 />
-                Spin reminders
+                {t("spinReminders")}
               </label>
               <label className="cooldown-control">
-                Reminder interval (minutes)
+                {t("reminderInterval")}
                 <input
                   type="range"
                   min={15}
@@ -1356,41 +1643,48 @@ export default function App() {
 
         <div className="content-stack">
           <section className="panel" aria-labelledby="wheel-heading">
-            <h2 id="wheel-heading">Wheel</h2>
+            <h2 id="wheel-heading">{t("wheelTitle")}</h2>
             <p className="muted">
-              {activePool.length} games in this spin pool
-              {statusExcludedCount > 0 ? ` (${statusExcludedCount} excluded by played/completed)` : ""}
-              {cooldownSpins > 0 ? ` (${cooldownExcludedCount} on cooldown)` : ""}.
+              {t("poolSummary", {
+                count: activePool.length,
+                statusExcluded: exclusionSummarySuffix,
+                cooldownExcluded: cooldownExcludedSuffix,
+              })}
             </p>
+            {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
             {statusExhausted ? (
-              <p className="status">All games are excluded by played/completed rules. Adjust exclusions to spin again.</p>
+              <p className="status">{t("statusExhausted")}</p>
             ) : null}
             {cooldownSaturated ? (
-              <p className="status">Cooldown exhausted the pool, so all entries were temporarily re-enabled.</p>
+              <p className="status">{t("cooldownExhausted")}</p>
             ) : null}
             <Wheel games={activePool.map((candidate) => candidate.name)} rotation={rotation} spinning={spinning} onSpinEnd={onSpinEnd} />
             <div className="button-row">
               <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
-                {spinning ? "Spinning..." : "Spin The Wheel"}
+                {spinning ? t("spinning") : t("spinTheWheel")}
               </button>
               <button type="button" className="ghost" onClick={clearHistory}>
-                Clear History
+                {t("clearHistory")}
               </button>
             </div>
             {winner && winnerMeta ? (
               <div className="winner winner-rich">
-                <p>You should play:</p>
+                <p>{t("youShouldPlay")}</p>
                 <strong>{winner}</strong>
                 <div className="winner-stats">
-                  <span>Sources: {sourceLabelList(winnerMeta.sources)}</span>
-                  <span>Odds: {formatOdds(winnerMeta.odds)}</span>
+                  <span>
+                    {t("sourceLabel")}: {sourceLabelList(winnerMeta.sources)}
+                  </span>
+                  <span>
+                    {t("spinOdds")}: {formatOdds(winnerMeta.odds)}
+                  </span>
                 </div>
                 <div className="button-row">
                   <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
-                    Mark Played
+                    {t("winnerActions.played")}
                   </button>
                   <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
-                    Mark Completed
+                    {t("winnerActions.completed")}
                   </button>
                 </div>
               </div>
@@ -1398,10 +1692,10 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="manual-heading">
-            <h2 id="manual-heading">Manual List</h2>
-            <p className="muted">Add games by newline or comma.</p>
+            <h2 id="manual-heading">{t("manualListTitle")}</h2>
+            <p className="muted">{t("manualListDescription")}</p>
             <label htmlFor="manual-input" className="sr-only">
-              Manual game list
+              {t("manualListTitle")}
             </label>
             <textarea
               id="manual-input"
@@ -1412,18 +1706,18 @@ export default function App() {
             />
             <div className="button-row">
               <button type="button" onClick={addManualGames}>
-                Add Games
+                {t("addGames")}
               </button>
               <button type="button" className="ghost" onClick={clearManualGames}>
-                Clear Manual
+                {t("clearManual")}
               </button>
             </div>
           </section>
 
           <section className="panel" aria-labelledby="history-heading">
-            <h2 id="history-heading">Spin History</h2>
+            <h2 id="history-heading">{t("spinHistoryTitle")}</h2>
             {spinHistory.length === 0 ? (
-              <p className="muted">No spins yet.</p>
+              <p className="muted">{t("noSpins")}</p>
             ) : (
               <ul className="history-list" aria-label="Recent spin results">
                 {spinHistory.slice(0, 10).map((item, index) => (
@@ -1455,38 +1749,38 @@ export default function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="winner-glow" />
-            <p className="winner-tag">Winner</p>
+            <p className="winner-tag">{t("winner")}</p>
             <h3 id="winner-title">{winner}</h3>
             <div className="winner-moment-grid">
               <div>
-                <span>Spin Odds</span>
+                <span>{t("spinOdds")}</span>
                 <strong>{formatOdds(winnerMeta.odds)}</strong>
               </div>
               <div>
-                <span>Sources</span>
+                <span>{t("sourceLabel")}</span>
                 <strong>{sourceLabelList(winnerMeta.sources)}</strong>
               </div>
             </div>
-            <p id="winner-description">Commit to it. Queue it up now.</p>
+            <p id="winner-description">{t("commitNow")}</p>
             <div className="button-row">
               {winnerMeta.appId ? (
                 <a className="button-link" href={`https://store.steampowered.com/app/${winnerMeta.appId}/`} target="_blank" rel="noreferrer">
-                  Open Steam
+                  {t("openSteam")}
                 </a>
               ) : null}
               {winnerMeta.url ? (
                 <a className="button-link ghost-link" href={winnerMeta.url} target="_blank" rel="noreferrer">
-                  View Source
+                  {t("viewSource")}
                 </a>
               ) : null}
               <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
-                Mark Played
+                {t("winnerActions.played")}
               </button>
               <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
-                Mark Completed
+                {t("winnerActions.completed")}
               </button>
               <button type="button" onClick={() => setShowWinnerPopup(false)} ref={winnerPopupCloseRef}>
-                Nice
+                {t("nice")}
               </button>
             </div>
           </div>

@@ -25,11 +25,13 @@ Live site:
 - Mode presets (`Balanced Mix`, `Quick Pick`, `No Repeats`, `Owned Focus`)
 - Weighted wheel odds with per-source weighting controls
 - Spin history + configurable cooldown to reduce immediate repeats
+- Advanced filters (platform, tags, estimated length, release window, price)
 - Steam account import using Steam Web API key + SteamID64
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay with odds + source details in both web and desktop apps
 - Progressive Web App support (installable web app + offline shell cache)
 - Optional web notifications for trend updates and spin reminders
+- Multi-language web UI support (English and Spanish)
 - Scheduled data refresh and deterministic static hosting
 
 ## Technology

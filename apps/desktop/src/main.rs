@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 use anyhow::{anyhow, Context, Result};
 use dioxus::prelude::*;
 use rand::Rng;
@@ -80,7 +82,15 @@ fn App() -> Element {
     let wheel_labels = pool
         .iter()
         .enumerate()
-        .map(|(index, game)| (index as f64 * segment_angle + (segment_angle / 2.0), game.clone()))
+        .map(|(index, game)| {
+            let angle = index as f64 * segment_angle + (segment_angle / 2.0);
+            let flip = if angle > 90.0 && angle < 270.0 {
+                180.0
+            } else {
+                0.0
+            };
+            (angle, flip, game.clone())
+        })
         .collect::<Vec<_>>();
 
     rsx! {
@@ -211,12 +221,13 @@ fn App() -> Element {
                         if pool.is_empty() {
                             div { class: "wheel-empty", "Add or load games first" }
                         } else {
-                            for (label_angle, game) in wheel_labels.iter() {
+                            for (label_angle, label_flip, game) in wheel_labels.iter() {
                                 div {
                                     class: "wheel-label",
                                     style: format!(
-                                        "--label-angle:{}deg;",
-                                        label_angle
+                                        "--label-angle:{}deg;--label-flip:{}deg;",
+                                        label_angle,
+                                        label_flip
                                     ),
                                     span { "{game}" }
                                 }
@@ -1015,15 +1026,18 @@ button:disabled {
 .wheel-label span {
   position: absolute;
   left: 50%;
-  top: 7%;
-  transform: translateX(-50%) rotate(calc(-1 * var(--label-angle)));
+  top: 20%;
+  transform: translateX(-50%) rotate(calc(90deg + var(--label-flip, 0deg)));
   transform-origin: center;
-  max-width: 44%;
-  line-height: 1.1;
-  font-size: clamp(0.58rem, 1.4vw, 0.82rem);
+  max-width: 38%;
+  line-height: 1.05;
+  font-size: clamp(0.56rem, 1.15vw, 0.82rem);
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
+  text-wrap: balance;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.8),
+    0 0 6px rgba(255, 255, 255, 0.35);
 }
 
 .winner {

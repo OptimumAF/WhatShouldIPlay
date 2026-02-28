@@ -17,7 +17,6 @@ import {
   History,
   KeyRound,
   Library,
-  List,
   PanelLeft,
   Play,
   Plus,
@@ -36,6 +35,9 @@ import {
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
 import { Wheel } from "./components/Wheel";
+import { ManualGamesPanel } from "./components/ManualGamesPanel";
+import { SpinHistoryPanel } from "./components/SpinHistoryPanel";
+import { WinnerSummaryCard } from "./components/WinnerSummaryCard";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -1741,6 +1743,12 @@ export default function App() {
   const showLibraryPane = activeTab === "play" || activeTab === "library";
   const showHistoryPane = activeTab === "play" || activeTab === "history";
   const settingsSidebarVisible = sidebarOpen && showSettingsPane;
+  const historyDisplayItems = spinHistory.slice(0, 10).map((item, index) => ({
+    key: `${item.name}-${item.spunAt}-${index}`,
+    name: item.name,
+    meta: `${new Date(item.spunAt).toLocaleString()} | ${sourceLabelList(item.sources)}`,
+    odds: formatOdds(item.odds),
+  }));
 
   return (
     <main className="layout">
@@ -2591,92 +2599,38 @@ export default function App() {
                 </button>
               </div>
               {winner && winnerMeta ? (
-                <div className="winner winner-rich">
-                  <p>{t("youShouldPlay")}</p>
-                  <strong>{winner}</strong>
-                  <div className="winner-stats">
-                    <span>
-                      {t("sourceLabel")}: {sourceLabelList(winnerMeta.sources)}
-                    </span>
-                    <span>
-                      {t("spinOdds")}: {formatOdds(winnerMeta.odds)}
-                    </span>
-                  </div>
-                  <div className="button-row">
-                    <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
-                      {t("winnerActions.played")}
-                    </button>
-                    <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
-                      {t("winnerActions.completed")}
-                    </button>
-                  </div>
-                </div>
+                <WinnerSummaryCard
+                  prompt={t("youShouldPlay")}
+                  winner={winner}
+                  sourceLabel={t("sourceLabel")}
+                  sourceValue={sourceLabelList(winnerMeta.sources)}
+                  oddsLabel={t("spinOdds")}
+                  oddsValue={formatOdds(winnerMeta.odds)}
+                  playedLabel={t("winnerActions.played")}
+                  completedLabel={t("winnerActions.completed")}
+                  onMarkPlayed={() => markGamesPlayed([winner])}
+                  onMarkCompleted={() => markGamesCompleted([winner])}
+                />
               ) : null}
             </section>
           ) : null}
 
           {showLibraryPane ? (
-            <section className="panel" aria-labelledby="manual-heading">
-              <h2 id="manual-heading" className="section-heading">
-                <span className="heading-label">
-                  <List className="ui-icon" aria-hidden="true" />
-                  {t("manualListTitle")}
-                </span>
-              </h2>
-              <p className="muted">{t("manualListDescription")}</p>
-              <label htmlFor="manual-input" className="sr-only">
-                {t("manualListTitle")}
-              </label>
-              <textarea
-                id="manual-input"
-                rows={5}
-                value={manualInput}
-                onChange={(event) => setManualInput(event.target.value)}
-                placeholder="Helldivers 2&#10;Hades II&#10;Monster Hunter Wilds"
-              />
-              <div className="button-row">
-                <button type="button" onClick={addManualGames}>
-                  <span className="button-label">
-                    <Plus className="ui-icon" aria-hidden="true" />
-                    {t("addGames")}
-                  </span>
-                </button>
-                <button type="button" className="ghost" onClick={clearManualGames}>
-                  <span className="button-label">
-                    <Trash2 className="ui-icon" aria-hidden="true" />
-                    {t("clearManual")}
-                  </span>
-                </button>
-              </div>
-            </section>
+            <ManualGamesPanel
+              title={t("manualListTitle")}
+              description={t("manualListDescription")}
+              inputValue={manualInput}
+              onInputChange={setManualInput}
+              onAdd={addManualGames}
+              onClear={clearManualGames}
+              addLabel={t("addGames")}
+              clearLabel={t("clearManual")}
+              placeholder={"Helldivers 2\nHades II\nMonster Hunter Wilds"}
+            />
           ) : null}
 
           {showHistoryPane ? (
-            <section className="panel" aria-labelledby="history-heading">
-              <h2 id="history-heading" className="section-heading">
-                <span className="heading-label">
-                  <History className="ui-icon" aria-hidden="true" />
-                  {t("spinHistoryTitle")}
-                </span>
-              </h2>
-              {spinHistory.length === 0 ? (
-                <p className="muted">{t("noSpins")}</p>
-              ) : (
-                <ul className="history-list" aria-label="Recent spin results">
-                  {spinHistory.slice(0, 10).map((item, index) => (
-                    <li key={`${item.name}-${item.spunAt}-${index}`}>
-                      <div>
-                        <strong>{item.name}</strong>
-                        <small>
-                          {new Date(item.spunAt).toLocaleString()} | {sourceLabelList(item.sources)}
-                        </small>
-                      </div>
-                      <span>{formatOdds(item.odds)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <SpinHistoryPanel title={t("spinHistoryTitle")} emptyLabel={t("noSpins")} items={historyDisplayItems} />
           ) : null}
 
           {activeTab === "settings" ? (

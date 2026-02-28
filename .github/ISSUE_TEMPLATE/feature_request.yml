@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest an improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees:
+  - OptimumAF
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please focus on the problem and expected user value.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      placeholder: What user problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      placeholder: Describe the proposed behavior or implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      placeholder: What alternatives did you consider?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web app
+        - Desktop app
+        - Data pipeline
+        - CI/CD
+        - Documentation
+        - Other
+    validations:
+      required: true
+

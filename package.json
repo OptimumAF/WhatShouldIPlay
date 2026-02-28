@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "fetch:data": "node ./scripts/fetch-top-games.mjs",
-    "build:all": "npm run fetch:data && npm run build"
+    "build:all": "npm run fetch:data && npm run build",
+    "ci:web": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",

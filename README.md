@@ -1,18 +1,59 @@
 # WhatShouldIPlay
 
-WhatShouldIPlay includes:
+[![Deploy Web App](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/deploy-pages.yml/badge.svg?branch=master)](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/deploy-pages.yml)
+[![Build Desktop App](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/build-desktop.yml/badge.svg?branch=master)](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/build-desktop.yml)
+[![Web CI](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/web-ci.yml/badge.svg?branch=master)](https://github.com/OptimumAF/WhatShouldIPlay/actions/workflows/web-ci.yml)
 
-- A **GitHub Pages web app** that loads top games from SteamCharts, SteamDB/Steam API fallback, and TwitchMetrics.
-- A **Rust + Dioxus desktop app** that does the same and can also scan your computer for installed games.
-- A **spin-the-wheel animation** that picks what to play next.
+WhatShouldIPlay is an open source game-picker platform with:
 
-## Stack
+- A GitHub Pages web app for spinning a wheel from live top-game sources and user-entered games
+- A Rust + Dioxus desktop app with local game scanning and the same spin experience
+- Automated data refresh and deployment workflows
 
-- Web: React 19, TypeScript 5, Vite 7, TanStack Query 5, Zod 4
-- Data pipeline: Node.js + Cheerio
+Live site:
+
+- https://optimumaf.github.io/WhatShouldIPlay/
+
+## Features
+
+- Multi-source pool support:
+  - SteamCharts
+  - SteamDB (with Steam charts API fallback)
+  - TwitchMetrics
+  - Manual game entry
+  - Desktop-only local scan
+- Source-mix random wheel spin with animated result
+- Winner popup celebration overlay in both web and desktop apps
+- Scheduled data refresh and deterministic static hosting
+
+## Technology
+
+- Web UI: React 19, TypeScript 5, Vite 7, TanStack Query, Zod
+- Data ingestion: Node.js + Cheerio
 - Desktop: Rust + Dioxus 0.7 + Reqwest + Scraper
+- CI/CD: GitHub Actions + GitHub Pages
 
-## Quick Start (Web)
+## Repository Layout
+
+```text
+.
+├─ src/                      # Web app source
+├─ public/data/              # Generated source dataset consumed by web app
+├─ scripts/                  # Data ingestion/updater scripts
+├─ apps/desktop/             # Rust + Dioxus desktop app
+├─ .github/workflows/        # CI/CD automation
+└─ docs/                     # Contributor and architecture documentation
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- npm 10+
+- Rust toolchain (for desktop app only)
+
+### Web App
 
 ```bash
 npm install
@@ -26,34 +67,57 @@ Build for production:
 npm run build:all
 ```
 
-## Desktop App
-
-Desktop source lives in `apps/desktop`.
-
-Run locally (after Rust install):
+### Desktop App
 
 ```bash
 cd apps/desktop
 cargo run
 ```
 
-Build release binary:
+Release build:
 
 ```bash
 cd apps/desktop
 cargo build --release
 ```
 
-## GitHub Actions
+## NPM Scripts
 
-- `.github/workflows/refresh-data.yml`
-  - Refreshes `public/data/top-games.json` every 6 hours.
-- `.github/workflows/deploy-pages.yml`
-  - Builds and deploys the web app to GitHub Pages.
-- `.github/workflows/build-desktop.yml`
-  - Builds the desktop executable on Windows and uploads artifact.
+- `npm run dev`: Start local web development server
+- `npm run typecheck`: TypeScript type checking
+- `npm run build`: Build web app
+- `npm run fetch:data`: Refresh source data JSON
+- `npm run build:all`: Refresh data and build web app
+- `npm run ci:web`: Run web CI checks locally
 
-## Notes
+## Automation
 
-- SteamDB is often protected by Cloudflare. The updater attempts direct SteamDB first, then falls back to Steam's public charts API.
-- Browser apps cannot directly scan installed games; desktop scanning is available in the Dioxus app.
+- `refresh-data.yml`: Scheduled source data refresh every 6 hours
+- `deploy-pages.yml`: Web build and Pages deploy on `master`
+- `build-desktop.yml`: Windows desktop `.exe` build on push/PR to `master`
+- `web-ci.yml`: Web quality checks on push/PR
+
+## Data Source Caveats
+
+- SteamDB can block non-browser traffic via Cloudflare.
+- The updater attempts direct SteamDB parsing first, then falls back to Steam charts API to maintain continuity.
+- Browser environments cannot scan installed local games; local scan is desktop-only.
+
+## Open Source Standards
+
+- License: MIT
+- Contributor Covenant code of conduct
+- Standard issue and pull request templates
+- Security disclosure policy
+- Governance and support docs
+
+See:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
+- [GOVERNANCE.md](GOVERNANCE.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- [docs/RELEASING.md](docs/RELEASING.md)

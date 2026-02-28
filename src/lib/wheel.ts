@@ -29,6 +29,11 @@ export const pickSpin = (count: number, currentRotation: number) => {
   return pickSpinWithWeights(count, currentRotation);
 };
 
+interface SpinMotionOptions {
+  revolutions?: number;
+  jitterRatio?: number;
+}
+
 const sanitizeWeights = (count: number, weights?: number[]) => {
   if (!weights || weights.length !== count) {
     return null;
@@ -52,7 +57,12 @@ const pickWeightedIndex = (weights: number[], total: number) => {
   return weights.length - 1;
 };
 
-export const pickSpinWithWeights = (count: number, currentRotation: number, weights?: number[]) => {
+export const pickSpinWithWeights = (
+  count: number,
+  currentRotation: number,
+  weights?: number[],
+  motion?: SpinMotionOptions,
+) => {
   if (count <= 0) {
     return {
       nextRotation: currentRotation,
@@ -65,9 +75,17 @@ export const pickSpinWithWeights = (count: number, currentRotation: number, weig
     ? pickWeightedIndex(weighted.sanitized, weighted.total)
     : Math.floor(Math.random() * count);
   const segment = 360 / count;
+  const revolutions =
+    typeof motion?.revolutions === "number" && Number.isFinite(motion.revolutions)
+      ? Math.max(0.5, Math.min(16, motion.revolutions))
+      : 8;
+  const jitterRatio =
+    typeof motion?.jitterRatio === "number" && Number.isFinite(motion.jitterRatio)
+      ? Math.max(0, Math.min(0.49, motion.jitterRatio))
+      : 0.3;
   const winnerCenter = winnerIndex * segment + segment / 2;
-  const jitter = Math.random() * (segment * 0.6) - segment * 0.3;
-  const nextRotation = currentRotation + 360 * 8 + (360 - winnerCenter) + jitter;
+  const jitter = Math.random() * (segment * jitterRatio * 2) - segment * jitterRatio;
+  const nextRotation = currentRotation + 360 * revolutions + (360 - winnerCenter) + jitter;
 
   return {
     nextRotation,

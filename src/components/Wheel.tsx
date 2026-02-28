@@ -5,10 +5,11 @@ interface WheelProps {
   games: string[];
   rotation: number;
   spinning: boolean;
+  spinDurationMs?: number;
   onSpinEnd: () => void;
 }
 
-export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
+export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpinEnd }: WheelProps) {
   const count = Math.max(games.length, 1);
   const segment = 360 / count;
   const background =
@@ -40,7 +41,9 @@ export function Wheel({ games, rotation, spinning, onSpinEnd }: WheelProps) {
             "--segment-count": `${count}`,
             "--rotation": `${rotation}deg`,
             "--wheel-bg": background,
-            "--transition": spinning ? "transform 4.8s cubic-bezier(.17,.67,.11,.99)" : "none",
+            "--transition": spinning
+              ? `transform ${Math.max(120, spinDurationMs)}ms cubic-bezier(.17,.67,.11,.99)`
+              : "none",
           } as CSSProperties
         }
         onTransitionEnd={onSpinEnd}

@@ -475,6 +475,14 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.spin-motion-grid {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: center;
+}
+
 .inline-check {
   display: flex;
   align-items: center;

@@ -144,6 +144,8 @@ const cloudSyncSnapshotSchema = z.object({
       sourceWeights: z.record(z.string(), z.number()).optional(),
       weightedMode: z.boolean().optional(),
       cooldownSpins: z.number().optional(),
+      spinSpeedProfile: z.enum(["cinematic", "balanced", "rapid"]).optional(),
+      reducedSpinAnimation: z.boolean().optional(),
       activePreset: z.string().optional(),
       filters: z
         .object({
@@ -182,6 +184,7 @@ type EnabledSources = Record<SourceToggleKey, boolean>;
 type SourceWeights = Record<SourceToggleKey, number>;
 type ThemeMode = "system" | "light" | "dark" | "high-contrast";
 type WorkspaceTab = "play" | "library" | "history" | "settings";
+type SpinSpeedProfile = "cinematic" | "balanced" | "rapid";
 
 interface PoolGame {
   name: string;
@@ -224,6 +227,8 @@ interface StoredSettings {
   sourceWeights: SourceWeights;
   weightedMode: boolean;
   cooldownSpins: number;
+  spinSpeedProfile: SpinSpeedProfile;
+  reducedSpinAnimation: boolean;
   activePreset: string;
   filters: AdvancedFilters;
 }
@@ -377,11 +382,37 @@ const defaultFilters: AdvancedFilters = {
   maxPriceUsd: 70,
 };
 
+const spinSpeedProfiles: Record<
+  SpinSpeedProfile,
+  { label: string; durationMs: number; revolutions: number; jitterRatio: number }
+> = {
+  cinematic: {
+    label: "Cinematic",
+    durationMs: 6200,
+    revolutions: 10.5,
+    jitterRatio: 0.28,
+  },
+  balanced: {
+    label: "Balanced",
+    durationMs: 4800,
+    revolutions: 8,
+    jitterRatio: 0.24,
+  },
+  rapid: {
+    label: "Rapid",
+    durationMs: 3200,
+    revolutions: 6.4,
+    jitterRatio: 0.2,
+  },
+};
+
 const fallbackSettings: StoredSettings = {
   enabledSources: defaultEnabledSources,
   sourceWeights: defaultSourceWeights,
   weightedMode: true,
   cooldownSpins: 2,
+  spinSpeedProfile: "balanced",
+  reducedSpinAnimation: false,
   activePreset: "balanced",
   filters: defaultFilters,
 };
@@ -486,6 +517,13 @@ const sanitizeFilters = (input: AdvancedFilters | null | undefined): AdvancedFil
   };
 };
 
+const sanitizeSpinSpeedProfile = (input: unknown): SpinSpeedProfile => {
+  if (input === "cinematic" || input === "balanced" || input === "rapid") {
+    return input;
+  }
+  return fallbackSettings.spinSpeedProfile;
+};
+
 const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
   if (!input) return fallbackSettings;
   const activePreset = input.activePreset || fallbackSettings.activePreset;
@@ -494,6 +532,12 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
     typeof input.cooldownSpins === "number" && Number.isFinite(input.cooldownSpins)
       ? Math.max(0, Math.min(20, Math.round(input.cooldownSpins)))
       : fallbackSettings.cooldownSpins;
+  const partialSettings = input as Partial<StoredSettings>;
+  const spinSpeedProfile = sanitizeSpinSpeedProfile(partialSettings.spinSpeedProfile);
+  const reducedSpinAnimation =
+    typeof partialSettings.reducedSpinAnimation === "boolean"
+      ? partialSettings.reducedSpinAnimation
+      : fallbackSettings.reducedSpinAnimation;
 
   if (matchedPreset) {
     return {
@@ -501,6 +545,8 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
       sourceWeights: { ...matchedPreset.sourceWeights },
       weightedMode: matchedPreset.weightedMode,
       cooldownSpins: matchedPreset.cooldownSpins,
+      spinSpeedProfile,
+      reducedSpinAnimation,
       activePreset,
       filters: sanitizeFilters(input.filters),
     };
@@ -511,6 +557,8 @@ const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
     sourceWeights: { ...defaultSourceWeights, ...(input.sourceWeights ?? {}) },
     weightedMode: typeof input.weightedMode === "boolean" ? input.weightedMode : fallbackSettings.weightedMode,
     cooldownSpins: fallbackCooldown,
+    spinSpeedProfile,
+    reducedSpinAnimation,
     activePreset,
     filters: sanitizeFilters(input.filters),
   };
@@ -627,6 +675,8 @@ export default function App() {
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
   const [weightedMode, setWeightedMode] = useState(initialSettings.weightedMode);
   const [cooldownSpins, setCooldownSpins] = useState(initialSettings.cooldownSpins);
+  const [spinSpeedProfile, setSpinSpeedProfile] = useState<SpinSpeedProfile>(initialSettings.spinSpeedProfile);
+  const [reducedSpinAnimation, setReducedSpinAnimation] = useState(initialSettings.reducedSpinAnimation);
   const [activePreset, setActivePreset] = useState(initialSettings.activePreset);
   const [filters, setFilters] = useState<AdvancedFilters>(sanitizeFilters(initialSettings.filters));
 
@@ -907,11 +957,13 @@ export default function App() {
         sourceWeights,
         weightedMode,
         cooldownSpins,
+        spinSpeedProfile,
+        reducedSpinAnimation,
         activePreset,
         filters,
       } satisfies StoredSettings),
     );
-  }, [activePreset, cooldownSpins, enabledSources, filters, sourceWeights, weightedMode]);
+  }, [activePreset, cooldownSpins, enabledSources, filters, reducedSpinAnimation, sourceWeights, spinSpeedProfile, weightedMode]);
 
   useEffect(() => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(spinHistory.slice(0, 50)));
@@ -1300,7 +1352,7 @@ export default function App() {
     }
 
     const weights = weightedMode ? activePool.map((candidate) => candidate.weight) : undefined;
-    const result = pickSpinWithWeights(activePool.length, rotation, weights);
+    const result = pickSpinWithWeights(activePool.length, rotation, weights, spinMotion);
     const selected = activePool[result.winnerIndex];
     if (!selected) return;
 
@@ -1413,6 +1465,8 @@ export default function App() {
       sourceWeights,
       weightedMode,
       cooldownSpins,
+      spinSpeedProfile,
+      reducedSpinAnimation,
       activePreset,
       filters,
     } satisfies StoredSettings,
@@ -1450,6 +1504,8 @@ export default function App() {
       setSourceWeights(sanitized.sourceWeights);
       setWeightedMode(sanitized.weightedMode);
       setCooldownSpins(sanitized.cooldownSpins);
+      setSpinSpeedProfile(sanitized.spinSpeedProfile);
+      setReducedSpinAnimation(sanitized.reducedSpinAnimation);
       setActivePreset(sanitized.activePreset);
       setFilters(sanitizeFilters(sanitized.filters));
     }
@@ -1646,6 +1702,15 @@ export default function App() {
   const cooldownExcludedSuffix =
     cooldownSpins > 0 ? t("cooldownExcludedSuffix", { count: cooldownExcludedCount }) : "";
   const exclusionSummarySuffix = `${filterExcludedSuffix}${statusExcludedSuffix}`;
+  const spinProfileConfig = spinSpeedProfiles[spinSpeedProfile];
+  const effectiveSpinDurationMs = reducedSpinAnimation ? 760 : spinProfileConfig.durationMs;
+  const spinMotion =
+    reducedSpinAnimation
+      ? { revolutions: 2.2, jitterRatio: 0.1 }
+      : {
+          revolutions: spinProfileConfig.revolutions,
+          jitterRatio: spinProfileConfig.jitterRatio,
+        };
   const showSettingsPane = activeTab === "play" || activeTab === "settings";
   const showPlayPane = activeTab === "play";
   const showLibraryPane = activeTab === "play" || activeTab === "library";
@@ -1893,6 +1958,40 @@ export default function App() {
                   }}
                 />
                 <strong>{cooldownSpins}</strong>
+              </label>
+            </div>
+
+            <div className="spin-motion-grid">
+              <label className="filter-field">
+                <span>Spin Speed Profile</span>
+                <select
+                  value={spinSpeedProfile}
+                  onChange={(event) => {
+                    setSpinSpeedProfile(event.target.value as SpinSpeedProfile);
+                    markCustom();
+                  }}
+                >
+                  {Object.entries(spinSpeedProfiles).map(([profileId, profile]) => (
+                    <option key={profileId} value={profileId}>
+                      {profile.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="filter-help">
+                  Approx spin time: {(effectiveSpinDurationMs / 1000).toFixed(1)}s
+                </small>
+              </label>
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={reducedSpinAnimation}
+                  onChange={(event) => {
+                    setReducedSpinAnimation(event.target.checked);
+                    markCustom();
+                  }}
+                />
+                <span>Reduced spin animation</span>
+                <HelpTip text="Uses a shorter, lower-motion wheel spin while preserving fair random selection." />
               </label>
             </div>
 
@@ -2370,6 +2469,7 @@ export default function App() {
                 games={activePool.map((candidate) => candidate.name)}
                 rotation={rotation}
                 spinning={spinning}
+                spinDurationMs={effectiveSpinDurationMs}
                 onSpinEnd={onSpinEnd}
               />
               <div className="button-row">

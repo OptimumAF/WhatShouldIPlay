@@ -79,6 +79,8 @@ fn App() -> Element {
     let mut steam_import_weight = use_signal(|| 1.35_f64);
     let mut manual_weight = use_signal(|| 0.9_f64);
     let mut scanned_weight = use_signal(|| 1.0_f64);
+    let mut spin_speed_profile = use_signal(|| "balanced".to_string());
+    let mut reduced_spin_animation = use_signal(|| false);
 
     let mut spinning = use_signal(|| false);
     let mut wheel_rotation = use_signal(|| 0.0_f64);
@@ -155,6 +157,21 @@ fn App() -> Element {
     let steam_import_weight_label = format!("{:.1}x", steam_import_weight());
     let manual_weight_label = format!("{:.1}x", manual_weight());
     let scanned_weight_label = format!("{:.1}x", scanned_weight());
+    let (profile_label, profile_duration_ms, profile_revolutions, profile_jitter_ratio) =
+        match spin_speed_profile().as_str() {
+            "cinematic" => ("Cinematic", 6200.0, 10.5, 0.28),
+            "rapid" => ("Rapid", 3200.0, 6.4, 0.20),
+            _ => ("Balanced", 4800.0, 8.0, 0.24),
+        };
+    let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) = if reduced_spin_animation() {
+        (760.0, 2.2, 0.10)
+    } else {
+        (profile_duration_ms, profile_revolutions, profile_jitter_ratio)
+    };
+    let spin_transition = format!(
+        "transform {:.0}ms cubic-bezier(.17,.67,.11,.99)",
+        spin_duration_ms
+    );
 
     rsx! {
         style { "{DESKTOP_CSS}" }
@@ -267,6 +284,26 @@ fn App() -> Element {
                             }
                         }
                         strong { "{cooldown_spins}" }
+                    }
+                    label { class: "control-row",
+                        span { "Spin speed profile" }
+                        select {
+                            value: "{spin_speed_profile}",
+                            oninput: move |evt| spin_speed_profile.set(evt.value()),
+                            option { value: "cinematic", "Cinematic" }
+                            option { value: "balanced", "Balanced" }
+                            option { value: "rapid", "Rapid" }
+                        }
+                        strong { "{profile_label}" }
+                    }
+                    div { class: "control-row",
+                        span { "Reduced spin animation" }
+                        button {
+                            class: "ghost",
+                            onclick: move |_| reduced_spin_animation.set(!reduced_spin_animation()),
+                            {if reduced_spin_animation() { "ON" } else { "OFF" }}
+                        }
+                        strong { "{format!(\"{:.1}s\", spin_duration_ms / 1000.0)}" }
                     }
                     label { class: "control-row",
                         span { "SteamCharts weight" }
@@ -498,7 +535,7 @@ fn App() -> Element {
                         style: format!(
                             "--rotation:{}deg;--transition:{};--wheel-bg:{};",
                             wheel_rotation(),
-                            if spinning() { "transform 4.8s cubic-bezier(.17,.67,.11,.99)" } else { "none" },
+                            if spinning() { &spin_transition } else { "none" },
                             wheel_background
                         ),
                         ontransitionend: move |_| {
@@ -563,8 +600,13 @@ fn App() -> Element {
                                 rng.random_range(0..spin_pool.len())
                             };
                             let winner_center = winner_index as f64 * segment_angle + (segment_angle / 2.0);
-                            let jitter = rng.random_range(-(segment_angle * 0.30)..(segment_angle * 0.30));
-                            let next = wheel_rotation() + 360.0 * 8.0 + (360.0 - winner_center) + jitter;
+                            let jitter = rng.random_range(
+                                -(segment_angle * spin_jitter_ratio)..(segment_angle * spin_jitter_ratio),
+                            );
+                            let next = wheel_rotation()
+                                + 360.0 * spin_revolutions
+                                + (360.0 - winner_center)
+                                + jitter;
                             let selected = &spin_pool[winner_index];
                             let total_weight = if weighted_mode() {
                                 weights.iter().sum::<f64>().max(0.0001)
@@ -1671,6 +1713,15 @@ input {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font: inherit;
+}
+
+select {
+  width: 100%;
+  border: 1px solid rgba(15, 32, 50, 0.2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .input-grid {

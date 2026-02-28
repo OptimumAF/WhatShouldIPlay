@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
@@ -173,6 +173,7 @@ const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
 const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
 const THEME_STORAGE_KEY = "pickagame.theme.v1";
+const ONBOARDING_STORAGE_KEY = "pickagame.onboarding.v1";
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
@@ -264,6 +265,18 @@ interface StoredCloudSync {
   provider: "githubGist";
   gistId: string;
   gistToken: string;
+}
+
+interface ToastMessage {
+  id: string;
+  tone: "info" | "success" | "error";
+  text: string;
+}
+
+interface OnboardingStep {
+  title: string;
+  description: string;
+  focusTab: WorkspaceTab;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -398,6 +411,24 @@ const fallbackCloudSync: StoredCloudSync = {
   gistId: "",
   gistToken: "",
 };
+
+const onboardingSteps: OnboardingStep[] = [
+  {
+    title: "Build your library",
+    description: "Use Library to add manual games and Steam imports before you spin.",
+    focusTab: "library",
+  },
+  {
+    title: "Tune your rules",
+    description: "Use Settings for source toggles, weighted odds, cooldown, filters, and cloud sync.",
+    focusTab: "settings",
+  },
+  {
+    title: "Spin and commit",
+    description: "Go to Play and spin. Winner details include odds and source attribution.",
+    focusTab: "play",
+  },
+];
 
 async function fetchTopGames(): Promise<TopGamesPayload> {
   const url = `${import.meta.env.BASE_URL}data/top-games.json`;
@@ -590,6 +621,7 @@ export default function App() {
   );
   const initialCloudSync = sanitizeCloudSync(readStorage<StoredCloudSync | null>(CLOUD_SYNC_STORAGE_KEY, null));
   const initialThemeMode = sanitizeThemeMode(readStorage<ThemeMode | null>(THEME_STORAGE_KEY, null));
+  const initialOnboardingDone = readStorage<boolean | null>(ONBOARDING_STORAGE_KEY, null) === true;
 
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
@@ -639,7 +671,12 @@ export default function App() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(initialThemeMode);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("play");
+  const [showOnboarding, setShowOnboarding] = useState(!initialOnboardingDone);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
+  const toastTimeoutsRef = useRef<number[]>([]);
+  const lastTopGamesErrorRef = useRef("");
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -648,6 +685,40 @@ export default function App() {
   });
 
   const topGames = topGamesQuery.data;
+  const onboardingLastStep = onboardingSteps.length - 1;
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
+
+  const pushToast = useCallback(
+    (tone: ToastMessage["tone"], text: string) => {
+      const id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setToasts((current) => [...current, { id, tone, text }]);
+      const timeoutId = window.setTimeout(() => {
+        dismissToast(id);
+      }, 5200);
+      toastTimeoutsRef.current.push(timeoutId);
+    },
+    [dismissToast],
+  );
+
+  const completeOnboarding = useCallback(
+    (nextTab: WorkspaceTab = "play") => {
+      setShowOnboarding(false);
+      setOnboardingStep(0);
+      setActiveTab(nextTab);
+      if (nextTab === "settings") {
+        setSidebarOpen(true);
+      }
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(true));
+      pushToast("success", "Quick start complete. You can reopen it anytime from Quick Tour.");
+    },
+    [pushToast],
+  );
 
   const manualEntries = useMemo<GameEntry[]>(
     () =>
@@ -929,6 +1000,34 @@ export default function App() {
   }, [activeTab]);
 
   useEffect(() => {
+    return () => {
+      toastTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      toastTimeoutsRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showOnboarding) return;
+    const step = onboardingSteps[onboardingStep];
+    if (!step) return;
+    setActiveTab(step.focusTab);
+    if (step.focusTab === "settings") {
+      setSidebarOpen(true);
+    }
+  }, [onboardingStep, showOnboarding]);
+
+  useEffect(() => {
+    if (!topGamesQuery.isError) {
+      lastTopGamesErrorRef.current = "";
+      return;
+    }
+    const errorText = (topGamesQuery.error as Error)?.message ?? "Unable to load top game data.";
+    if (lastTopGamesErrorRef.current === errorText) return;
+    lastTopGamesErrorRef.current = errorText;
+    pushToast("error", `${errorText} Retry in a minute or check your network connection.`);
+  }, [pushToast, topGamesQuery.error, topGamesQuery.isError]);
+
+  useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const postPrefs = async () => {
@@ -1133,6 +1232,7 @@ export default function App() {
     const id = steamId.trim();
     if (!key || !id) {
       setSteamImportStatus("Enter Steam Web API key and SteamID64.");
+      pushToast("error", "Steam import needs both Steam Web API key and SteamID64.");
       return;
     }
 
@@ -1176,14 +1276,18 @@ export default function App() {
       setSteamImportGames(imported);
       setEnabledSources((current) => ({ ...current, steamImport: true }));
       setSteamImportStatus(`Imported ${imported.length} Steam games.`);
+      pushToast("success", `Imported ${imported.length} games from Steam.`);
       markCustom();
     } catch (error) {
       if (error instanceof TypeError) {
-        setSteamImportStatus(
-          "Steam import blocked in browser (likely CORS/network). Use the desktop app import for reliable account pulls.",
-        );
+        const message =
+          "Steam import blocked in browser (likely CORS/network). Use the desktop app import for reliable account pulls.";
+        setSteamImportStatus(message);
+        pushToast("error", `${message} If needed, verify your API key and Steam privacy settings.`);
       } else {
-        setSteamImportStatus((error as Error).message);
+        const message = (error as Error).message;
+        setSteamImportStatus(message);
+        pushToast("error", `${message} Double-check your key, SteamID64, and profile visibility.`);
       }
     } finally {
       setSteamImportLoading(false);
@@ -1390,10 +1494,12 @@ export default function App() {
     const token = gistToken.trim();
     if (!token) {
       setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      pushToast("error", "Cloud sync needs a GitHub token with gist scope.");
       return;
     }
     if (!gistId.trim()) {
       setCloudSyncStatus("Enter a Gist ID or create one first.");
+      pushToast("error", "Provide a Gist ID before pushing sync.");
       return;
     }
 
@@ -1419,8 +1525,11 @@ export default function App() {
         throw new Error(`Cloud sync upload failed (${response.status}).`);
       }
       setCloudSyncStatus("Cloud sync uploaded.");
+      pushToast("success", "Cloud sync uploaded.");
     } catch (error) {
-      setCloudSyncStatus((error as Error).message);
+      const message = (error as Error).message;
+      setCloudSyncStatus(message);
+      pushToast("error", `${message} Check token permissions and gist access, then retry.`);
     } finally {
       setCloudSyncLoading(false);
     }
@@ -1430,6 +1539,7 @@ export default function App() {
     const token = gistToken.trim();
     if (!token) {
       setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      pushToast("error", "Enter a GitHub token with gist scope to create sync gist.");
       return;
     }
 
@@ -1462,8 +1572,11 @@ export default function App() {
       }
       setGistId(json.id);
       setCloudSyncStatus(`Created sync gist ${json.id}.`);
+      pushToast("success", `Created sync gist ${json.id}.`);
     } catch (error) {
-      setCloudSyncStatus((error as Error).message);
+      const message = (error as Error).message;
+      setCloudSyncStatus(message);
+      pushToast("error", `${message} Verify token scope and GitHub API availability.`);
     } finally {
       setCloudSyncLoading(false);
     }
@@ -1473,10 +1586,12 @@ export default function App() {
     const token = gistToken.trim();
     if (!token) {
       setCloudSyncStatus("Enter a GitHub token with gist scope.");
+      pushToast("error", "Cloud sync pull needs a GitHub token with gist scope.");
       return;
     }
     if (!gistId.trim()) {
       setCloudSyncStatus("Enter a Gist ID to pull from cloud.");
+      pushToast("error", "Provide a Gist ID before pulling sync.");
       return;
     }
 
@@ -1515,8 +1630,11 @@ export default function App() {
       const parsed = JSON.parse(content) as unknown;
       applyCloudSnapshot(parsed);
       setCloudSyncStatus("Cloud sync downloaded and applied.");
+      pushToast("success", "Cloud sync downloaded and applied.");
     } catch (error) {
-      setCloudSyncStatus((error as Error).message);
+      const message = (error as Error).message;
+      setCloudSyncStatus(message);
+      pushToast("error", `${message} Confirm gist ID/token and retry.`);
     } finally {
       setCloudSyncLoading(false);
     }
@@ -1560,6 +1678,16 @@ export default function App() {
             }
           >
             {sidebarOpen ? t("hideSettings") : t("showSettings")}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              setOnboardingStep(0);
+              setShowOnboarding(true);
+            }}
+          >
+            Quick Tour
           </button>
           {installPrompt ? (
             <button type="button" className="ghost" onClick={handleInstall}>
@@ -2304,6 +2432,67 @@ export default function App() {
           ) : null}
         </div>
       </div>
+
+      {showOnboarding ? (
+        <div className="onboarding-overlay">
+          <div
+            className="onboarding-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onboarding-title"
+            aria-describedby="onboarding-description"
+          >
+            <p className="winner-tag">Quick Start</p>
+            <h3 id="onboarding-title">{onboardingSteps[onboardingStep]?.title}</h3>
+            <p id="onboarding-description">{onboardingSteps[onboardingStep]?.description}</p>
+            <div className="onboarding-dots" aria-label="Onboarding progress">
+              {onboardingSteps.map((step, index) => (
+                <button
+                  key={step.title}
+                  type="button"
+                  className={clsx("ghost compact", onboardingStep === index && "is-active")}
+                  onClick={() => setOnboardingStep(index)}
+                  aria-pressed={onboardingStep === index}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+            <div className="button-row">
+              <button type="button" className="ghost" onClick={() => completeOnboarding("play")}>
+                Skip
+              </button>
+              {onboardingStep > 0 ? (
+                <button type="button" className="ghost" onClick={() => setOnboardingStep((current) => current - 1)}>
+                  Back
+                </button>
+              ) : null}
+              {onboardingStep < onboardingLastStep ? (
+                <button type="button" onClick={() => setOnboardingStep((current) => current + 1)}>
+                  Next
+                </button>
+              ) : (
+                <button type="button" onClick={() => completeOnboarding("play")}>
+                  Start Spinning
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {toasts.length > 0 ? (
+        <div className="toast-stack" role="status" aria-live="polite" aria-label="Notifications">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={clsx("toast", toast.tone)}>
+              <p>{toast.text}</p>
+              <button type="button" className="ghost compact" onClick={() => dismissToast(toast.id)}>
+                Dismiss
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {showWinnerPopup && winner && winnerMeta ? (
         <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>

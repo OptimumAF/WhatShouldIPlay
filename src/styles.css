@@ -806,6 +806,91 @@ button:active:not(:disabled),
   padding: 1rem;
 }
 
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(3px);
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.onboarding-card {
+  width: min(92vw, 560px);
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  background: var(--winner-popup-bg);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-pop);
+  animation: winner-pop 260ms ease-out;
+}
+
+.onboarding-card h3 {
+  margin: 0.2rem 0 0.4rem;
+  font-family: "Bebas Neue", sans-serif;
+  letter-spacing: 0.03em;
+  font-size: clamp(1.8rem, 7vw, 2.8rem);
+}
+
+.onboarding-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.onboarding-dots {
+  margin-top: 0.9rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.onboarding-dots .ghost.is-active {
+  background: var(--ink-strong);
+  color: var(--surface);
+}
+
+.toast-stack {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  display: grid;
+  gap: 0.6rem;
+  width: min(92vw, 380px);
+}
+
+.toast {
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 0.62rem 0.7rem;
+  box-shadow: var(--shadow-pop);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  animation: toast-in 220ms ease-out;
+}
+
+.toast p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.toast.info {
+  border-left: 4px solid var(--accent-2);
+}
+
+.toast.success {
+  border-left: 4px solid #1f9d73;
+}
+
+.toast.error {
+  border-left: 4px solid var(--status-error);
+}
+
 .advanced-settings-stack {
   display: grid;
   gap: 1rem;
@@ -982,6 +1067,17 @@ textarea:focus-visible,
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes toast-in {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 

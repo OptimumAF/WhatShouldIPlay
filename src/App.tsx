@@ -172,12 +172,14 @@ const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
 const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
+const THEME_STORAGE_KEY = "pickagame.theme.v1";
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
 
 type EnabledSources = Record<SourceToggleKey, boolean>;
 type SourceWeights = Record<SourceToggleKey, number>;
+type ThemeMode = "system" | "light" | "dark" | "high-contrast";
 
 interface PoolGame {
   name: string;
@@ -556,6 +558,13 @@ const sanitizeCloudSync = (input: StoredCloudSync | null): StoredCloudSync => {
   };
 };
 
+const sanitizeThemeMode = (input: ThemeMode | null): ThemeMode => {
+  if (input === "light" || input === "dark" || input === "high-contrast" || input === "system") {
+    return input;
+  }
+  return "system";
+};
+
 export default function App() {
   const { t, i18n } = useTranslation();
 
@@ -568,6 +577,7 @@ export default function App() {
     readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
   );
   const initialCloudSync = sanitizeCloudSync(readStorage<StoredCloudSync | null>(CLOUD_SYNC_STORAGE_KEY, null));
+  const initialThemeMode = sanitizeThemeMode(readStorage<ThemeMode | null>(THEME_STORAGE_KEY, null));
 
   const [enabledSources, setEnabledSources] = useState<EnabledSources>(initialSettings.enabledSources);
   const [sourceWeights, setSourceWeights] = useState<SourceWeights>(initialSettings.sourceWeights);
@@ -614,6 +624,8 @@ export default function App() {
   const [updateInProgress, setUpdateInProgress] = useState(false);
   const [dismissedUpdate, setDismissedUpdate] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(initialThemeMode);
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const topGamesQuery = useQuery({
@@ -870,6 +882,32 @@ export default function App() {
       } satisfies StoredCloudSync),
     );
   }, [cloudProvider, gistId, gistToken]);
+
+  useEffect(() => {
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeMode));
+  }, [themeMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = () => {
+      const resolvedTheme =
+        themeMode === "system" ? (mediaQuery.matches ? "dark" : "light") : themeMode;
+      root.dataset.theme = resolvedTheme;
+    };
+
+    applyTheme();
+    if (themeMode !== "system") {
+      return;
+    }
+
+    const onThemeChange = () => applyTheme();
+    mediaQuery.addEventListener("change", onThemeChange);
+    return () => {
+      mediaQuery.removeEventListener("change", onThemeChange);
+    };
+  }, [themeMode]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -1508,6 +1546,20 @@ export default function App() {
               <option value="es">{t("language.spanish")}</option>
             </select>
           </label>
+          <label className="theme-picker">
+            <span className="sr-only">Theme</span>
+            <select
+              value={themeMode}
+              onChange={(event) => {
+                setThemeMode(event.target.value as ThemeMode);
+              }}
+            >
+              <option value="system">System Theme</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="high-contrast">High Contrast</option>
+            </select>
+          </label>
         </div>
       </header>
 
@@ -1673,7 +1725,73 @@ export default function App() {
           </section>
 
           <section className="panel" aria-labelledby="advanced-filters-heading">
-            <h2 id="advanced-filters-heading">Advanced Filters</h2>
+            <h2 id="advanced-filters-heading">Advanced Options</h2>
+            <p className="muted">Filters, exclusions, notifications, and cloud sync are hidden by default.</p>
+            <div className="button-row">
+              <button
+                type="button"
+                className="ghost"
+                aria-expanded={showAdvancedSettings}
+                aria-controls="advanced-settings-stack"
+                onClick={() => setShowAdvancedSettings((current) => !current)}
+              >
+                {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
+              </button>
+            </div>
+          </section>
+
+          <section className="panel" aria-labelledby="steam-import-heading">
+            <h2 id="steam-import-heading">{t("steamImportTitle")}</h2>
+            <p className="muted">
+              {t("steamImportDescription")}
+            </p>
+            <div className="steam-grid">
+              <label htmlFor="steam-api-key" className="sr-only">
+                {t("steamApiKey")}
+              </label>
+              <input
+                id="steam-api-key"
+                type="password"
+                placeholder={t("steamApiKey")}
+                value={steamApiKey}
+                onChange={(event) => setSteamApiKey(event.target.value)}
+                autoComplete="off"
+              />
+              <label htmlFor="steam-id64" className="sr-only">
+                {t("steamId64")}
+              </label>
+              <input
+                id="steam-id64"
+                type="text"
+                placeholder={t("steamId64")}
+                value={steamId}
+                onChange={(event) => setSteamId(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="button-row">
+              <button
+                type="button"
+                onClick={importSteamLibrary}
+                disabled={steamImportLoading}
+                aria-describedby="steam-import-status"
+              >
+                {steamImportLoading ? t("importing") : t("importSteamLibrary")}
+              </button>
+              <button type="button" className="ghost" onClick={clearSteamImport}>
+                {t("clearImport")}
+              </button>
+            </div>
+            {steamImportStatus ? (
+              <p id="steam-import-status" className="status" role="status" aria-live="polite">
+                {steamImportStatus}
+              </p>
+            ) : null}
+          </section>
+
+          <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
+          <section className="panel" aria-labelledby="filters-heading">
+            <h2 id="filters-heading">Advanced Filters</h2>
             <p className="muted">Filter by platform, tags, length, release window, and price.</p>
             <div className="filters-grid">
               <label className="filter-field">
@@ -1790,55 +1908,6 @@ export default function App() {
                 Reset Filters
               </button>
             </div>
-          </section>
-
-          <section className="panel" aria-labelledby="steam-import-heading">
-            <h2 id="steam-import-heading">{t("steamImportTitle")}</h2>
-            <p className="muted">
-              {t("steamImportDescription")}
-            </p>
-            <div className="steam-grid">
-              <label htmlFor="steam-api-key" className="sr-only">
-                {t("steamApiKey")}
-              </label>
-              <input
-                id="steam-api-key"
-                type="password"
-                placeholder={t("steamApiKey")}
-                value={steamApiKey}
-                onChange={(event) => setSteamApiKey(event.target.value)}
-                autoComplete="off"
-              />
-              <label htmlFor="steam-id64" className="sr-only">
-                {t("steamId64")}
-              </label>
-              <input
-                id="steam-id64"
-                type="text"
-                placeholder={t("steamId64")}
-                value={steamId}
-                onChange={(event) => setSteamId(event.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="button-row">
-              <button
-                type="button"
-                onClick={importSteamLibrary}
-                disabled={steamImportLoading}
-                aria-describedby="steam-import-status"
-              >
-                {steamImportLoading ? t("importing") : t("importSteamLibrary")}
-              </button>
-              <button type="button" className="ghost" onClick={clearSteamImport}>
-                {t("clearImport")}
-              </button>
-            </div>
-            {steamImportStatus ? (
-              <p id="steam-import-status" className="status" role="status" aria-live="polite">
-                {steamImportStatus}
-              </p>
-            ) : null}
           </section>
 
           <section className="panel" aria-labelledby="exclusion-heading">
@@ -2024,6 +2093,7 @@ export default function App() {
               </p>
             ) : null}
           </section>
+          </div>
         </aside>
 
         <div className="content-stack">

@@ -97,7 +97,7 @@ jobs:
             apps/desktop/target/release/SHA256SUMS.txt
 
       - name: Upload executable + checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pick-a-game-desktop-${{ matrix.platform }}-${{ github.run_number }}
           path: |

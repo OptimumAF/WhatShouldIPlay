@@ -19,8 +19,8 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            bundle_format: msi
-            artifact_glob: "apps/desktop/target/release/bundle/msi/*.msi"
+            bundle_format: portable
+            artifact_glob: "apps/desktop/target/release/*.exe"
           - os: ubuntu-latest
             platform: linux
             bundle_format: deb
@@ -43,11 +43,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
 
-      - name: Install WiX Toolset
-        if: ${{ matrix.platform == 'windows' }}
-        shell: pwsh
-        run: choco install wixtoolset --yes --no-progress
-
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -56,8 +51,14 @@ jobs:
       - name: Install cargo-bundle
         run: cargo install cargo-bundle --locked
 
-      - name: Build installer package
+      - name: Build installer package (Linux/macOS)
+        if: ${{ matrix.platform != 'windows' }}
         run: cargo bundle --release --format ${{ matrix.bundle_format }}
+        working-directory: apps/desktop
+
+      - name: Build Windows package (portable exe)
+        if: ${{ matrix.platform == 'windows' }}
+        run: cargo build --release
         working-directory: apps/desktop
 
       - name: Zip macOS app bundle

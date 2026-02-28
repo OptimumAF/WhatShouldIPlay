@@ -29,6 +29,7 @@ jobs:
 
       - name: Create data refresh pull request
         uses: peter-evans/create-pull-request@v7
+        continue-on-error: true
         with:
           branch: chore/refresh-top-games
           delete-branch: true
@@ -39,3 +40,8 @@ jobs:
           labels: |
             automated
             data
+
+      - name: Refresh result
+        if: always()
+        run: |
+          echo "Data refresh completed. If PR creation is blocked by repository policy, use branch chore/refresh-top-games to open a PR manually."

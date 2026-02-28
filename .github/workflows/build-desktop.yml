@@ -90,7 +90,7 @@ jobs:
 
       - name: Attest build provenance
         if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             apps/desktop/target/release/${{ matrix.binary_glob }}

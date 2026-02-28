@@ -95,7 +95,7 @@ jobs:
 
       - name: Attest packaged artifacts (Windows/Linux)
         if: ${{ matrix.platform != 'macos' }}
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             ${{ matrix.artifact_glob }}
@@ -103,7 +103,7 @@ jobs:
 
       - name: Attest packaged artifacts (macOS)
         if: ${{ matrix.platform == 'macos' }}
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             apps/desktop/target/release/bundle/osx/*.app.zip

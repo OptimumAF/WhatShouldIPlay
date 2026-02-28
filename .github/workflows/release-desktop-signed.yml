@@ -93,7 +93,7 @@ jobs:
           $lines | Set-Content -Path $out -Encoding ascii
 
       - name: Attest signed release artifacts
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             apps/desktop/target/release/*.exe

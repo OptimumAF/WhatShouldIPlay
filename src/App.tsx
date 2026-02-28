@@ -206,6 +206,8 @@ const ONBOARDING_STORAGE_KEY = "pickagame.onboarding.v1";
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type EnabledSources = Record<SourceToggleKey, boolean>;
 type SourceWeights = Record<SourceToggleKey, number>;
@@ -677,6 +679,30 @@ const sanitizeThemeMode = (input: ThemeMode | null): ThemeMode => {
   return "system";
 };
 
+const getFocusableElements = (root: HTMLElement) =>
+  [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
+    (element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true",
+  );
+
+const keepFocusInContainer = (event: KeyboardEvent, root: HTMLElement) => {
+  if (event.key !== "Tab") return;
+  const focusable = getFocusableElements(root);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const activeElement = document.activeElement as HTMLElement | null;
+  if (!event.shiftKey && activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  }
+};
+
 function HelpTip({ text }: { text: string }) {
   return (
     <span className="help-tip" tabIndex={0} aria-label={text}>
@@ -759,6 +785,8 @@ export default function App() {
   const [screenReaderPolite, setScreenReaderPolite] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
   const [screenReaderAssertive, setScreenReaderAssertive] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
+  const winnerPopupRef = useRef<HTMLDivElement | null>(null);
+  const onboardingCardRef = useRef<HTMLDivElement | null>(null);
   const toastTimeoutsRef = useRef<number[]>([]);
   const lastTopGamesErrorRef = useRef("");
   const announcementCounterRef = useRef(0);
@@ -1163,19 +1191,50 @@ export default function App() {
 
   useEffect(() => {
     if (!showWinnerPopup) return;
-    winnerPopupCloseRef.current?.focus();
+    const container = winnerPopupRef.current;
+    if (!container) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusable = getFocusableElements(container);
+    const initialFocus = winnerPopupCloseRef.current ?? focusable[0] ?? container;
+    initialFocus.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setShowWinnerPopup(false);
+        return;
       }
+      keepFocusInContainer(event, container);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      previousFocus?.focus();
     };
   }, [showWinnerPopup]);
+
+  useEffect(() => {
+    if (!showOnboarding) return;
+    const container = onboardingCardRef.current;
+    if (!container) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusable = getFocusableElements(container);
+    (focusable[0] ?? container).focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowOnboarding(false);
+        return;
+      }
+      keepFocusInContainer(event, container);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocus?.focus();
+    };
+  }, [showOnboarding]);
 
   useEffect(() => {
     if (!notificationsEnabled || !reminderNotifications) return;
@@ -2684,11 +2743,13 @@ export default function App() {
       {showOnboarding ? (
         <div className="onboarding-overlay">
           <div
+            ref={onboardingCardRef}
             className="onboarding-card"
             role="dialog"
             aria-modal="true"
             aria-labelledby="onboarding-title"
             aria-describedby="onboarding-description"
+            tabIndex={-1}
           >
             <p className="winner-tag">Quick Start</p>
             <h3 id="onboarding-title">{onboardingSteps[onboardingStep]?.title}</h3>
@@ -2745,6 +2806,7 @@ export default function App() {
       {showWinnerPopup && winner && winnerMeta ? (
         <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>
           <div
+            ref={winnerPopupRef}
             className="winner-popup"
             key={winnerPulse}
             role="dialog"
@@ -2752,6 +2814,7 @@ export default function App() {
             aria-labelledby="winner-title"
             aria-describedby="winner-description"
             onClick={(event) => event.stopPropagation()}
+            tabIndex={-1}
           >
             <div className="winner-glow" />
             <p className="winner-tag">{t("winner")}</p>

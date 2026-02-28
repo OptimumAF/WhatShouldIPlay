@@ -112,7 +112,7 @@ cargo build --release
 
 - `refresh-data.yml`: Scheduled source data refresh every 6 hours
 - `deploy-pages.yml`: Web build and Pages deploy on `master`
-- `build-desktop.yml`: Windows desktop `.exe` build on push/PR to `master`
+- `build-desktop.yml`: Windows/macOS/Linux desktop artifact builds on push/PR to `master`
 - `web-ci.yml`: Web quality checks on push/PR
 
 ## Data Source Caveats
@@ -139,3 +139,4 @@ See:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 - [docs/RELEASING.md](docs/RELEASING.md)
+- [docs/feedback-loop.md](docs/feedback-loop.md)

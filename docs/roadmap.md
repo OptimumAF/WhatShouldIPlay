@@ -41,3 +41,5 @@ Owner: `@OptimumAF`
 - Use GitHub issues for roadmap work and link each issue to its milestone.
 - Tag enhancement items with `enhancement` and `needs-design` until implementation starts.
 - Keep PRs scoped to one roadmap item when possible.
+- Use `Roadmap Feedback` issues and Discussions to feed prioritization updates.
+- See `docs/feedback-loop.md` for feedback intake and triage cadence.

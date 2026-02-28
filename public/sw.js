@@ -1,9 +1,10 @@
 const CACHE_VERSION = "pickagame-runtime-v1";
 const NAVIGATION_CACHE = "pickagame-navigation-v1";
 const DATA_CACHE = "pickagame-data-v1";
+const SKIP_WAITING_MESSAGE = "SKIP_WAITING";
 
 self.addEventListener("install", () => {
-  self.skipWaiting();
+  // Wait for explicit user confirmation before activating a new service worker.
 });
 
 self.addEventListener("activate", (event) => {
@@ -67,5 +68,11 @@ self.addEventListener("fetch", (event) => {
 
   if (["script", "style", "image", "font", "manifest"].includes(request.destination)) {
     event.respondWith(cacheFirst(request, CACHE_VERSION));
+  }
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === SKIP_WAITING_MESSAGE) {
+    self.skipWaiting();
   }
 });

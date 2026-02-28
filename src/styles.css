@@ -129,6 +129,34 @@ body {
   gap: 0.55rem;
 }
 
+.update-banner {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 38, 58, 0.24);
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255, 224, 102, 0.55) 0%, transparent 44%),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.86) 0%, rgba(220, 234, 247, 0.94) 100%);
+  padding: 0.85rem 1rem;
+}
+
+.update-banner strong {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  color: #10314c;
+}
+
+.update-banner p {
+  margin: 0.2rem 0 0;
+  color: #2d4d69;
+}
+
+.update-banner .button-row {
+  margin-top: 0.1rem;
+}
+
 .kicker {
   text-transform: uppercase;
   font-size: 0.86rem;

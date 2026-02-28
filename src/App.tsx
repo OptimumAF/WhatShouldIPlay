@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
+import { SW_SKIP_WAITING_MESSAGE, SW_UPDATE_READY_EVENT } from "./lib/pwa";
 import { Wheel } from "./components/Wheel";
 import type { GameEntry, SourceId, TopGamesPayload } from "./types";
 
@@ -354,6 +355,9 @@ export default function App() {
   const [winnerPulse, setWinnerPulse] = useState(0);
   const [spinHistory, setSpinHistory] = useState<SpinHistoryItem[]>(initialHistory);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [swUpdateReady, setSwUpdateReady] = useState(false);
+  const [updateInProgress, setUpdateInProgress] = useState(false);
+  const [dismissedUpdate, setDismissedUpdate] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const topGamesQuery = useQuery({
@@ -479,6 +483,43 @@ export default function App() {
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt as EventListener);
       window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    let cancelled = false;
+
+    const refreshUpdateState = async () => {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (cancelled) return;
+        setSwUpdateReady(Boolean(registration?.waiting));
+      } catch {
+        if (cancelled) return;
+        setSwUpdateReady(false);
+      }
+    };
+
+    const onUpdateReady = () => {
+      setDismissedUpdate(false);
+      setUpdateInProgress(false);
+      void refreshUpdateState();
+    };
+
+    const onControllerChange = () => {
+      window.location.reload();
+    };
+
+    window.addEventListener(SW_UPDATE_READY_EVENT, onUpdateReady);
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    void refreshUpdateState();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(SW_UPDATE_READY_EVENT, onUpdateReady);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);
 
@@ -637,6 +678,27 @@ export default function App() {
     setInstallPrompt(null);
   };
 
+  const applyServiceWorkerUpdate = async () => {
+    if (!("serviceWorker" in navigator)) return;
+
+    setUpdateInProgress(true);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration?.waiting) {
+        setSwUpdateReady(false);
+        setUpdateInProgress(false);
+        return;
+      }
+
+      registration.waiting.postMessage({ type: SW_SKIP_WAITING_MESSAGE });
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1800);
+    } catch {
+      setUpdateInProgress(false);
+    }
+  };
+
   return (
     <main className="layout">
       <a className="skip-link" href="#main-content">
@@ -666,6 +728,23 @@ export default function App() {
           ) : null}
         </div>
       </header>
+
+      {swUpdateReady && !dismissedUpdate ? (
+        <section className="update-banner" aria-live="polite">
+          <div>
+            <strong>Update ready</strong>
+            <p>A newer version is available. Apply it now to load the latest fixes and features.</p>
+          </div>
+          <div className="button-row">
+            <button type="button" onClick={applyServiceWorkerUpdate} disabled={updateInProgress}>
+              {updateInProgress ? "Updating..." : "Update Now"}
+            </button>
+            <button type="button" className="ghost" onClick={() => setDismissedUpdate(true)} disabled={updateInProgress}>
+              Later
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className={clsx("workspace", !sidebarOpen && "sidebar-collapsed")} id="main-content">
         <aside

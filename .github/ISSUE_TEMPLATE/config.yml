@@ -1,6 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Product discussions and voting
+    url: https://github.com/OptimumAF/WhatShouldIPlay/discussions
+    about: Share roadmap feedback and vote on priorities in Discussions.
   - name: Security report
     url: https://github.com/OptimumAF/WhatShouldIPlay/security/advisories/new
     about: Please report vulnerabilities privately.
-

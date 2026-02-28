@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-02-27T23:51:41.764Z",
+  "generatedAt": "2026-02-28T00:45:13.150Z",
   "sources": {
     "steamcharts": {
       "id": "steamcharts",
       "label": "SteamCharts",
-      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "fetchedAt": "2026-02-28T00:45:13.150Z",
       "games": [
         {
           "name": "Counter-Strike 2",
           "source": "steamcharts",
           "rank": 1,
-          "score": 1278386,
+          "score": 1094040,
           "appId": 730,
           "url": "https://steamcharts.com/app/730"
         },
@@ -18,7 +18,7 @@
           "name": "Dota 2",
           "source": "steamcharts",
           "rank": 2,
-          "score": 617662,
+          "score": 555372,
           "appId": 570,
           "url": "https://steamcharts.com/app/570"
         },
@@ -26,7 +26,7 @@
           "name": "ARC Raiders",
           "source": "steamcharts",
           "rank": 3,
-          "score": 192358,
+          "score": 180723,
           "appId": 1808500,
           "url": "https://steamcharts.com/app/1808500"
         },
@@ -34,31 +34,31 @@
           "name": "FiveM",
           "source": "steamcharts",
           "rank": 4,
-          "score": 171959,
+          "score": 166659,
           "appId": 2676230,
           "url": "https://steamcharts.com/app/2676230"
         },
         {
-          "name": "PUBG: BATTLEGROUNDS",
-          "source": "steamcharts",
-          "rank": 5,
-          "score": 155128,
-          "appId": 578080,
-          "url": "https://steamcharts.com/app/578080"
-        },
-        {
           "name": "Rust",
           "source": "steamcharts",
-          "rank": 6,
-          "score": 139354,
+          "rank": 5,
+          "score": 123893,
           "appId": 252490,
           "url": "https://steamcharts.com/app/252490"
+        },
+        {
+          "name": "PUBG: BATTLEGROUNDS",
+          "source": "steamcharts",
+          "rank": 6,
+          "score": 121555,
+          "appId": 578080,
+          "url": "https://steamcharts.com/app/578080"
         },
         {
           "name": "Bongo Cat",
           "source": "steamcharts",
           "rank": 7,
-          "score": 106729,
+          "score": 104872,
           "appId": 3419430,
           "url": "https://steamcharts.com/app/3419430"
         },
@@ -66,55 +66,55 @@
           "name": "Overwatch®",
           "source": "steamcharts",
           "rank": 8,
-          "score": 96313,
+          "score": 93056,
           "appId": 2357570,
           "url": "https://steamcharts.com/app/2357570"
         },
         {
-          "name": "Geometry Dash",
-          "source": "steamcharts",
-          "rank": 9,
-          "score": 86661,
-          "appId": 322170,
-          "url": "https://steamcharts.com/app/322170"
-        },
-        {
           "name": "Tom Clancy's Rainbow Six® Siege X",
           "source": "steamcharts",
-          "rank": 10,
-          "score": 85857,
+          "rank": 9,
+          "score": 81954,
           "appId": 359550,
           "url": "https://steamcharts.com/app/359550"
         },
         {
           "name": "Marvel Rivals",
           "source": "steamcharts",
-          "rank": 11,
-          "score": 80500,
+          "rank": 10,
+          "score": 81639,
           "appId": 2767030,
           "url": "https://steamcharts.com/app/2767030"
         },
         {
-          "name": "Grand Theft Auto V Legacy",
+          "name": "Geometry Dash",
           "source": "steamcharts",
-          "rank": 12,
-          "score": 77506,
-          "appId": 271590,
-          "url": "https://steamcharts.com/app/271590"
+          "rank": 11,
+          "score": 80595,
+          "appId": 322170,
+          "url": "https://steamcharts.com/app/322170"
         },
         {
           "name": "Mewgenics",
           "source": "steamcharts",
-          "rank": 13,
-          "score": 70595,
+          "rank": 12,
+          "score": 67435,
           "appId": 686060,
           "url": "https://steamcharts.com/app/686060"
+        },
+        {
+          "name": "Grand Theft Auto V Legacy",
+          "source": "steamcharts",
+          "rank": 13,
+          "score": 66363,
+          "appId": 271590,
+          "url": "https://steamcharts.com/app/271590"
         },
         {
           "name": "HELLDIVERS™ 2",
           "source": "steamcharts",
           "rank": 14,
-          "score": 67537,
+          "score": 61902,
           "appId": 553850,
           "url": "https://steamcharts.com/app/553850"
         },
@@ -122,7 +122,7 @@
           "name": "Terraria",
           "source": "steamcharts",
           "rank": 15,
-          "score": 61771,
+          "score": 58010,
           "appId": 105600,
           "url": "https://steamcharts.com/app/105600"
         },
@@ -130,88 +130,88 @@
           "name": "Apex Legends™",
           "source": "steamcharts",
           "rank": 16,
-          "score": 60114,
+          "score": 54949,
           "appId": 1172470,
           "url": "https://steamcharts.com/app/1172470"
         },
         {
-          "name": "War Thunder",
-          "source": "steamcharts",
-          "rank": 17,
-          "score": 59271,
-          "appId": 236390,
-          "url": "https://steamcharts.com/app/236390"
-        },
-        {
-          "name": "Battlefield™ 6",
-          "source": "steamcharts",
-          "rank": 18,
-          "score": 58698,
-          "appId": 2807960,
-          "url": "https://steamcharts.com/app/2807960"
-        },
-        {
-          "name": "Baldur's Gate 3",
-          "source": "steamcharts",
-          "rank": 19,
-          "score": 56458,
-          "appId": 1086940,
-          "url": "https://steamcharts.com/app/1086940"
-        },
-        {
           "name": "Stardew Valley",
           "source": "steamcharts",
-          "rank": 20,
-          "score": 55571,
+          "rank": 17,
+          "score": 52461,
           "appId": 413150,
           "url": "https://steamcharts.com/app/413150"
         },
         {
+          "name": "Baldur's Gate 3",
+          "source": "steamcharts",
+          "rank": 18,
+          "score": 51219,
+          "appId": 1086940,
+          "url": "https://steamcharts.com/app/1086940"
+        },
+        {
+          "name": "Battlefield™ 6",
+          "source": "steamcharts",
+          "rank": 19,
+          "score": 50937,
+          "appId": 2807960,
+          "url": "https://steamcharts.com/app/2807960"
+        },
+        {
           "name": "EA SPORTS FC™ 26",
           "source": "steamcharts",
-          "rank": 21,
-          "score": 55264,
+          "rank": 20,
+          "score": 50702,
           "appId": 3405690,
           "url": "https://steamcharts.com/app/3405690"
         },
         {
-          "name": "Dead by Daylight",
+          "name": "War Thunder",
           "source": "steamcharts",
-          "rank": 22,
-          "score": 54692,
-          "appId": 381210,
-          "url": "https://steamcharts.com/app/381210"
+          "rank": 21,
+          "score": 50340,
+          "appId": 236390,
+          "url": "https://steamcharts.com/app/236390"
         },
         {
-          "name": "Warframe",
+          "name": "VRChat",
+          "source": "steamcharts",
+          "rank": 22,
+          "score": 50237,
+          "appId": 438100,
+          "url": "https://steamcharts.com/app/438100"
+        },
+        {
+          "name": "Dead by Daylight",
           "source": "steamcharts",
           "rank": 23,
-          "score": 52501,
-          "appId": 230410,
-          "url": "https://steamcharts.com/app/230410"
+          "score": 49837,
+          "appId": 381210,
+          "url": "https://steamcharts.com/app/381210"
         },
         {
           "name": "Wallpaper Engine",
           "source": "steamcharts",
           "rank": 24,
-          "score": 52375,
+          "score": 49770,
           "appId": 431960,
           "url": "https://steamcharts.com/app/431960"
         },
         {
-          "name": "VRChat",
+          "name": "Warframe",
           "source": "steamcharts",
           "rank": 25,
-          "score": 50015,
-          "appId": 438100,
-          "url": "https://steamcharts.com/app/438100"
+          "score": 49524,
+          "appId": 230410,
+          "url": "https://steamcharts.com/app/230410"
         }
       ]
     },
     "steamdb": {
       "id": "steamdb",
       "label": "SteamDB",
-      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "fetchedAt": "2026-02-28T00:45:13.150Z",
       "note": "SteamDB blocked scraping; used Steam charts API fallback. (Request failed (403) for https://steamdb.info/charts/)",
       "games": [
         {
@@ -459,7 +459,7 @@
     "twitchmetrics": {
       "id": "twitchmetrics",
       "label": "TwitchMetrics",
-      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "fetchedAt": "2026-02-28T00:45:13.150Z",
       "games": [
         {
           "name": "League of Legends",

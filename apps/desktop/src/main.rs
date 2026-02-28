@@ -8,7 +8,7 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
@@ -32,6 +32,20 @@ struct GameItem {
     score: Option<u64>,
 }
 
+#[derive(Clone, Debug, Default)]
+struct WeightedPoolGame {
+    name: String,
+    sources: Vec<String>,
+    weight: f64,
+}
+
+#[derive(Clone, Debug, Default)]
+struct SpinHistoryItem {
+    name: String,
+    sources: String,
+    odds: f64,
+}
+
 fn main() {
     dioxus::launch(App);
 }
@@ -41,55 +55,97 @@ fn App() -> Element {
     let mut steamcharts_games = use_signal(Vec::<GameItem>::new);
     let mut steamdb_games = use_signal(Vec::<GameItem>::new);
     let mut twitch_games = use_signal(Vec::<GameItem>::new);
+    let mut steam_import_games = use_signal(Vec::<GameItem>::new);
     let mut scanned_games = use_signal(Vec::<String>::new);
     let mut manual_games = use_signal(Vec::<String>::new);
     let mut manual_text = use_signal(String::new);
+    let mut steam_api_key = use_signal(String::new);
+    let mut steam_id = use_signal(String::new);
+    let mut steam_import_status = use_signal(String::new);
     let mut status = use_signal(|| "Idle".to_string());
     let mut steamdb_note = use_signal(String::new);
 
     let mut include_steamcharts = use_signal(|| true);
     let mut include_steamdb = use_signal(|| true);
     let mut include_twitch = use_signal(|| true);
+    let mut include_steam_import = use_signal(|| true);
     let mut include_manual = use_signal(|| true);
     let mut include_scanned = use_signal(|| true);
+    let mut weighted_mode = use_signal(|| true);
+    let mut cooldown_spins = use_signal(|| 2_usize);
+    let mut steamcharts_weight = use_signal(|| 1.2_f64);
+    let mut steamdb_weight = use_signal(|| 1.15_f64);
+    let mut twitch_weight = use_signal(|| 1.0_f64);
+    let mut steam_import_weight = use_signal(|| 1.35_f64);
+    let mut manual_weight = use_signal(|| 0.9_f64);
+    let mut scanned_weight = use_signal(|| 1.0_f64);
 
     let mut spinning = use_signal(|| false);
     let mut wheel_rotation = use_signal(|| 0.0_f64);
     let mut winner = use_signal(String::new);
+    let mut winner_sources = use_signal(String::new);
+    let mut winner_odds = use_signal(|| 0.0_f64);
     let mut pending_winner = use_signal(String::new);
+    let mut pending_winner_sources = use_signal(String::new);
+    let mut pending_winner_odds = use_signal(|| 0.0_f64);
+    let mut spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let mut show_winner_popup = use_signal(|| false);
 
-    let pool = build_pool(
+    let full_pool = build_weighted_pool(
         include_steamcharts(),
         include_steamdb(),
         include_twitch(),
+        include_steam_import(),
         include_manual(),
         include_scanned(),
+        weighted_mode(),
+        steamcharts_weight(),
+        steamdb_weight(),
+        twitch_weight(),
+        steam_import_weight(),
+        manual_weight(),
+        scanned_weight(),
         &steamcharts_games(),
         &steamdb_games(),
         &twitch_games(),
+        &steam_import_games(),
         &manual_games(),
         &scanned_games(),
     );
 
-    let segment_count = pool.len().max(1);
+    let blocked = spin_history()
+        .iter()
+        .take(cooldown_spins())
+        .map(|entry| entry.name.to_lowercase())
+        .collect::<HashSet<_>>();
+    let mut spin_pool = full_pool
+        .iter()
+        .filter(|entry| !blocked.contains(&entry.name.to_lowercase()))
+        .cloned()
+        .collect::<Vec<_>>();
+    let cooldown_exhausted = cooldown_spins() > 0 && !full_pool.is_empty() && spin_pool.is_empty();
+    if cooldown_exhausted {
+        spin_pool = full_pool.clone();
+    }
+
+    let segment_count = spin_pool.len().max(1);
     let segment_angle = 360.0 / segment_count as f64;
-    let wheel_background = if pool.is_empty() {
+    let wheel_background = if spin_pool.is_empty() {
         "#f4f0e6".to_string()
     } else {
-        wheel_gradient(pool.len())
+        wheel_gradient(spin_pool.len())
     };
-    let wheel_labels = pool
+    let wheel_labels = spin_pool
         .iter()
         .enumerate()
-        .map(|(index, game)| {
+        .map(|(index, pool_game)| {
             let angle = index as f64 * segment_angle + (segment_angle / 2.0);
             let flip = if angle > 90.0 && angle < 270.0 {
                 180.0
             } else {
                 0.0
             };
-            (angle, flip, game.clone())
+            (angle, flip, pool_game.name.clone())
         })
         .collect::<Vec<_>>();
 
@@ -99,8 +155,199 @@ fn App() -> Element {
             section { class: "hero",
                 p { class: "kicker", "PickAGame Desktop" }
                 h1 { "Spin For Your Next Game" }
-                p { "Load top games from SteamCharts, SteamDB/Steam API, TwitchMetrics, add manual entries, or scan known game library folders on your PC." }
+                p { "Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner." }
                 p { class: "status", "Status: {status}" }
+            }
+
+            section { class: "panel",
+                h2 { "Mode Presets + Odds" }
+                div { class: "button-row",
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            include_steamcharts.set(true);
+                            include_steamdb.set(true);
+                            include_twitch.set(true);
+                            include_steam_import.set(true);
+                            include_manual.set(true);
+                            include_scanned.set(true);
+                            weighted_mode.set(true);
+                            cooldown_spins.set(2);
+                            steamcharts_weight.set(1.2);
+                            steamdb_weight.set(1.15);
+                            twitch_weight.set(1.0);
+                            steam_import_weight.set(1.35);
+                            manual_weight.set(0.9);
+                            scanned_weight.set(1.0);
+                        },
+                        "Balanced Mix"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            include_steamcharts.set(true);
+                            include_steamdb.set(true);
+                            include_twitch.set(true);
+                            include_steam_import.set(true);
+                            include_manual.set(true);
+                            include_scanned.set(true);
+                            weighted_mode.set(false);
+                            cooldown_spins.set(0);
+                        },
+                        "Quick Pick"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            include_steamcharts.set(true);
+                            include_steamdb.set(true);
+                            include_twitch.set(true);
+                            include_steam_import.set(true);
+                            include_manual.set(true);
+                            include_scanned.set(true);
+                            weighted_mode.set(true);
+                            cooldown_spins.set(8);
+                        },
+                        "No Repeats"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            include_steamcharts.set(false);
+                            include_steamdb.set(false);
+                            include_twitch.set(false);
+                            include_steam_import.set(true);
+                            include_manual.set(true);
+                            include_scanned.set(true);
+                            weighted_mode.set(true);
+                            cooldown_spins.set(5);
+                            steam_import_weight.set(1.8);
+                            manual_weight.set(1.1);
+                        },
+                        "Owned Focus"
+                    }
+                }
+                div { class: "control-grid",
+                    div { class: "control-row",
+                        span { "Weighted wheel" }
+                        button {
+                            class: "ghost",
+                            onclick: move |_| weighted_mode.set(!weighted_mode()),
+                            {if weighted_mode() { "ON" } else { "OFF" }}
+                        }
+                    }
+                    label { class: "control-row",
+                        span { "Cooldown spins" }
+                        input {
+                            r#type: "range",
+                            min: "0",
+                            max: "20",
+                            value: format!("{}", cooldown_spins()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<usize>() {
+                                    cooldown_spins.set(value);
+                                }
+                            }
+                        }
+                        strong { "{cooldown_spins}" }
+                    }
+                    label { class: "control-row",
+                        span { "SteamCharts weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", steamcharts_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    steamcharts_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", steamcharts_weight())}" }
+                    }
+                    label { class: "control-row",
+                        span { "SteamDB weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", steamdb_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    steamdb_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", steamdb_weight())}" }
+                    }
+                    label { class: "control-row",
+                        span { "Twitch weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", twitch_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    twitch_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", twitch_weight())}" }
+                    }
+                    label { class: "control-row",
+                        span { "Steam import weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", steam_import_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    steam_import_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", steam_import_weight())}" }
+                    }
+                    label { class: "control-row",
+                        span { "Manual weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", manual_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    manual_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", manual_weight())}" }
+                    }
+                    label { class: "control-row",
+                        span { "Scanned weight" }
+                        input {
+                            r#type: "range",
+                            min: "0.1",
+                            max: "3",
+                            step: "0.1",
+                            value: format!("{:.1}", scanned_weight()),
+                            oninput: move |evt| {
+                                if let Ok(value) = evt.value().parse::<f64>() {
+                                    scanned_weight.set(value);
+                                }
+                            }
+                        }
+                        strong { "{format!("{:.1}x", scanned_weight())}" }
+                    }
+                }
             }
 
             section { class: "panel",
@@ -146,10 +393,75 @@ fn App() -> Element {
                         onclick: move |_| include_twitch.set(!include_twitch()),
                         {format!("TwitchMetrics: {}", if include_twitch() { "ON" } else { "OFF" })}
                     }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| include_steam_import.set(!include_steam_import()),
+                        {format!("Steam Import: {}", if include_steam_import() { "ON" } else { "OFF" })}
+                    }
                 }
-                p { class: "muted", "SteamCharts: {steamcharts_games().len()} | SteamDB: {steamdb_games().len()} | TwitchMetrics: {twitch_games().len()}" }
+                p { class: "muted", "SteamCharts: {steamcharts_games().len()} | SteamDB: {steamdb_games().len()} | TwitchMetrics: {twitch_games().len()} | Steam Import: {steam_import_games().len()}" }
                 if !steamdb_note().is_empty() {
                     p { class: "muted", "{steamdb_note}" }
+                }
+            }
+
+            section { class: "panel",
+                h2 { "Steam Account Import" }
+                p { class: "muted", "Import your owned games with Steam Web API key + SteamID64 (public profile/library required)." }
+                div { class: "input-grid",
+                    input {
+                        r#type: "password",
+                        value: "{steam_api_key}",
+                        placeholder: "Steam Web API Key",
+                        oninput: move |evt| steam_api_key.set(evt.value())
+                    }
+                    input {
+                        value: "{steam_id}",
+                        placeholder: "SteamID64",
+                        oninput: move |evt| steam_id.set(evt.value())
+                    }
+                }
+                div { class: "button-row",
+                    button {
+                        onclick: move |_| {
+                            let api_key = steam_api_key().trim().to_string();
+                            let steam_id = steam_id().trim().to_string();
+                            if api_key.is_empty() || steam_id.is_empty() {
+                                steam_import_status.set("Enter API key + SteamID64.".to_string());
+                                return;
+                            }
+                            let mut steam_import_games = steam_import_games;
+                            let mut steam_import_status = steam_import_status;
+                            let mut status = status;
+                            spawn(async move {
+                                status.set("Importing Steam library...".to_string());
+                                match fetch_steam_owned_games(&api_key, &steam_id).await {
+                                    Ok(games) => {
+                                        let total = games.len();
+                                        steam_import_games.set(games);
+                                        steam_import_status.set(format!("Imported {total} Steam games."));
+                                        status.set("Steam import complete.".to_string());
+                                    }
+                                    Err(err) => {
+                                        steam_import_status.set(format!("Steam import failed: {err}"));
+                                        status.set("Steam import failed.".to_string());
+                                    }
+                                }
+                            });
+                        },
+                        "Import Steam Library"
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            steam_import_games.set(Vec::new());
+                            steam_import_status.set(String::new());
+                        },
+                        "Clear Import"
+                    }
+                }
+                if !steam_import_status().is_empty() {
+                    p { class: "muted", "{steam_import_status}" }
                 }
             }
 
@@ -195,7 +507,10 @@ fn App() -> Element {
 
             section { class: "panel",
                 h2 { "Wheel" }
-                p { class: "muted", "Current pool: {pool.len()} unique games" }
+                p { class: "muted", "Current pool: {spin_pool.len()} unique games" }
+                if cooldown_exhausted {
+                    p { class: "muted", "Cooldown saturated the pool, so all entries were temporarily re-enabled." }
+                }
                 div { class: "wheel-shell",
                     div { class: "wheel-pointer" }
                     div {
@@ -208,8 +523,25 @@ fn App() -> Element {
                         ),
                         ontransitionend: move |_| {
                             if spinning() {
+                                let selected_name = pending_winner();
+                                let selected_sources = pending_winner_sources();
+                                let selected_odds = pending_winner_odds();
                                 spinning.set(false);
-                                winner.set(pending_winner());
+                                winner.set(selected_name.clone());
+                                winner_sources.set(selected_sources.clone());
+                                winner_odds.set(selected_odds);
+                                if !selected_name.is_empty() {
+                                    let mut history = spin_history();
+                                    history.insert(0, SpinHistoryItem {
+                                        name: selected_name,
+                                        sources: selected_sources,
+                                        odds: selected_odds,
+                                    });
+                                    if history.len() > 30 {
+                                        history.truncate(30);
+                                    }
+                                    spin_history.set(history);
+                                }
                                 show_winner_popup.set(true);
                                 let mut show_winner_popup = show_winner_popup;
                                 spawn(async move {
@@ -219,10 +551,10 @@ fn App() -> Element {
                             }
                         },
                         div { class: "wheel-hub" }
-                        if pool.is_empty() {
+                        if spin_pool.is_empty() {
                             div { class: "wheel-empty", "Add or load games first" }
                         } else {
-                            for (label_angle, label_flip, game) in wheel_labels.iter() {
+                            for (label_angle, label_flip, game_name) in wheel_labels.iter() {
                                 div {
                                     class: "wheel-label",
                                     style: format!(
@@ -230,7 +562,7 @@ fn App() -> Element {
                                         label_angle,
                                         label_flip
                                     ),
-                                    span { "{game}" }
+                                    span { "{game_name}" }
                                 }
                             }
                         }
@@ -238,28 +570,74 @@ fn App() -> Element {
                 }
                 div { class: "button-row",
                     button {
-                        disabled: spinning() || pool.is_empty(),
+                        disabled: spinning() || spin_pool.is_empty(),
                         onclick: move |_| {
-                            if spinning() || pool.is_empty() {
+                            if spinning() || spin_pool.is_empty() {
                                 return;
                             }
                             let mut rng = rand::rng();
-                            let winner_index = rng.random_range(0..pool.len());
+                            let weights = spin_pool.iter().map(|entry| entry.weight).collect::<Vec<_>>();
+                            let winner_index = if weighted_mode() {
+                                pick_weighted_index(&weights, &mut rng)
+                            } else {
+                                rng.random_range(0..spin_pool.len())
+                            };
                             let winner_center = winner_index as f64 * segment_angle + (segment_angle / 2.0);
                             let jitter = rng.random_range(-(segment_angle * 0.30)..(segment_angle * 0.30));
                             let next = wheel_rotation() + 360.0 * 8.0 + (360.0 - winner_center) + jitter;
-                            pending_winner.set(pool[winner_index].clone());
+                            let selected = &spin_pool[winner_index];
+                            let total_weight = if weighted_mode() {
+                                weights.iter().sum::<f64>().max(0.0001)
+                            } else {
+                                spin_pool.len() as f64
+                            };
+                            let odds = if weighted_mode() {
+                                selected.weight / total_weight
+                            } else {
+                                1.0 / spin_pool.len() as f64
+                            };
+                            pending_winner.set(selected.name.clone());
+                            pending_winner_sources.set(selected.sources.join(" + "));
+                            pending_winner_odds.set(odds);
                             winner.set(String::new());
+                            winner_sources.set(String::new());
+                            winner_odds.set(0.0);
                             spinning.set(true);
                             wheel_rotation.set(next);
                         },
                         if spinning() { "Spinning..." } else { "Spin Wheel" }
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| spin_history.set(Vec::new()),
+                        "Clear History"
                     }
                 }
                 if !winner().is_empty() {
                     div { class: "winner",
                         p { "You should play:" }
                         strong { "{winner}" }
+                        p { "Sources: {winner_sources}" }
+                        p { "Odds this spin: {format_odds(winner_odds())}" }
+                    }
+                }
+            }
+
+            section { class: "panel",
+                h2 { "Spin History" }
+                if spin_history().is_empty() {
+                    p { class: "muted", "No spins yet." }
+                } else {
+                    ul { class: "history-list",
+                        for entry in spin_history().iter().take(10) {
+                            li {
+                                div {
+                                    strong { "{entry.name}" }
+                                    small { "{entry.sources}" }
+                                }
+                                span { "{format_odds(entry.odds)}" }
+                            }
+                        }
                     }
                 }
             }
@@ -274,6 +652,8 @@ fn App() -> Element {
                     div { class: "winner-glow" }
                     p { class: "winner-tag", "Winner" }
                     h3 { "{winner}" }
+                    p { "Sources: {winner_sources}" }
+                    p { "Odds this spin: {format_odds(winner_odds())}" }
                     p { "Launch it. No second guessing." }
                     button {
                         onclick: move |_| show_winner_popup.set(false),
@@ -285,59 +665,146 @@ fn App() -> Element {
     }
 }
 
-fn build_pool(
+fn build_weighted_pool(
     include_steamcharts: bool,
     include_steamdb: bool,
     include_twitch: bool,
+    include_steam_import: bool,
     include_manual: bool,
     include_scanned: bool,
+    weighted_mode: bool,
+    steamcharts_weight: f64,
+    steamdb_weight: f64,
+    twitch_weight: f64,
+    steam_import_weight: f64,
+    manual_weight: f64,
+    scanned_weight: f64,
     steamcharts: &[GameItem],
     steamdb: &[GameItem],
     twitch: &[GameItem],
+    steam_import: &[GameItem],
     manual: &[String],
     scanned: &[String],
-) -> Vec<String> {
-    let mut seen = HashSet::<String>::new();
-    let mut pool = Vec::new();
+) -> Vec<WeightedPoolGame> {
+    let mut pool = HashMap::<String, WeightedPoolGame>::new();
 
-    let mut insert = |name: &str| {
+    let mut insert = |name: &str, source: &str, base_weight: f64, rank: Option<usize>, score: Option<u64>| {
         let trimmed = normalize_name(name);
         if trimmed.is_empty() {
             return;
         }
         let key = trimmed.to_lowercase();
-        if seen.insert(key) {
-            pool.push(trimmed);
+        let score_weight = if weighted_mode {
+            compute_weight(base_weight, rank, score)
+        } else {
+            1.0
+        };
+        if let Some(existing) = pool.get_mut(&key) {
+            existing.weight += score_weight;
+            if !existing.sources.iter().any(|entry| entry == source) {
+                existing.sources.push(source.to_string());
+            }
+        } else {
+            pool.insert(
+                key,
+                WeightedPoolGame {
+                    name: trimmed,
+                    sources: vec![source.to_string()],
+                    weight: score_weight,
+                },
+            );
         }
     };
 
     if include_steamcharts {
         for game in steamcharts {
-            insert(&game.name);
+            insert(
+                &game.name,
+                "SteamCharts",
+                steamcharts_weight,
+                game.rank,
+                game.score,
+            );
         }
     }
     if include_steamdb {
         for game in steamdb {
-            insert(&game.name);
+            insert(&game.name, "SteamDB", steamdb_weight, game.rank, game.score);
         }
     }
     if include_twitch {
         for game in twitch {
-            insert(&game.name);
+            insert(
+                &game.name,
+                "TwitchMetrics",
+                twitch_weight,
+                game.rank,
+                game.score,
+            );
+        }
+    }
+    if include_steam_import {
+        for game in steam_import {
+            insert(
+                &game.name,
+                "Steam Import",
+                steam_import_weight,
+                game.rank,
+                game.score,
+            );
         }
     }
     if include_manual {
         for game in manual {
-            insert(game);
+            insert(game, "Manual", manual_weight, None, None);
         }
     }
     if include_scanned {
         for game in scanned {
-            insert(game);
+            insert(game, "Scanned", scanned_weight, None, None);
         }
     }
 
-    pool
+    let mut output = pool.into_values().collect::<Vec<_>>();
+    output.sort_by(|left, right| left.name.cmp(&right.name));
+    output
+}
+
+fn compute_weight(base_weight: f64, rank: Option<usize>, score: Option<u64>) -> f64 {
+    let base = base_weight.clamp(0.1, 3.0);
+    let rank_boost = rank
+        .map(|value| (1.45 - ((value.saturating_sub(1)) as f64 / 40.0)).max(0.7))
+        .unwrap_or(1.0);
+    let score_boost = score
+        .map(|value| (1.0 + ((value as f64 + 10.0).log10() / 4.0)).min(1.9))
+        .unwrap_or(1.0);
+    (base * rank_boost * score_boost).max(0.1)
+}
+
+fn pick_weighted_index(weights: &[f64], rng: &mut impl Rng) -> usize {
+    if weights.is_empty() {
+        return 0;
+    }
+    let total = weights.iter().map(|value| value.max(0.0)).sum::<f64>();
+    if total <= 0.0 {
+        return rng.random_range(0..weights.len());
+    }
+    let mut cursor = rng.random_range(0.0..total);
+    for (index, weight) in weights.iter().enumerate() {
+        cursor -= weight.max(0.0);
+        if cursor <= 0.0 {
+            return index;
+        }
+    }
+    weights.len() - 1
+}
+
+fn format_odds(odds: f64) -> String {
+    if odds < 0.01 {
+        format!("{:.2}%", odds * 100.0)
+    } else {
+        format!("{:.1}%", odds * 100.0)
+    }
 }
 
 fn merge_lines(existing: &[String], input: &str) -> Vec<String> {
@@ -648,6 +1115,61 @@ async fn fetch_steam_app_name(client: &Client, app_id: u32) -> Result<String> {
     Ok(name)
 }
 
+#[derive(Debug, Deserialize)]
+struct SteamOwnedGamesResponse {
+    response: SteamOwnedGamesInner,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct SteamOwnedGamesInner {
+    games: Option<Vec<SteamOwnedGame>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SteamOwnedGame {
+    appid: u32,
+    name: String,
+    playtime_forever: Option<u64>,
+}
+
+async fn fetch_steam_owned_games(api_key: &str, steam_id: &str) -> Result<Vec<GameItem>> {
+    let client = Client::builder()
+        .user_agent(USER_AGENT)
+        .build()
+        .context("failed to build steam import client")?;
+
+    let url = format!(
+        "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key={api_key}&steamid={steam_id}&include_appinfo=1&include_played_free_games=1&format=json"
+    );
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .context("steam owned-games request failed")?
+        .error_for_status()
+        .context("steam owned-games status was not successful")?
+        .json::<SteamOwnedGamesResponse>()
+        .await
+        .context("steam owned-games parse failed")?;
+
+    let mut items = Vec::new();
+    for (index, game) in response.response.games.unwrap_or_default().into_iter().enumerate() {
+        let name = normalize_name(&game.name);
+        if name.is_empty() {
+            continue;
+        }
+        items.push(GameItem {
+            name,
+            rank: Some(index + 1),
+            score: game.playtime_forever,
+        });
+        let _ = game.appid;
+    }
+
+    Ok(dedupe_game_items(items))
+}
+
 fn normalize_name(input: &str) -> String {
     input
         .split_whitespace()
@@ -937,6 +1459,42 @@ textarea {
   resize: vertical;
 }
 
+input {
+  width: 100%;
+  border: 1px solid rgba(15, 32, 50, 0.2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.input-grid {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.control-grid {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.control-row {
+  border: 1px solid rgba(15, 32, 50, 0.18);
+  border-radius: 12px;
+  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-row span {
+  color: #2f4f6b;
+  font-size: 0.9rem;
+}
+
 .button-row {
   display: flex;
   gap: 8px;
@@ -1060,6 +1618,34 @@ button:disabled {
   margin-top: 4px;
   display: inline-block;
   font-size: 1.35rem;
+}
+
+.history-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.history-list li {
+  border: 1px solid rgba(15, 32, 50, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-list small {
+  color: #3f5b76;
+}
+
+.history-list span {
+  font-weight: 700;
+  color: #102d47;
 }
 
 .winner-overlay {

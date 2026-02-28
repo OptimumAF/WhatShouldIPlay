@@ -1,4 +1,4 @@
-export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "manual" | "scan";
+export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "manual" | "scan" | "steamImport";
 
 export interface GameEntry {
   name: string;
@@ -21,4 +21,3 @@ export interface TopGamesPayload {
   generatedAt: string;
   sources: Record<"steamcharts" | "steamdb" | "twitchmetrics", SourcePayload>;
 }
-

@@ -1,0 +1,18 @@
+{
+  "name": "WhatShouldIPlay",
+  "short_name": "PickAGame",
+  "description": "Spin a weighted game wheel using SteamCharts, SteamDB, TwitchMetrics, and your own library.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f3e8",
+  "theme_color": "#10263a",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

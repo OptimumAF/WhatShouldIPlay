@@ -82,6 +82,41 @@ body {
   font-size: 1.9rem;
 }
 
+.preset-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.preset-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: #f8fbfe;
+  color: #143149;
+  padding: 0.72rem;
+  text-align: left;
+  display: grid;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.preset-card strong {
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.preset-card span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #31506a;
+}
+
+.preset-card.is-active {
+  border-color: #0f394f;
+  box-shadow: 0 0 0 2px rgba(36, 123, 160, 0.15);
+}
+
 .muted {
   margin: 0;
   color: var(--muted);
@@ -137,6 +172,79 @@ textarea {
   font: inherit;
 }
 
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.62rem 0.7rem;
+  font: inherit;
+}
+
+.steam-grid {
+  margin-top: 0.72rem;
+  display: grid;
+  gap: 0.58rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.odds-controls {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.inline-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.68rem;
+  width: fit-content;
+}
+
+.cooldown-control {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+}
+
+.cooldown-control input {
+  width: 100%;
+}
+
+.weights-grid {
+  margin-top: 0.72rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.weight-row {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.5rem 0.62rem;
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 0.52rem;
+}
+
+.weight-row span {
+  font-size: 0.88rem;
+  color: #2e4d69;
+}
+
+.weight-row strong {
+  font-size: 0.9rem;
+  color: #0f2e48;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -161,6 +269,23 @@ button:disabled {
 }
 
 button.ghost {
+  background: #dae7f0;
+  color: #15304c;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 0.62rem 1.05rem;
+  background: var(--accent);
+  color: white;
+}
+
+.button-link.ghost-link {
   background: #dae7f0;
   color: #15304c;
 }
@@ -272,6 +397,50 @@ button.ghost {
   display: inline-block;
 }
 
+.winner-rich {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.winner-stats {
+  display: grid;
+  gap: 0.2rem;
+  color: #2c4a64;
+  font-size: 0.9rem;
+}
+
+.history-list {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.history-list li {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.58rem 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f8fbfe;
+}
+
+.history-list li strong {
+  display: block;
+}
+
+.history-list li small {
+  color: #3b556f;
+}
+
+.history-list li span {
+  font-weight: 700;
+  color: #10314c;
+}
+
 .winner-overlay {
   position: fixed;
   inset: 0;
@@ -323,6 +492,33 @@ button.ghost {
 .winner-popup p {
   margin: 0;
   color: #2d4d69;
+}
+
+.winner-moment-grid {
+  margin: 0.5rem 0 0.7rem;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.winner-moment-grid div {
+  border: 1px solid rgba(16, 38, 58, 0.18);
+  border-radius: 12px;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.58);
+  display: grid;
+}
+
+.winner-moment-grid span {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #375674;
+}
+
+.winner-moment-grid strong {
+  font-size: 0.95rem;
+  color: #143149;
 }
 
 .winner-popup button {

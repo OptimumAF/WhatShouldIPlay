@@ -22,8 +22,13 @@ Live site:
   - TwitchMetrics
   - Manual game entry
   - Desktop-only local scan (Steam manifests + common install folders)
+- Mode presets (`Balanced Mix`, `Quick Pick`, `No Repeats`, `Owned Focus`)
+- Weighted wheel odds with per-source weighting controls
+- Spin history + configurable cooldown to reduce immediate repeats
+- Steam account import using Steam Web API key + SteamID64
 - Source-mix random wheel spin with animated result
-- Winner popup celebration overlay in both web and desktop apps
+- Winner popup celebration overlay with odds + source details in both web and desktop apps
+- Progressive Web App support (installable web app + offline shell cache)
 - Scheduled data refresh and deterministic static hosting
 
 ## Technology

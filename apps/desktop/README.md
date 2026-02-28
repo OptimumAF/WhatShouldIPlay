@@ -3,10 +3,13 @@
 This app can:
 
 - Load online top games from SteamCharts, SteamDB/Steam API fallback, and TwitchMetrics.
+- Import owned games from Steam account (Steam Web API key + SteamID64).
 - Add manual game lists.
 - Scan local machine game hints from:
   - Steam manifests
   - Common install folders (Epic/GOG/XboxGames/Games)
+- Apply mode presets, weighted odds, and cooldown anti-repeat behavior.
+- Track spin history and show richer winner details.
 - Spin a wheel and pick what game to play.
 
 By default, shortcut crawling is disabled to reduce antivirus false-positive risk.

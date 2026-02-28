@@ -239,12 +239,12 @@ button.ghost {
 .wheel-label span {
   position: absolute;
   left: 50%;
-  top: 13%;
+  top: 6%;
   transform: translateX(-50%) rotate(90deg);
   transform-origin: top center;
   font-size: clamp(0.56rem, 1.15vw, 0.82rem);
   font-weight: 700;
-  max-width: 34%;
+  max-width: 38%;
   line-height: 1.05;
   text-align: center;
   text-wrap: balance;

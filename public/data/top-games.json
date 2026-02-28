@@ -1,0 +1,677 @@
+{
+  "generatedAt": "2026-02-27T23:51:41.764Z",
+  "sources": {
+    "steamcharts": {
+      "id": "steamcharts",
+      "label": "SteamCharts",
+      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "games": [
+        {
+          "name": "Counter-Strike 2",
+          "source": "steamcharts",
+          "rank": 1,
+          "score": 1278386,
+          "appId": 730,
+          "url": "https://steamcharts.com/app/730"
+        },
+        {
+          "name": "Dota 2",
+          "source": "steamcharts",
+          "rank": 2,
+          "score": 617662,
+          "appId": 570,
+          "url": "https://steamcharts.com/app/570"
+        },
+        {
+          "name": "ARC Raiders",
+          "source": "steamcharts",
+          "rank": 3,
+          "score": 192358,
+          "appId": 1808500,
+          "url": "https://steamcharts.com/app/1808500"
+        },
+        {
+          "name": "FiveM",
+          "source": "steamcharts",
+          "rank": 4,
+          "score": 171959,
+          "appId": 2676230,
+          "url": "https://steamcharts.com/app/2676230"
+        },
+        {
+          "name": "PUBG: BATTLEGROUNDS",
+          "source": "steamcharts",
+          "rank": 5,
+          "score": 155128,
+          "appId": 578080,
+          "url": "https://steamcharts.com/app/578080"
+        },
+        {
+          "name": "Rust",
+          "source": "steamcharts",
+          "rank": 6,
+          "score": 139354,
+          "appId": 252490,
+          "url": "https://steamcharts.com/app/252490"
+        },
+        {
+          "name": "Bongo Cat",
+          "source": "steamcharts",
+          "rank": 7,
+          "score": 106729,
+          "appId": 3419430,
+          "url": "https://steamcharts.com/app/3419430"
+        },
+        {
+          "name": "Overwatch®",
+          "source": "steamcharts",
+          "rank": 8,
+          "score": 96313,
+          "appId": 2357570,
+          "url": "https://steamcharts.com/app/2357570"
+        },
+        {
+          "name": "Geometry Dash",
+          "source": "steamcharts",
+          "rank": 9,
+          "score": 86661,
+          "appId": 322170,
+          "url": "https://steamcharts.com/app/322170"
+        },
+        {
+          "name": "Tom Clancy's Rainbow Six® Siege X",
+          "source": "steamcharts",
+          "rank": 10,
+          "score": 85857,
+          "appId": 359550,
+          "url": "https://steamcharts.com/app/359550"
+        },
+        {
+          "name": "Marvel Rivals",
+          "source": "steamcharts",
+          "rank": 11,
+          "score": 80500,
+          "appId": 2767030,
+          "url": "https://steamcharts.com/app/2767030"
+        },
+        {
+          "name": "Grand Theft Auto V Legacy",
+          "source": "steamcharts",
+          "rank": 12,
+          "score": 77506,
+          "appId": 271590,
+          "url": "https://steamcharts.com/app/271590"
+        },
+        {
+          "name": "Mewgenics",
+          "source": "steamcharts",
+          "rank": 13,
+          "score": 70595,
+          "appId": 686060,
+          "url": "https://steamcharts.com/app/686060"
+        },
+        {
+          "name": "HELLDIVERS™ 2",
+          "source": "steamcharts",
+          "rank": 14,
+          "score": 67537,
+          "appId": 553850,
+          "url": "https://steamcharts.com/app/553850"
+        },
+        {
+          "name": "Terraria",
+          "source": "steamcharts",
+          "rank": 15,
+          "score": 61771,
+          "appId": 105600,
+          "url": "https://steamcharts.com/app/105600"
+        },
+        {
+          "name": "Apex Legends™",
+          "source": "steamcharts",
+          "rank": 16,
+          "score": 60114,
+          "appId": 1172470,
+          "url": "https://steamcharts.com/app/1172470"
+        },
+        {
+          "name": "War Thunder",
+          "source": "steamcharts",
+          "rank": 17,
+          "score": 59271,
+          "appId": 236390,
+          "url": "https://steamcharts.com/app/236390"
+        },
+        {
+          "name": "Battlefield™ 6",
+          "source": "steamcharts",
+          "rank": 18,
+          "score": 58698,
+          "appId": 2807960,
+          "url": "https://steamcharts.com/app/2807960"
+        },
+        {
+          "name": "Baldur's Gate 3",
+          "source": "steamcharts",
+          "rank": 19,
+          "score": 56458,
+          "appId": 1086940,
+          "url": "https://steamcharts.com/app/1086940"
+        },
+        {
+          "name": "Stardew Valley",
+          "source": "steamcharts",
+          "rank": 20,
+          "score": 55571,
+          "appId": 413150,
+          "url": "https://steamcharts.com/app/413150"
+        },
+        {
+          "name": "EA SPORTS FC™ 26",
+          "source": "steamcharts",
+          "rank": 21,
+          "score": 55264,
+          "appId": 3405690,
+          "url": "https://steamcharts.com/app/3405690"
+        },
+        {
+          "name": "Dead by Daylight",
+          "source": "steamcharts",
+          "rank": 22,
+          "score": 54692,
+          "appId": 381210,
+          "url": "https://steamcharts.com/app/381210"
+        },
+        {
+          "name": "Warframe",
+          "source": "steamcharts",
+          "rank": 23,
+          "score": 52501,
+          "appId": 230410,
+          "url": "https://steamcharts.com/app/230410"
+        },
+        {
+          "name": "Wallpaper Engine",
+          "source": "steamcharts",
+          "rank": 24,
+          "score": 52375,
+          "appId": 431960,
+          "url": "https://steamcharts.com/app/431960"
+        },
+        {
+          "name": "VRChat",
+          "source": "steamcharts",
+          "rank": 25,
+          "score": 50015,
+          "appId": 438100,
+          "url": "https://steamcharts.com/app/438100"
+        }
+      ]
+    },
+    "steamdb": {
+      "id": "steamdb",
+      "label": "SteamDB",
+      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "note": "SteamDB blocked scraping; used Steam charts API fallback. (Request failed (403) for https://steamdb.info/charts/)",
+      "games": [
+        {
+          "name": "Counter-Strike 2",
+          "source": "steamdb",
+          "rank": 1,
+          "score": 1469824,
+          "appId": 730,
+          "url": "https://steamdb.info/app/730/"
+        },
+        {
+          "name": "Dota 2",
+          "source": "steamdb",
+          "rank": 2,
+          "score": 766451,
+          "appId": 570,
+          "url": "https://steamdb.info/app/570/"
+        },
+        {
+          "name": "PUBG: BATTLEGROUNDS",
+          "source": "steamdb",
+          "rank": 3,
+          "score": 636778,
+          "appId": 578080,
+          "url": "https://steamdb.info/app/578080/"
+        },
+        {
+          "name": "Wallpaper Engine",
+          "source": "steamdb",
+          "rank": 4,
+          "score": 126958,
+          "appId": 431960,
+          "url": "https://steamdb.info/app/431960/"
+        },
+        {
+          "name": "ARC Raiders",
+          "source": "steamdb",
+          "rank": 5,
+          "score": 206145,
+          "appId": 1808500,
+          "url": "https://steamdb.info/app/1808500/"
+        },
+        {
+          "name": "Apex Legends™",
+          "source": "steamdb",
+          "rank": 6,
+          "score": 180436,
+          "appId": 1172470,
+          "url": "https://steamdb.info/app/1172470/"
+        },
+        {
+          "name": "Overwatch®",
+          "source": "steamdb",
+          "rank": 7,
+          "score": 97006,
+          "appId": 2357570,
+          "url": "https://steamdb.info/app/2357570/"
+        },
+        {
+          "name": "Grand Theft Auto V Legacy",
+          "source": "steamdb",
+          "rank": 8,
+          "score": 102750,
+          "appId": 271590,
+          "url": "https://steamdb.info/app/271590/"
+        },
+        {
+          "name": "Terraria",
+          "source": "steamdb",
+          "rank": 9,
+          "score": 79791,
+          "appId": 105600,
+          "url": "https://steamdb.info/app/105600/"
+        },
+        {
+          "name": "Geometry Dash",
+          "source": "steamdb",
+          "rank": 10,
+          "score": 83135,
+          "appId": 322170,
+          "url": "https://steamdb.info/app/322170/"
+        },
+        {
+          "name": "FiveM",
+          "source": "steamdb",
+          "rank": 11,
+          "score": 163792,
+          "appId": 2676230,
+          "url": "https://steamdb.info/app/2676230/"
+        },
+        {
+          "name": "HELLDIVERS™ 2",
+          "source": "steamdb",
+          "rank": 12,
+          "score": 70345,
+          "appId": 553850,
+          "url": "https://steamdb.info/app/553850/"
+        },
+        {
+          "name": "Marvel Rivals",
+          "source": "steamdb",
+          "rank": 13,
+          "score": 104821,
+          "appId": 2767030,
+          "url": "https://steamdb.info/app/2767030/"
+        },
+        {
+          "name": "War Thunder",
+          "source": "steamdb",
+          "rank": 14,
+          "score": 80699,
+          "appId": 236390,
+          "url": "https://steamdb.info/app/236390/"
+        },
+        {
+          "name": "Deadlock",
+          "source": "steamdb",
+          "rank": 15,
+          "score": 98001,
+          "appId": 1422450,
+          "url": "https://steamdb.info/app/1422450/"
+        },
+        {
+          "name": "Tom Clancy's Rainbow Six® Siege X",
+          "source": "steamdb",
+          "rank": 16,
+          "score": 81443,
+          "appId": 359550,
+          "url": "https://steamdb.info/app/359550/"
+        },
+        {
+          "name": "Battlefield™ 6",
+          "source": "steamdb",
+          "rank": 17,
+          "score": 60187,
+          "appId": 2807960,
+          "url": "https://steamdb.info/app/2807960/"
+        },
+        {
+          "name": "Limbus Company",
+          "source": "steamdb",
+          "rank": 18,
+          "score": 87120,
+          "appId": 1973530,
+          "url": "https://steamdb.info/app/1973530/"
+        },
+        {
+          "name": "Dead by Daylight",
+          "source": "steamdb",
+          "rank": 19,
+          "score": 61308,
+          "appId": 381210,
+          "url": "https://steamdb.info/app/381210/"
+        },
+        {
+          "name": "Stardew Valley",
+          "source": "steamdb",
+          "rank": 20,
+          "score": 83277,
+          "appId": 413150,
+          "url": "https://steamdb.info/app/413150/"
+        },
+        {
+          "name": "Rust",
+          "source": "steamdb",
+          "rank": 21,
+          "score": 150791,
+          "appId": 252490,
+          "url": "https://steamdb.info/app/252490/"
+        },
+        {
+          "name": "Delta Force",
+          "source": "steamdb",
+          "rank": 22,
+          "score": 151948,
+          "appId": 2507950,
+          "url": "https://steamdb.info/app/2507950/"
+        },
+        {
+          "name": "Mewgenics",
+          "source": "steamdb",
+          "rank": 23,
+          "score": 75732,
+          "appId": 686060,
+          "url": "https://steamdb.info/app/686060/"
+        },
+        {
+          "name": "Grand Theft Auto V Enhanced",
+          "source": "steamdb",
+          "rank": 24,
+          "score": 69701,
+          "appId": 3240220,
+          "url": "https://steamdb.info/app/3240220/"
+        },
+        {
+          "name": "Warframe",
+          "source": "steamdb",
+          "rank": 25,
+          "score": 59321,
+          "appId": 230410,
+          "url": "https://steamdb.info/app/230410/"
+        },
+        {
+          "name": "Marathon Server Slam",
+          "source": "steamdb",
+          "rank": 26,
+          "score": 143621,
+          "appId": 4254230,
+          "url": "https://steamdb.info/app/4254230/"
+        },
+        {
+          "name": "Euro Truck Simulator 2",
+          "source": "steamdb",
+          "rank": 27,
+          "score": 54742,
+          "appId": 227300,
+          "url": "https://steamdb.info/app/227300/"
+        },
+        {
+          "name": "NARAKA: BLADEPOINT",
+          "source": "steamdb",
+          "rank": 28,
+          "score": 81365,
+          "appId": 1203220,
+          "url": "https://steamdb.info/app/1203220/"
+        },
+        {
+          "name": "tModLoader",
+          "source": "steamdb",
+          "rank": 29,
+          "score": 53868,
+          "appId": 1281930,
+          "url": "https://steamdb.info/app/1281930/"
+        },
+        {
+          "name": "Monster Hunter Wilds",
+          "source": "steamdb",
+          "rank": 30,
+          "score": 66125,
+          "appId": 2246340,
+          "url": "https://steamdb.info/app/2246340/"
+        }
+      ]
+    },
+    "twitchmetrics": {
+      "id": "twitchmetrics",
+      "label": "TwitchMetrics",
+      "fetchedAt": "2026-02-27T23:51:41.764Z",
+      "games": [
+        {
+          "name": "League of Legends",
+          "source": "twitchmetrics",
+          "rank": 2,
+          "score": 118018,
+          "url": "https://www.twitchmetrics.net/g/21779-league-of-legends"
+        },
+        {
+          "name": "Counter-Strike",
+          "source": "twitchmetrics",
+          "rank": 3,
+          "score": 103555,
+          "url": "https://www.twitchmetrics.net/g/32399-counter-strike"
+        },
+        {
+          "name": "Grand Theft Auto V",
+          "source": "twitchmetrics",
+          "rank": 4,
+          "score": 92172,
+          "url": "https://www.twitchmetrics.net/g/32982-grand-theft-auto-v"
+        },
+        {
+          "name": "VALORANT",
+          "source": "twitchmetrics",
+          "rank": 5,
+          "score": 61402,
+          "url": "https://www.twitchmetrics.net/g/516575-valorant"
+        },
+        {
+          "name": "ARC Raiders",
+          "source": "twitchmetrics",
+          "rank": 6,
+          "score": 57488,
+          "url": "https://www.twitchmetrics.net/g/464339927-arc-raiders"
+        },
+        {
+          "name": "World of Warcraft",
+          "source": "twitchmetrics",
+          "rank": 7,
+          "score": 56803,
+          "url": "https://www.twitchmetrics.net/g/18122-world-of-warcraft"
+        },
+        {
+          "name": "Dota 2",
+          "source": "twitchmetrics",
+          "rank": 8,
+          "score": 53046,
+          "url": "https://www.twitchmetrics.net/g/29595-dota-2"
+        },
+        {
+          "name": "Overwatch",
+          "source": "twitchmetrics",
+          "rank": 9,
+          "score": 45636,
+          "url": "https://www.twitchmetrics.net/g/515025-overwatch"
+        },
+        {
+          "name": "Minecraft",
+          "source": "twitchmetrics",
+          "rank": 10,
+          "score": 43134,
+          "url": "https://www.twitchmetrics.net/g/27471-minecraft"
+        },
+        {
+          "name": "Rocket League",
+          "source": "twitchmetrics",
+          "rank": 12,
+          "score": 31575,
+          "url": "https://www.twitchmetrics.net/g/30921-rocket-league"
+        },
+        {
+          "name": "Fortnite",
+          "source": "twitchmetrics",
+          "rank": 13,
+          "score": 30490,
+          "url": "https://www.twitchmetrics.net/g/33214-fortnite"
+        },
+        {
+          "name": "Spinshot Party",
+          "source": "twitchmetrics",
+          "rank": 14,
+          "score": 29701,
+          "url": "https://www.twitchmetrics.net/g/33482702-spinshot-party"
+        },
+        {
+          "name": "Circle of Sumo: Online Rumble!",
+          "source": "twitchmetrics",
+          "rank": 15,
+          "score": 27141,
+          "url": "https://www.twitchmetrics.net/g/515804-circle-of-sumo-online-rumble"
+        },
+        {
+          "name": "Alpaca Ball: Allstars",
+          "source": "twitchmetrics",
+          "rank": 16,
+          "score": 24423,
+          "url": "https://www.twitchmetrics.net/g/1026866954-alpaca-ball-allstars"
+        },
+        {
+          "name": "Dead by Daylight",
+          "source": "twitchmetrics",
+          "rank": 17,
+          "score": 22399,
+          "url": "https://www.twitchmetrics.net/g/491487-dead-by-daylight"
+        },
+        {
+          "name": "Mewgenics",
+          "source": "twitchmetrics",
+          "rank": 18,
+          "score": 20412,
+          "url": "https://www.twitchmetrics.net/g/75115-mewgenics"
+        },
+        {
+          "name": "Verdun",
+          "source": "twitchmetrics",
+          "rank": 19,
+          "score": 19951,
+          "url": "https://www.twitchmetrics.net/g/313162-verdun"
+        },
+        {
+          "name": "Marvel Rivals",
+          "source": "twitchmetrics",
+          "rank": 20,
+          "score": 18466,
+          "url": "https://www.twitchmetrics.net/g/1264310518-marvel-rivals"
+        },
+        {
+          "name": "Teamfight Tactics",
+          "source": "twitchmetrics",
+          "rank": 21,
+          "score": 18320,
+          "url": "https://www.twitchmetrics.net/g/513143-teamfight-tactics"
+        },
+        {
+          "name": "Delivery Driver: The Simulation",
+          "source": "twitchmetrics",
+          "rank": 22,
+          "score": 16208,
+          "url": "https://www.twitchmetrics.net/g/1417826640-delivery-driver-the-simulation"
+        },
+        {
+          "name": "Rainbow Six Siege",
+          "source": "twitchmetrics",
+          "rank": 23,
+          "score": 15662,
+          "url": "https://www.twitchmetrics.net/g/460630-rainbow-six-siege"
+        },
+        {
+          "name": "Call of Duty: Warzone",
+          "source": "twitchmetrics",
+          "rank": 24,
+          "score": 15554,
+          "url": "https://www.twitchmetrics.net/g/512710-call-of-duty-warzone"
+        },
+        {
+          "name": "EA Sports FC 26",
+          "source": "twitchmetrics",
+          "rank": 25,
+          "score": 15155,
+          "url": "https://www.twitchmetrics.net/g/624536948-ea-sports-fc-26"
+        },
+        {
+          "name": "Rust",
+          "source": "twitchmetrics",
+          "rank": 26,
+          "score": 14845,
+          "url": "https://www.twitchmetrics.net/g/263490-rust"
+        },
+        {
+          "name": "Peggle 2",
+          "source": "twitchmetrics",
+          "rank": 27,
+          "score": 14330,
+          "url": "https://www.twitchmetrics.net/g/369573-peggle-2"
+        },
+        {
+          "name": "Call of Duty: Black Ops 7",
+          "source": "twitchmetrics",
+          "rank": 28,
+          "score": 14102,
+          "url": "https://www.twitchmetrics.net/g/2012789438-call-of-duty-black-ops-7"
+        },
+        {
+          "name": "Deadlock",
+          "source": "twitchmetrics",
+          "rank": 29,
+          "score": 13906,
+          "url": "https://www.twitchmetrics.net/g/2132205352-deadlock"
+        },
+        {
+          "name": "Redast",
+          "source": "twitchmetrics",
+          "rank": 30,
+          "score": 13819,
+          "url": "https://www.twitchmetrics.net/g/55625609-redast"
+        },
+        {
+          "name": "Slots",
+          "source": "twitchmetrics",
+          "rank": 31,
+          "score": 13673,
+          "url": "https://www.twitchmetrics.net/g/498566-slots"
+        },
+        {
+          "name": "Virtual Casino",
+          "source": "twitchmetrics",
+          "rank": 32,
+          "score": 13112,
+          "url": "https://www.twitchmetrics.net/g/29452-virtual-casino"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "pick-a-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "fetch:data": "node ./scripts/fetch-top-games.mjs",
+    "build:all": "npm run fetch:data && npm run build"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "clsx": "^2.1.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/node": "^24.6.1",
+    "@vitejs/plugin-react": "^5.1.0",
+    "cheerio": "^1.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}

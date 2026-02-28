@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use dioxus::prelude::*;
+use rand::Rng;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};

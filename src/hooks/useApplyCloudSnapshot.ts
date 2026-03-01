@@ -28,7 +28,39 @@ interface SafeParseFailure {
   success: false;
 }
 
-interface UseApplyCloudSnapshotInput<TSettings, TSpinHistory, TSteamImport, TExclusions, TNotifications, TProfile> {
+interface SteamImportShape<TGameEntry> {
+  steamApiKey: string;
+  steamId: string;
+  steamImportGames: TGameEntry[];
+}
+
+interface ExclusionsShape {
+  excludePlayed: boolean;
+  excludeCompleted: boolean;
+  playedGames: string[];
+  completedGames: string[];
+}
+
+interface NotificationsShape {
+  notificationsEnabled: boolean;
+  trendNotifications: boolean;
+  reminderNotifications: boolean;
+  reminderIntervalMinutes: number;
+}
+
+interface ProfileShape {
+  id: string;
+}
+
+interface UseApplyCloudSnapshotInput<
+  TSettings,
+  TSpinHistory,
+  TGameEntry,
+  TSteamImport extends SteamImportShape<TGameEntry>,
+  TExclusions extends ExclusionsShape,
+  TNotifications extends NotificationsShape,
+  TProfile extends ProfileShape,
+> {
   safeParseSnapshot: (raw: unknown) => SafeParseSuccess | SafeParseFailure;
   invalidSnapshotMessage: string;
   sanitizeSettings: (raw: unknown) => TSettings;
@@ -38,13 +70,22 @@ interface UseApplyCloudSnapshotInput<TSettings, TSpinHistory, TSteamImport, TExc
   normalizeManualGames: (entries: string[]) => string[];
   setManualGames: (entries: string[]) => void;
   sanitizeSteamImport: (raw: unknown) => TSteamImport;
-  setSteamImport: (value: TSteamImport) => void;
+  setSteamApiKey: (value: string) => void;
+  setSteamId: (value: string) => void;
+  setSteamImportGames: (entries: TGameEntry[]) => void;
   sanitizeExclusions: (raw: unknown) => TExclusions;
-  setExclusions: (value: TExclusions) => void;
+  setExcludePlayed: (value: boolean) => void;
+  setExcludeCompleted: (value: boolean) => void;
+  setPlayedGames: (entries: string[]) => void;
+  setCompletedGames: (entries: string[]) => void;
   sanitizeNotifications: (raw: unknown) => TNotifications;
-  setNotifications: (value: TNotifications) => void;
+  setNotificationsEnabled: (value: boolean) => void;
+  setTrendNotifications: (value: boolean) => void;
+  setReminderNotifications: (value: boolean) => void;
+  setReminderIntervalMinutes: (value: number) => void;
   sanitizeAccountProfiles: (raw: unknown) => TProfile[];
-  setProfiles: (profiles: TProfile[], incomingActiveId: string) => void;
+  setAccountProfiles: (profiles: TProfile[]) => void;
+  setActiveAccountProfileId: (value: string) => void;
   setCloudSyncReferenceAt: (value: string) => void;
   clearPendingCloudConflict: () => void;
 }
@@ -52,10 +93,11 @@ interface UseApplyCloudSnapshotInput<TSettings, TSpinHistory, TSteamImport, TExc
 export const useApplyCloudSnapshot = <
   TSettings,
   TSpinHistory,
-  TSteamImport,
-  TExclusions,
-  TNotifications,
-  TProfile,
+  TGameEntry,
+  TSteamImport extends SteamImportShape<TGameEntry>,
+  TExclusions extends ExclusionsShape,
+  TNotifications extends NotificationsShape,
+  TProfile extends ProfileShape,
 >({
   safeParseSnapshot,
   invalidSnapshotMessage,
@@ -66,16 +108,33 @@ export const useApplyCloudSnapshot = <
   normalizeManualGames,
   setManualGames,
   sanitizeSteamImport,
-  setSteamImport,
+  setSteamApiKey,
+  setSteamId,
+  setSteamImportGames,
   sanitizeExclusions,
-  setExclusions,
+  setExcludePlayed,
+  setExcludeCompleted,
+  setPlayedGames,
+  setCompletedGames,
   sanitizeNotifications,
-  setNotifications,
+  setNotificationsEnabled,
+  setTrendNotifications,
+  setReminderNotifications,
+  setReminderIntervalMinutes,
   sanitizeAccountProfiles,
-  setProfiles,
+  setAccountProfiles,
+  setActiveAccountProfileId,
   setCloudSyncReferenceAt,
   clearPendingCloudConflict,
-}: UseApplyCloudSnapshotInput<TSettings, TSpinHistory, TSteamImport, TExclusions, TNotifications, TProfile>) => {
+}: UseApplyCloudSnapshotInput<
+  TSettings,
+  TSpinHistory,
+  TGameEntry,
+  TSteamImport,
+  TExclusions,
+  TNotifications,
+  TProfile
+>) => {
   const applyCloudSnapshot = useCallback(
     (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
       const parsed = safeParseSnapshot(rawSnapshot);
@@ -97,20 +156,36 @@ export const useApplyCloudSnapshot = <
       }
 
       if (snapshot.steamImport) {
-        setSteamImport(sanitizeSteamImport(snapshot.steamImport));
+        const sanitized = sanitizeSteamImport(snapshot.steamImport);
+        setSteamApiKey(sanitized.steamApiKey);
+        setSteamId(sanitized.steamId);
+        setSteamImportGames(sanitized.steamImportGames);
       }
 
       if (snapshot.exclusions) {
-        setExclusions(sanitizeExclusions(snapshot.exclusions));
+        const sanitized = sanitizeExclusions(snapshot.exclusions);
+        setExcludePlayed(sanitized.excludePlayed);
+        setExcludeCompleted(sanitized.excludeCompleted);
+        setPlayedGames(sanitized.playedGames);
+        setCompletedGames(sanitized.completedGames);
       }
 
       if (snapshot.notifications) {
-        setNotifications(sanitizeNotifications(snapshot.notifications));
+        const sanitized = sanitizeNotifications(snapshot.notifications);
+        setNotificationsEnabled(sanitized.notificationsEnabled);
+        setTrendNotifications(sanitized.trendNotifications);
+        setReminderNotifications(sanitized.reminderNotifications);
+        setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
       }
 
       if (snapshot.profiles?.items) {
         const incomingProfiles = sanitizeAccountProfiles(snapshot.profiles.items);
-        setProfiles(incomingProfiles, snapshot.profiles.activeProfileId ?? "");
+        setAccountProfiles(incomingProfiles);
+        const incomingActiveId = snapshot.profiles.activeProfileId ?? "";
+        const resolvedActiveId = incomingProfiles.some((profile) => profile.id === incomingActiveId)
+          ? incomingActiveId
+          : incomingProfiles[0]?.id ?? "";
+        setActiveAccountProfileId(resolvedActiveId);
       }
 
       if (options?.updateReference !== false) {
@@ -131,13 +206,22 @@ export const useApplyCloudSnapshot = <
       sanitizeNotifications,
       sanitizeSettings,
       sanitizeSteamImport,
+      setAccountProfiles,
+      setActiveAccountProfileId,
       setCloudSyncReferenceAt,
-      setExclusions,
+      setCompletedGames,
+      setExcludeCompleted,
+      setExcludePlayed,
       setManualGames,
-      setNotifications,
-      setProfiles,
+      setNotificationsEnabled,
+      setPlayedGames,
+      setReminderIntervalMinutes,
+      setReminderNotifications,
       setSpinHistory,
-      setSteamImport,
+      setSteamApiKey,
+      setSteamId,
+      setSteamImportGames,
+      setTrendNotifications,
     ],
   );
 

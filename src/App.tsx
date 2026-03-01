@@ -4,11 +4,12 @@ import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
-import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
+import { formatOdds, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
 import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
 import { useApplyCloudSnapshot } from "./hooks/useApplyCloudSnapshot";
+import { useCloudPanelData } from "./hooks/useCloudPanelData";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1825,30 +1826,6 @@ export default function App() {
       ),
     [],
   );
-  const applySteamImportState = useCallback((sanitized: StoredSteamImport) => {
-    setSteamApiKey(sanitized.steamApiKey);
-    setSteamId(sanitized.steamId);
-    setSteamImportGames(sanitized.steamImportGames);
-  }, []);
-  const applyExclusionsState = useCallback((sanitized: StoredExclusions) => {
-    setExcludePlayed(sanitized.excludePlayed);
-    setExcludeCompleted(sanitized.excludeCompleted);
-    setPlayedGames(sanitized.playedGames);
-    setCompletedGames(sanitized.completedGames);
-  }, []);
-  const applyNotificationsState = useCallback((sanitized: StoredNotificationSettings) => {
-    setNotificationsEnabled(sanitized.notificationsEnabled);
-    setTrendNotifications(sanitized.trendNotifications);
-    setReminderNotifications(sanitized.reminderNotifications);
-    setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
-  }, []);
-  const applyProfilesState = useCallback((incomingProfiles: AccountProfilePreset[], incomingActiveId: string) => {
-    setAccountProfiles(incomingProfiles);
-    const resolvedActiveId = incomingProfiles.some((profile) => profile.id === incomingActiveId)
-      ? incomingActiveId
-      : incomingProfiles[0]?.id ?? "";
-    setActiveAccountProfileId(resolvedActiveId);
-  }, []);
   const safeParseCloudSnapshot = useCallback(
     (raw: unknown) => cloudSyncSnapshotSchema.safeParse(raw) as { success: true; data: CloudSyncSnapshot } | { success: false },
     [],
@@ -1860,6 +1837,7 @@ export default function App() {
   const { applyCloudSnapshot } = useApplyCloudSnapshot<
     StoredSettings,
     SpinHistoryItem,
+    GameEntry,
     StoredSteamImport,
     StoredExclusions,
     StoredNotificationSettings,
@@ -1874,13 +1852,22 @@ export default function App() {
     normalizeManualGames: normalizeGames,
     setManualGames,
     sanitizeSteamImport: (raw) => sanitizeSteamImport(raw as StoredSteamImport | null),
-    setSteamImport: applySteamImportState,
+    setSteamApiKey,
+    setSteamId,
+    setSteamImportGames,
     sanitizeExclusions: (raw) => sanitizeExclusions(raw as StoredExclusions | null),
-    setExclusions: applyExclusionsState,
+    setExcludePlayed,
+    setExcludeCompleted,
+    setPlayedGames,
+    setCompletedGames,
     sanitizeNotifications: (raw) => sanitizeNotificationSettings(raw as StoredNotificationSettings | null),
-    setNotifications: applyNotificationsState,
+    setNotificationsEnabled,
+    setTrendNotifications,
+    setReminderNotifications,
+    setReminderIntervalMinutes,
     sanitizeAccountProfiles: (raw) => sanitizeAccountProfiles(raw as AccountProfilePreset[] | null),
-    setProfiles: applyProfilesState,
+    setAccountProfiles,
+    setActiveAccountProfileId,
     setCloudSyncReferenceAt,
     clearPendingCloudConflict,
   });
@@ -1995,23 +1982,23 @@ export default function App() {
     }),
   );
   const sourceLoadError = topGamesQuery.isError ? (topGamesQuery.error as Error).message : null;
-  const cloudProfileOptions = accountProfiles.map((profile) => ({
-    id: profile.id,
-    name: profile.name,
-    updatedAtLabel: formatSyncTimestamp(profile.updatedAt, t("unknown")),
-  }));
-  const cloudReferenceLabel = formatSyncTimestamp(cloudSyncReferenceAt, t("unknown"));
-  const cloudConflict = pendingCloudConflictSnapshot
-    ? {
-        remoteLabel: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt, t("unknown")),
-        localLabel: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
-      }
-    : null;
-  const cloudRestorePointOptions = cloudRestorePoints.map((point) => ({
-    id: point.id,
-    timestampLabel: formatSyncTimestamp(point.createdAt, t("unknown")),
-    reason: point.reason,
-  }));
+  const {
+    cloudProfileOptions,
+    cloudReferenceLabel,
+    cloudConflict,
+    cloudRestorePointOptions,
+    onRestorePoint,
+    onClearRestorePoints,
+  } = useCloudPanelData<AccountProfilePreset, CloudSyncSnapshot, CloudRestorePoint>({
+    accountProfiles,
+    cloudSyncReferenceAt,
+    pendingCloudConflictSnapshot,
+    cloudRestorePoints,
+    restoreFromCloudPoint,
+    setCloudRestorePoints,
+    t,
+    pushToast,
+  });
   const handleSidebarToggle = () =>
     setSidebarOpen((current) => {
       const next = !current;
@@ -2248,15 +2235,8 @@ export default function App() {
                 onKeepLocal={dismissCloudConflict}
                 onApplyRemote={applyPendingCloudConflict}
                 restorePoints={cloudRestorePointOptions}
-                onRestorePoint={(id) => {
-                  const point = cloudRestorePoints.find((entry) => entry.id === id);
-                  if (!point) return;
-                  restoreFromCloudPoint(point);
-                }}
-                onClearRestorePoints={() => {
-                  setCloudRestorePoints([]);
-                  pushToast("info", t("messages.cloudRestorePointsCleared"));
-                }}
+                onRestorePoint={onRestorePoint}
+                onClearRestorePoints={onClearRestorePoints}
               />
             </div>
           </>

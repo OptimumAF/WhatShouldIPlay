@@ -4,8 +4,8 @@ import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
-import { createSyncGist, pullSyncSnapshot, updateSyncGist } from "./lib/cloudSyncClient";
 import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
+import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -2012,131 +2012,24 @@ export default function App() {
     pushToast("info", t("messages.profileDeleted", { name: removedName }));
   };
 
-  const pushCloudSync = async () => {
-    const token = gistToken.trim();
-    if (!token) {
-      setCloudSyncStatus(t("messages.cloudTokenRequired"));
-      pushToast("error", t("messages.cloudNeedsToken"));
-      return;
-    }
-    if (!gistId.trim()) {
-      setCloudSyncStatus(t("messages.cloudNeedGistOrCreate"));
-      pushToast("error", t("messages.cloudProvideGistBeforePush"));
-      return;
-    }
+  const parseCloudSnapshot = useCallback((raw: unknown) => cloudSyncSnapshotSchema.parse(raw), []);
 
-    setCloudSyncLoading(true);
-    setCloudSyncStatus(t("messages.cloudUploading"));
-    try {
-      const snapshot = buildCloudSnapshot();
-      await updateSyncGist({
-        gistId: gistId.trim(),
-        token,
-        snapshot,
-      });
-      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
-      setPendingCloudConflictSnapshot(null);
-      setCloudSyncStatus(t("messages.cloudUploaded"));
-      pushToast("success", t("messages.cloudUploaded"));
-    } catch (error) {
-      const message = (error as Error).message;
-      setCloudSyncStatus(message);
-      pushToast("error", `${message} Check token permissions and gist access, then retry.`);
-    } finally {
-      setCloudSyncLoading(false);
-    }
-  };
-
-  const createCloudSyncGist = async () => {
-    const token = gistToken.trim();
-    if (!token) {
-      setCloudSyncStatus(t("messages.cloudTokenRequired"));
-      pushToast("error", t("messages.cloudNeedTokenCreate"));
-      return;
-    }
-
-    setCloudSyncLoading(true);
-    setCloudSyncStatus(t("messages.cloudCreatingGist"));
-    try {
-      const snapshot = buildCloudSnapshot();
-      const createdGistId = await createSyncGist({
-        token,
-        snapshot,
-      });
-      setGistId(createdGistId);
-      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
-      setPendingCloudConflictSnapshot(null);
-      setCloudSyncStatus(`Created sync gist ${createdGistId}.`);
-      pushToast("success", `Created sync gist ${createdGistId}.`);
-    } catch (error) {
-      const message = (error as Error).message;
-      if (message === "GitHub API did not return gist id.") {
-        setCloudSyncStatus(t("messages.cloudMissingGistId"));
-        pushToast("error", t("messages.cloudMissingGistId"));
-        return;
-      }
-      setCloudSyncStatus(message);
-      pushToast("error", `${message} Verify token scope and GitHub API availability.`);
-    } finally {
-      setCloudSyncLoading(false);
-    }
-  };
-
-  const pullCloudSync = async () => {
-    const token = gistToken.trim();
-    if (!token) {
-      setCloudSyncStatus(t("messages.cloudTokenRequired"));
-      pushToast("error", t("messages.cloudNeedTokenPull"));
-      return;
-    }
-    if (!gistId.trim()) {
-      setCloudSyncStatus(t("messages.cloudNeedGistPull"));
-      pushToast("error", t("messages.cloudProvideGistBeforePull"));
-      return;
-    }
-
-    setCloudSyncLoading(true);
-    setCloudSyncStatus(t("messages.cloudDownloading"));
-    try {
-      const parsed = await pullSyncSnapshot({
-        gistId: gistId.trim(),
-        token,
-        noFileError: t("messages.cloudNoSyncFile"),
-        emptyFileError: t("messages.cloudEmptySyncFile"),
-      });
-      const remoteSnapshot = cloudSyncSnapshotSchema.parse(parsed);
-      const remoteTimestamp = remoteSnapshot.exportedAt;
-      const remoteMillis = remoteTimestamp ? Date.parse(remoteTimestamp) : NaN;
-      const referenceMillis = cloudSyncReferenceAt ? Date.parse(cloudSyncReferenceAt) : NaN;
-      if (
-        remoteTimestamp &&
-        cloudSyncReferenceAt &&
-        Number.isFinite(remoteMillis) &&
-        Number.isFinite(referenceMillis) &&
-        remoteMillis < referenceMillis
-      ) {
-        setPendingCloudConflictSnapshot(remoteSnapshot);
-        setCloudSyncStatus(
-          t("cloudConflictOlder", {
-            remote: formatSyncTimestamp(remoteTimestamp, t("unknown")),
-            local: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
-          }),
-        );
-        pushToast("info", t("messages.cloudConflictChoose"));
-      } else {
-        pushCloudRestorePoint(t("messages.cloudRestorePointBeforePulledApply"));
-        applyCloudSnapshot(remoteSnapshot);
-        setCloudSyncStatus(t("messages.cloudDownloadedApplied"));
-        pushToast("success", t("messages.cloudDownloadedApplied"));
-      }
-    } catch (error) {
-      const message = (error as Error).message;
-      setCloudSyncStatus(message);
-      pushToast("error", `${message} ${t("messages.retryHint")}`);
-    } finally {
-      setCloudSyncLoading(false);
-    }
-  };
+  const { pushCloudSync, createCloudSyncGist, pullCloudSync } = useCloudSyncTransport({
+    gistId,
+    gistToken,
+    cloudSyncReferenceAt,
+    t,
+    pushToast,
+    buildCloudSnapshot,
+    parseCloudSnapshot,
+    applyCloudSnapshot,
+    pushCloudRestorePoint,
+    setGistId,
+    setCloudSyncReferenceAt,
+    setPendingCloudConflictSnapshot,
+    setCloudSyncStatus,
+    setCloudSyncLoading,
+  });
 
   const filterExcludedSuffix = filterExcludedCount > 0 ? t("filteredSuffix", { count: filterExcludedCount }) : "";
   const statusExcludedSuffix =

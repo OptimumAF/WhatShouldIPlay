@@ -6,22 +6,15 @@ import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import {
-  Ban,
-  BellRing,
   ChevronsUpDown,
   Cloud,
   Download,
   FilePlus2,
-  Filter,
   History,
-  KeyRound,
   Library,
   PanelLeft,
   Play,
-  Plus,
-  RotateCw,
   Settings2,
-  Trash2,
   Upload,
   WandSparkles,
   X,
@@ -39,6 +32,10 @@ import { SpinHistoryPanel } from "./components/SpinHistoryPanel";
 import { PlayPanel } from "./features/play/PlayPanel";
 import { WinnerModal } from "./features/play/WinnerModal";
 import { SourcesPanel } from "./features/settings/SourcesPanel";
+import { FiltersPanel } from "./features/settings/FiltersPanel";
+import { ExclusionsPanel } from "./features/settings/ExclusionsPanel";
+import { NotificationsPanel } from "./features/settings/NotificationsPanel";
+import { SteamImportPanel } from "./features/settings/SteamImportPanel";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -2621,366 +2618,85 @@ export default function App() {
             </Accordion.Root>
           </section>
 
-          <section className="panel" aria-labelledby="steam-import-heading">
-            <h2 id="steam-import-heading" className="section-heading">
-              <span className="heading-label">
-                <KeyRound className="ui-icon" aria-hidden="true" />
-                {t("steamImportTitle")}
-              </span>
-              <HelpTip text={t("helpTips.steamImport")} />
-            </h2>
-            <p className="muted">
-              {t("steamImportDescription")}
-            </p>
-            <div className="steam-grid">
-              <label htmlFor="steam-api-key" className="sr-only">
-                {t("steamApiKey")}
-              </label>
-              <input
-                id="steam-api-key"
-                type="password"
-                placeholder={t("steamApiKey")}
-                value={steamApiKey}
-                onChange={(event) => setSteamApiKey(event.target.value)}
-                autoComplete="off"
-              />
-              <label htmlFor="steam-id64" className="sr-only">
-                {t("steamId64")}
-              </label>
-              <input
-                id="steam-id64"
-                type="text"
-                placeholder={t("steamId64")}
-                value={steamId}
-                onChange={(event) => setSteamId(event.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="button-row">
-              <button
-                type="button"
-                onClick={importSteamLibrary}
-                disabled={steamImportLoading}
-                aria-describedby="steam-import-status"
-              >
-                <span className="button-label">
-                  <Download className="ui-icon" aria-hidden="true" />
-                  {steamImportLoading ? t("importing") : t("importSteamLibrary")}
-                </span>
-              </button>
-              <button type="button" className="ghost" onClick={clearSteamImport}>
-                <span className="button-label">
-                  <Trash2 className="ui-icon" aria-hidden="true" />
-                  {t("clearImport")}
-                </span>
-              </button>
-            </div>
-            {steamImportLoading ? (
-              <p className="status progress-status" role="status" aria-live="polite">
-                <span className="progress-dot" aria-hidden="true" />
-                {t("steamImportingStatus")}
-              </p>
-            ) : null}
-            {steamImportStatus ? (
-              <p id="steam-import-status" className="status" role="status" aria-live="polite">
-                {steamImportStatus}
-              </p>
-            ) : null}
-          </section>
+          <SteamImportPanel
+            steamApiKey={steamApiKey}
+            steamId={steamId}
+            steamImportLoading={steamImportLoading}
+            steamImportStatus={steamImportStatus}
+            onSteamApiKeyChange={setSteamApiKey}
+            onSteamIdChange={setSteamId}
+            onImport={importSteamLibrary}
+            onClear={clearSteamImport}
+          />
 
           <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
-          <section className="panel" aria-labelledby="filters-heading">
-            <h2 id="filters-heading" className="section-heading">
-              <span className="heading-label">
-                <Filter className="ui-icon" aria-hidden="true" />
-                {t("advancedFiltersTitle")}
-              </span>
-              <HelpTip text={t("helpTips.advancedFilters")} />
-            </h2>
-            <p className="muted">{t("advancedFiltersDescription")}</p>
-            <div className="filters-grid">
-              <label className="filter-field">
-                <span>{t("filterPlatform")}</span>
-                <select
-                  value={filters.platform}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, platform: event.target.value as PlatformFilter }));
-                    markCustom();
-                  }}
-                >
-                  <option value="any">{t("any")}</option>
-                  <option value="windows">{t("windows")}</option>
-                  <option value="mac">{t("macos")}</option>
-                  <option value="linux">{t("linux")}</option>
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span>{t("filterGenreTag")}</span>
-                <select
-                  value={filters.tag}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, tag: event.target.value }));
-                    markCustom();
-                  }}
-                >
-                  <option value="any">{t("any")}</option>
-                  {availableTags.slice(0, 250).map((tag) => (
-                    <option key={tag} value={tag}>
-                      {tag}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span>{t("filterEstimatedLength")}</span>
-                <select
-                  value={filters.length}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, length: event.target.value as LengthFilter }));
-                    markCustom();
-                  }}
-                >
-                  <option value="any">{t("any")}</option>
-                  <option value="short">{t("short")}</option>
-                  <option value="medium">{t("medium")}</option>
-                  <option value="long">{t("long")}</option>
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span>{t("filterReleaseAfter")}</span>
-                <input
-                  type="date"
-                  value={filters.releaseFrom}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, releaseFrom: event.target.value }));
-                    markCustom();
-                  }}
-                />
-              </label>
-
-              <label className="filter-field">
-                <span>{t("filterReleaseBefore")}</span>
-                <input
-                  type="date"
-                  value={filters.releaseTo}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, releaseTo: event.target.value }));
-                    markCustom();
-                  }}
-                />
-              </label>
-
-              <label className="filter-field">
-                <span>{t("maxPriceLabel", { price: filters.maxPriceUsd.toFixed(0) })}</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={70}
-                  step={1}
-                  disabled={filters.freeOnly}
-                  value={filters.maxPriceUsd}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, maxPriceUsd: Number(event.target.value) }));
-                    markCustom();
-                  }}
-                />
-                <small className="filter-help">
-                  {t("maxPriceHelp")}
-                </small>
-              </label>
-
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={filters.freeOnly}
-                  onChange={(event) => {
-                    setFilters((current) => ({ ...current, freeOnly: event.target.checked }));
-                    markCustom();
-                  }}
-                />
-                <span>{t("freeOnly")}</span>
-                <HelpTip text={t("helpTips.freeOnly")} />
-              </label>
-            </div>
-            <div className="button-row">
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setFilters(defaultFilters);
-                  markCustom();
-                }}
-              >
-                <span className="button-label">
-                  <RotateCw className="ui-icon" aria-hidden="true" />
-                  {t("resetFilters")}
-                </span>
-              </button>
-            </div>
-          </section>
-
-          <section className="panel" aria-labelledby="exclusion-heading">
-            <h2 id="exclusion-heading" className="section-heading">
-              <span className="heading-label">
-                <Ban className="ui-icon" aria-hidden="true" />
-                {t("playedCompletedTitle")}
-              </span>
-              <HelpTip text={t("helpTips.playedCompleted")} />
-            </h2>
-            <p className="muted">{t("playedCompletedDescription")}</p>
-            <div className="odds-controls">
-              <label className="inline-check">
-                <input type="checkbox" checked={excludePlayed} onChange={(event) => setExcludePlayed(event.target.checked)} />
-                <span>{t("excludePlayed")}</span>
-                <HelpTip text={t("helpTips.excludePlayed")} />
-              </label>
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={excludeCompleted}
-                  onChange={(event) => setExcludeCompleted(event.target.checked)}
-                />
-                <span>{t("excludeCompleted")}</span>
-                <HelpTip text={t("helpTips.excludeCompleted")} />
-              </label>
-            </div>
-            <label htmlFor="exclusion-input" className="sr-only">
-              {t("gameNamesToExclude")}
-            </label>
-            <textarea
-              id="exclusion-input"
-              rows={3}
-              value={exclusionInput}
-              onChange={(event) => setExclusionInput(event.target.value)}
-              placeholder={t("excludeInputPlaceholder")}
+            <FiltersPanel
+              filters={filters}
+              availableTags={availableTags}
+              onPlatformChange={(value) => {
+                setFilters((current) => ({ ...current, platform: value as PlatformFilter }));
+                markCustom();
+              }}
+              onTagChange={(value) => {
+                setFilters((current) => ({ ...current, tag: value }));
+                markCustom();
+              }}
+              onLengthChange={(value) => {
+                setFilters((current) => ({ ...current, length: value as LengthFilter }));
+                markCustom();
+              }}
+              onReleaseFromChange={(value) => {
+                setFilters((current) => ({ ...current, releaseFrom: value }));
+                markCustom();
+              }}
+              onReleaseToChange={(value) => {
+                setFilters((current) => ({ ...current, releaseTo: value }));
+                markCustom();
+              }}
+              onMaxPriceChange={(value) => {
+                setFilters((current) => ({ ...current, maxPriceUsd: value }));
+                markCustom();
+              }}
+              onFreeOnlyChange={(value) => {
+                setFilters((current) => ({ ...current, freeOnly: value }));
+                markCustom();
+              }}
+              onReset={() => {
+                setFilters(defaultFilters);
+                markCustom();
+              }}
             />
-            <div className="button-row">
-              <button type="button" onClick={() => addExclusionFromInput("played")} disabled={!exclusionInput.trim()}>
-                <span className="button-label">
-                  <Plus className="ui-icon" aria-hidden="true" />
-                  {t("markPlayed")}
-                </span>
-              </button>
-              <button type="button" className="ghost" onClick={() => addExclusionFromInput("completed")} disabled={!exclusionInput.trim()}>
-                <span className="button-label">
-                  <Plus className="ui-icon" aria-hidden="true" />
-                  {t("markCompleted")}
-                </span>
-              </button>
-            </div>
-            <div className="exclude-grid">
-              <div className="exclude-list">
-                <strong>{t("playedCount", { count: playedGames.length })}</strong>
-                {playedGames.length === 0 ? (
-                  <p className="muted">{t("noPlayedTracked")}</p>
-                ) : (
-                  <ul>
-                    {playedGames.slice(0, 30).map((name) => (
-                      <li key={`played-${name}`}>
-                        <span>{name}</span>
-                        <button type="button" className="ghost compact" onClick={() => removePlayedGame(name)}>
-                          {t("remove")}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {playedGames.length > 0 ? (
-                  <button type="button" className="ghost compact" onClick={() => setPlayedGames([])}>
-                    {t("clearPlayed")}
-                  </button>
-                ) : null}
-              </div>
-              <div className="exclude-list">
-                <strong>{t("completedCount", { count: completedGames.length })}</strong>
-                {completedGames.length === 0 ? (
-                  <p className="muted">{t("noCompletedTracked")}</p>
-                ) : (
-                  <ul>
-                    {completedGames.slice(0, 30).map((name) => (
-                      <li key={`completed-${name}`}>
-                        <span>{name}</span>
-                        <button type="button" className="ghost compact" onClick={() => removeCompletedGame(name)}>
-                          {t("remove")}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {completedGames.length > 0 ? (
-                  <button type="button" className="ghost compact" onClick={() => setCompletedGames([])}>
-                    {t("clearCompleted")}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </section>
 
-          <section className="panel" aria-labelledby="notification-heading">
-            <h2 id="notification-heading" className="section-heading">
-              <span className="heading-label">
-                <BellRing className="ui-icon" aria-hidden="true" />
-                {t("notificationsTitle")}
-              </span>
-              <HelpTip text={t("helpTips.notifications")} />
-            </h2>
-            <p className="muted">{t("notificationsDescription")}</p>
-            <div className="odds-controls">
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={notificationsEnabled}
-                  onChange={(event) => {
-                    void setNotificationsEnabledWithPermission(event.target.checked);
-                  }}
-                />
-                <span>{t("notificationsEnabled")}</span>
-                <HelpTip text={t("helpTips.notificationsPermission")} />
-              </label>
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={trendNotifications}
-                  disabled={!notificationsEnabled}
-                  onChange={(event) => setTrendNotifications(event.target.checked)}
-                />
-                <span>{t("newTrendsAlerts")}</span>
-                <HelpTip text={t("helpTips.trendAlerts")} />
-              </label>
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={reminderNotifications}
-                  disabled={!notificationsEnabled}
-                  onChange={(event) => setReminderNotifications(event.target.checked)}
-                />
-                <span>{t("spinReminders")}</span>
-                <HelpTip text={t("helpTips.spinReminders")} />
-              </label>
-              <label className="cooldown-control">
-                <span>{t("reminderInterval")}</span>
-                <HelpTip text={t("helpTips.reminderInterval")} />
-                <input
-                  type="range"
-                  min={15}
-                  max={720}
-                  step={15}
-                  disabled={!notificationsEnabled || !reminderNotifications}
-                  value={reminderIntervalMinutes}
-                  onChange={(event) => setReminderIntervalMinutes(Number(event.target.value))}
-                />
-                <strong>{reminderIntervalMinutes}</strong>
-              </label>
-            </div>
-            {notificationStatus ? (
-              <p className="status" role="status" aria-live="polite">
-                {notificationStatus}
-              </p>
-            ) : null}
-          </section>
+            <ExclusionsPanel
+              excludePlayed={excludePlayed}
+              excludeCompleted={excludeCompleted}
+              exclusionInput={exclusionInput}
+              playedGames={playedGames}
+              completedGames={completedGames}
+              onExcludePlayedChange={setExcludePlayed}
+              onExcludeCompletedChange={setExcludeCompleted}
+              onExclusionInputChange={setExclusionInput}
+              onAddPlayed={() => addExclusionFromInput("played")}
+              onAddCompleted={() => addExclusionFromInput("completed")}
+              onRemovePlayed={removePlayedGame}
+              onRemoveCompleted={removeCompletedGame}
+              onClearPlayed={() => setPlayedGames([])}
+              onClearCompleted={() => setCompletedGames([])}
+            />
+
+            <NotificationsPanel
+              notificationsEnabled={notificationsEnabled}
+              trendNotifications={trendNotifications}
+              reminderNotifications={reminderNotifications}
+              reminderIntervalMinutes={reminderIntervalMinutes}
+              notificationStatus={notificationStatus}
+              onNotificationsEnabledChange={(value) => {
+                void setNotificationsEnabledWithPermission(value);
+              }}
+              onTrendNotificationsChange={setTrendNotifications}
+              onReminderNotificationsChange={setReminderNotifications}
+              onReminderIntervalChange={setReminderIntervalMinutes}
+            />
 
           <section className="panel" aria-labelledby="cloud-sync-heading">
             <h2 id="cloud-sync-heading" className="section-heading">

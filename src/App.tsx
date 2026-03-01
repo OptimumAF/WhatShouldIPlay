@@ -1,21 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as Accordion from "@radix-ui/react-accordion";
 import * as Tabs from "@radix-ui/react-tabs";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import {
-  ChevronsUpDown,
-  Cloud,
   Download,
-  FilePlus2,
   History,
   Library,
   PanelLeft,
   Play,
   Settings2,
-  Upload,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -26,16 +21,17 @@ import {
   SW_TOP_GAMES_UPDATED_MESSAGE,
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
-import { HelpTip } from "./components/HelpTip";
 import { ManualGamesPanel } from "./components/ManualGamesPanel";
 import { SpinHistoryPanel } from "./components/SpinHistoryPanel";
 import { PlayPanel } from "./features/play/PlayPanel";
 import { WinnerModal } from "./features/play/WinnerModal";
 import { SourcesPanel } from "./features/settings/SourcesPanel";
+import { AdvancedOptionsPanel } from "./features/settings/AdvancedOptionsPanel";
 import { FiltersPanel } from "./features/settings/FiltersPanel";
 import { ExclusionsPanel } from "./features/settings/ExclusionsPanel";
 import { NotificationsPanel } from "./features/settings/NotificationsPanel";
 import { SteamImportPanel } from "./features/settings/SteamImportPanel";
+import { CloudSyncPanel } from "./features/settings/CloudSyncPanel";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -2337,6 +2333,23 @@ export default function App() {
     }),
   );
   const sourceLoadError = topGamesQuery.isError ? (topGamesQuery.error as Error).message : null;
+  const cloudProfileOptions = accountProfiles.map((profile) => ({
+    id: profile.id,
+    name: profile.name,
+    updatedAtLabel: formatSyncTimestamp(profile.updatedAt, t("unknown")),
+  }));
+  const cloudReferenceLabel = formatSyncTimestamp(cloudSyncReferenceAt, t("unknown"));
+  const cloudConflict = pendingCloudConflictSnapshot
+    ? {
+        remoteLabel: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt, t("unknown")),
+        localLabel: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
+      }
+    : null;
+  const cloudRestorePointOptions = cloudRestorePoints.map((point) => ({
+    id: point.id,
+    timestampLabel: formatSyncTimestamp(point.createdAt, t("unknown")),
+    reason: point.reason,
+  }));
 
   return (
     <main className="layout">
@@ -2591,32 +2604,10 @@ export default function App() {
             loadingError={sourceLoadError}
           />
 
-          <section className="panel" aria-labelledby="advanced-filters-heading">
-            <h2 id="advanced-filters-heading" className="section-heading">
-              <span className="heading-label">
-                <Settings2 className="ui-icon" aria-hidden="true" />
-                {t("advancedOptionsTitle")}
-              </span>
-              <HelpTip text={t("helpTips.advancedControls")} />
-            </h2>
-            <p className="muted">{t("advancedOptionsDescription")}</p>
-            <Accordion.Root
-              type="single"
-              collapsible
-              value={showAdvancedSettings ? "advanced" : undefined}
-              onValueChange={(value) => setShowAdvancedSettings(value === "advanced")}
-            >
-              <Accordion.Item value="advanced" className="advanced-toggle-item">
-                <Accordion.Header className="sr-only">{t("advancedSettingsToggleLabel")}</Accordion.Header>
-                <Accordion.Trigger className="ghost advanced-toggle-trigger" aria-controls="advanced-settings-stack">
-                  <span className="button-label">
-                    <ChevronsUpDown className="ui-icon" aria-hidden="true" />
-                    {showAdvancedSettings ? t("hideAdvancedOptions") : t("showAdvancedOptions")}
-                  </span>
-                </Accordion.Trigger>
-              </Accordion.Item>
-            </Accordion.Root>
-          </section>
+          <AdvancedOptionsPanel
+            showAdvancedSettings={showAdvancedSettings}
+            onShowAdvancedSettingsChange={setShowAdvancedSettings}
+          />
 
           <SteamImportPanel
             steamApiKey={steamApiKey}
@@ -2698,171 +2689,40 @@ export default function App() {
               onReminderIntervalChange={setReminderIntervalMinutes}
             />
 
-          <section className="panel" aria-labelledby="cloud-sync-heading">
-            <h2 id="cloud-sync-heading" className="section-heading">
-              <span className="heading-label">
-                <Cloud className="ui-icon" aria-hidden="true" />
-                {t("cloudSyncTitle")}
-              </span>
-              <HelpTip text={t("helpTips.cloudSync")} />
-            </h2>
-            <p className="muted">{t("cloudSyncDescription")}</p>
-            <div className="steam-grid">
-              <label htmlFor="cloud-token" className="sr-only">
-                {t("cloudTokenLabel")}
-              </label>
-              <input
-                id="cloud-token"
-                type="password"
-                placeholder={t("cloudTokenPlaceholder")}
-                value={gistToken}
-                onChange={(event) => setGistToken(event.target.value)}
-                autoComplete="off"
-              />
-              <label htmlFor="cloud-gist-id" className="sr-only">
-                {t("cloudGistIdLabel")}
-              </label>
-              <input
-                id="cloud-gist-id"
-                type="text"
-                placeholder={t("cloudGistIdPlaceholder")}
-                value={gistId}
-                onChange={(event) => setGistId(event.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="button-row">
-              <button type="button" onClick={createCloudSyncGist} disabled={cloudSyncLoading}>
-                <span className="button-label">
-                  <FilePlus2 className="ui-icon" aria-hidden="true" />
-                  {cloudSyncLoading ? t("updating") : t("createGistPush")}
-                </span>
-              </button>
-              <button type="button" className="ghost" onClick={pushCloudSync} disabled={cloudSyncLoading}>
-                <span className="button-label">
-                  <Upload className="ui-icon" aria-hidden="true" />
-                  {t("pushSync")}
-                </span>
-              </button>
-              <button type="button" className="ghost" onClick={pullCloudSync} disabled={cloudSyncLoading}>
-                <span className="button-label">
-                  <Download className="ui-icon" aria-hidden="true" />
-                  {t("pullSync")}
-                </span>
-              </button>
-            </div>
-            <div className="cloud-account-profiles">
-              <strong>{t("accountProfilesTitle")}</strong>
-              <p className="muted">
-                {t("accountProfilesDescription")}
-              </p>
-              <div className="steam-grid">
-                <label className="filter-field" htmlFor="account-profile-select">
-                  <span>{t("activeProfile")}</span>
-                  <select
-                    id="account-profile-select"
-                    value={activeAccountProfileId}
-                    onChange={(event) => setActiveAccountProfileId(event.target.value)}
-                  >
-                    <option value="">{t("none")}</option>
-                    {accountProfiles.map((profile) => (
-                      <option key={profile.id} value={profile.id}>
-                        {profile.name} ({formatSyncTimestamp(profile.updatedAt, t("unknown"))})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="filter-field" htmlFor="account-profile-name">
-                  <span>{t("newProfileName")}</span>
-                  <input
-                    id="account-profile-name"
-                    type="text"
-                    value={accountProfileDraftName}
-                    onChange={(event) => setAccountProfileDraftName(event.target.value)}
-                    placeholder={t("newProfilePlaceholder")}
-                  />
-                </label>
-              </div>
-              <div className="button-row">
-                <button type="button" className="ghost" onClick={createAccountProfile}>
-                  {t("createProfile")}
-                </button>
-                <button type="button" className="ghost" onClick={saveCurrentToActiveProfile} disabled={!activeAccountProfileId}>
-                  {t("saveCurrentToActive")}
-                </button>
-                <button type="button" className="ghost" onClick={applyActiveAccountProfile} disabled={!activeAccountProfileId}>
-                  {t("applyActive")}
-                </button>
-                <button type="button" className="ghost" onClick={deleteActiveAccountProfile} disabled={!activeAccountProfileId}>
-                  {t("deleteActive")}
-                </button>
-              </div>
-              {accountProfiles.length > 0 ? (
-                <p className="muted">{t("profilesStored", { count: accountProfiles.length })}</p>
-              ) : (
-                <p className="muted">{t("noProfilesSaved")}</p>
-              )}
-            </div>
-            <p className="muted">{t("cloudReference", { value: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")) })}</p>
-            {pendingCloudConflictSnapshot ? (
-              <div className="cloud-sync-conflict" role="alert">
-                <p>
-                    {t("cloudConflictOlder", {
-                    remote: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt, t("unknown")),
-                    local: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
-                  })}
-                </p>
-                <div className="button-row">
-                  <button type="button" className="ghost" onClick={dismissCloudConflict} disabled={cloudSyncLoading}>
-                    {t("keepLocal")}
-                  </button>
-                  <button type="button" onClick={applyPendingCloudConflict} disabled={cloudSyncLoading}>
-                    {t("applyRemoteAnyway")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {cloudRestorePoints.length > 0 ? (
-              <div className="cloud-restore-points">
-                <strong>{t("restorePointsTitle")}</strong>
-                <ul>
-                  {cloudRestorePoints.map((point) => (
-                    <li key={point.id}>
-                      <span>
-                        {formatSyncTimestamp(point.createdAt, t("unknown"))} | {point.reason}
-                      </span>
-                      <button type="button" className="ghost compact" onClick={() => restoreFromCloudPoint(point)}>
-                        {t("restore")}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="button-row">
-                  <button
-                    type="button"
-                    className="ghost compact"
-                    onClick={() => {
-                      setCloudRestorePoints([]);
-                      pushToast("info", t("messages.cloudRestorePointsCleared"));
-                    }}
-                  >
-                    {t("clearRestorePoints")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {cloudSyncLoading ? (
-              <p className="status progress-status" role="status" aria-live="polite">
-                <span className="progress-dot" aria-hidden="true" />
-                {t("syncingWithGist")}
-              </p>
-            ) : null}
-            {cloudSyncStatus ? (
-              <p className="status" role="status" aria-live="polite">
-                {cloudSyncStatus}
-              </p>
-            ) : null}
-          </section>
+            <CloudSyncPanel
+              gistToken={gistToken}
+              gistId={gistId}
+              cloudSyncLoading={cloudSyncLoading}
+              cloudSyncStatus={cloudSyncStatus}
+              onGistTokenChange={setGistToken}
+              onGistIdChange={setGistId}
+              onCreateGistPush={createCloudSyncGist}
+              onPushSync={pushCloudSync}
+              onPullSync={pullCloudSync}
+              activeAccountProfileId={activeAccountProfileId}
+              accountProfiles={cloudProfileOptions}
+              accountProfileDraftName={accountProfileDraftName}
+              onActiveAccountProfileChange={setActiveAccountProfileId}
+              onAccountProfileDraftNameChange={setAccountProfileDraftName}
+              onCreateProfile={createAccountProfile}
+              onSaveCurrentToActive={saveCurrentToActiveProfile}
+              onApplyActive={applyActiveAccountProfile}
+              onDeleteActive={deleteActiveAccountProfile}
+              cloudReferenceLabel={cloudReferenceLabel}
+              conflict={cloudConflict}
+              onKeepLocal={dismissCloudConflict}
+              onApplyRemote={applyPendingCloudConflict}
+              restorePoints={cloudRestorePointOptions}
+              onRestorePoint={(id) => {
+                const point = cloudRestorePoints.find((entry) => entry.id === id);
+                if (!point) return;
+                restoreFromCloudPoint(point);
+              }}
+              onClearRestorePoints={() => {
+                setCloudRestorePoints([]);
+                pushToast("info", t("messages.cloudRestorePointsCleared"));
+              }}
+            />
           </div>
         </aside>
 

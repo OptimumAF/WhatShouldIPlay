@@ -10,6 +10,7 @@ import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
 import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
 import { useApplyCloudSnapshot } from "./hooks/useApplyCloudSnapshot";
 import { useCloudPanelData } from "./hooks/useCloudPanelData";
+import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1752,42 +1753,32 @@ export default function App() {
     }
   };
 
-  const currentSettingsSnapshot = useCallback(
-    (): StoredSettings => ({
-      enabledSources,
-      sourceWeights,
-      weightedMode,
-      adaptiveRecommendations,
-      cooldownSpins,
-      spinSpeedProfile,
-      reducedSpinAnimation,
-      activePreset,
-      filters,
-    }),
-    [
-      activePreset,
-      adaptiveRecommendations,
-      cooldownSpins,
-      enabledSources,
-      filters,
-      reducedSpinAnimation,
-      sourceWeights,
-      spinSpeedProfile,
-      weightedMode,
-    ],
-  );
-
-  const applyStoredSettings = useCallback((sanitized: StoredSettings) => {
-    setEnabledSources(sanitized.enabledSources);
-    setSourceWeights(sanitized.sourceWeights);
-    setWeightedMode(sanitized.weightedMode);
-    setAdaptiveRecommendations(sanitized.adaptiveRecommendations);
-    setCooldownSpins(sanitized.cooldownSpins);
-    setSpinSpeedProfile(sanitized.spinSpeedProfile);
-    setReducedSpinAnimation(sanitized.reducedSpinAnimation);
-    setActivePreset(sanitized.activePreset);
-    setFilters(sanitizeFilters(sanitized.filters));
-  }, []);
+  const { currentSettingsSnapshot, applyStoredSettings } = useStoredSettingsState<
+    EnabledSources,
+    SourceWeights,
+    SpinSpeedProfile,
+    AdvancedFilters
+  >({
+    enabledSources,
+    sourceWeights,
+    weightedMode,
+    adaptiveRecommendations,
+    cooldownSpins,
+    spinSpeedProfile,
+    reducedSpinAnimation,
+    activePreset,
+    filters,
+    sanitizeFilters: (value) => sanitizeFilters(value),
+    setEnabledSources,
+    setSourceWeights,
+    setWeightedMode,
+    setAdaptiveRecommendations,
+    setCooldownSpins,
+    setSpinSpeedProfile,
+    setReducedSpinAnimation,
+    setActivePreset,
+    setFilters,
+  });
 
   const { buildCloudSnapshot, pushCloudRestorePoint } = useCloudSnapshotBuilders<
     StoredSettings,

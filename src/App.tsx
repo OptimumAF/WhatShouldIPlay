@@ -10,12 +10,9 @@ import {
   BellRing,
   ChevronsUpDown,
   Cloud,
-  Database,
   Download,
-  Eraser,
   FilePlus2,
   Filter,
-  Gamepad2,
   History,
   KeyRound,
   Library,
@@ -24,7 +21,6 @@ import {
   Plus,
   RotateCw,
   Settings2,
-  SlidersHorizontal,
   Trash2,
   Upload,
   WandSparkles,
@@ -37,10 +33,12 @@ import {
   SW_TOP_GAMES_UPDATED_MESSAGE,
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
-import { Wheel } from "./components/Wheel";
+import { HelpTip } from "./components/HelpTip";
 import { ManualGamesPanel } from "./components/ManualGamesPanel";
 import { SpinHistoryPanel } from "./components/SpinHistoryPanel";
-import { WinnerSummaryCard } from "./components/WinnerSummaryCard";
+import { PlayPanel } from "./features/play/PlayPanel";
+import { WinnerModal } from "./features/play/WinnerModal";
+import { SourcesPanel } from "./features/settings/SourcesPanel";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -800,17 +798,6 @@ const keepFocusInContainer = (event: KeyboardEvent, root: HTMLElement) => {
     last.focus();
   }
 };
-
-function HelpTip({ text }: { text: string }) {
-  return (
-    <span className="help-tip" tabIndex={0} aria-label={text}>
-      ?
-      <span role="tooltip" className="help-tip-bubble">
-        {text}
-      </span>
-    </span>
-  );
-}
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -2316,6 +2303,43 @@ export default function App() {
     meta: `${new Date(item.spunAt).toLocaleString()} | ${sourceLabelList(item.sources)}`,
     odds: formatOdds(item.odds),
   }));
+  const presetCards = modePresets.map((preset) => ({
+    id: preset.id,
+    label: t(modePresetTranslationKeys[preset.id]?.label ?? "modePreset.balanced.label"),
+    description: t(modePresetTranslationKeys[preset.id]?.description ?? "modePreset.balanced.description"),
+  }));
+  const sourceCards = sourceKeys.map((source) => ({
+    source,
+    label: sourceLabels[source],
+    enabled: enabledSources[source],
+    loadedCount:
+      source === "manual"
+        ? manualGames.length
+        : source === "steamImport"
+          ? steamImportGames.length
+          : (topGames?.sources[source].games.length ?? 0),
+    loading: topGamesQuery.isLoading && source !== "manual" && source !== "steamImport",
+    fetchedAt: source === "manual" || source === "steamImport" ? null : (topGames?.sources[source].fetchedAt ?? null),
+    note:
+      source === "manual"
+        ? t("sourceCustomListNote")
+        : source === "steamImport"
+          ? t("sourceSteamImportNote")
+          : topGames?.sources[source].note,
+  }));
+  const sourceWeightRows = sourceKeys.map((source) => ({
+    source,
+    label: sourceLabels[source],
+    value: sourceWeights[source],
+    suggested: suggestedSourceWeights[source],
+  }));
+  const spinSpeedOptions = (Object.entries(spinSpeedProfiles) as [SpinSpeedProfile, (typeof spinSpeedProfiles)[SpinSpeedProfile]][]).map(
+    ([id, profile]) => ({
+      id,
+      label: profile.label,
+    }),
+  );
+  const sourceLoadError = topGamesQuery.isError ? (topGamesQuery.error as Error).message : null;
 
   return (
     <main className="layout">
@@ -2513,224 +2537,62 @@ export default function App() {
               </button>
             </div>
           ) : null}
-          <section className="panel" aria-labelledby="mode-presets-heading">
-            <h2 id="mode-presets-heading" className="section-heading">
-              <span className="heading-label">
-                <SlidersHorizontal className="ui-icon" aria-hidden="true" />
-                {t("presets")}
-              </span>
-            </h2>
-            <div className="preset-grid">
-              {modePresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  className={clsx("preset-card", activePreset === preset.id && "is-active")}
-                  onClick={() => applyPreset(preset)}
-                >
-                  <strong>{t(modePresetTranslationKeys[preset.id]?.label ?? "modePreset.balanced.label")}</strong>
-                  <span>{t(modePresetTranslationKeys[preset.id]?.description ?? "modePreset.balanced.description")}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel" aria-labelledby="sources-heading">
-            <h2 id="sources-heading" className="section-heading">
-              <span className="heading-label">
-                <Database className="ui-icon" aria-hidden="true" />
-                {t("sources")}
-              </span>
-              <HelpTip text={t("helpTips.sources")} />
-            </h2>
-            <div className="grid-sources">
-              {sourceKeys.map((source) => {
-                const sourceMeta =
-                  source === "manual"
-                    ? manualGames.length
-                    : source === "steamImport"
-                      ? steamImportGames.length
-                      : (topGames?.sources[source].games.length ?? 0);
-                const note =
-                  source === "manual"
-                    ? t("sourceCustomListNote")
-                    : source === "steamImport"
-                      ? t("sourceSteamImportNote")
-                      : topGames?.sources[source].note;
-                const fetchedAt =
-                  source === "manual" || source === "steamImport" ? null : topGames?.sources[source].fetchedAt;
-                const loadingSource = topGamesQuery.isLoading && source !== "manual" && source !== "steamImport";
-
-                return (
-                  <label key={source} className={clsx("source-card", enabledSources[source] && "is-enabled")}>
-                    <input
-                      type="checkbox"
-                      checked={enabledSources[source]}
-                      onChange={() => {
-                        setEnabledSources((current) => ({
-                          ...current,
-                          [source]: !current[source],
-                        }));
-                        markCustom();
-                      }}
-                    />
-                    <div>
-                      <strong>{sourceLabels[source]}</strong>
-                      {loadingSource ? <span className="mini-skeleton" aria-hidden="true" /> : <p>{t("gamesLoaded", { count: sourceMeta })}</p>}
-                      {fetchedAt ? <small>{t("updatedAt", { value: new Date(fetchedAt).toLocaleString() })}</small> : null}
-                      {note ? <small>{note}</small> : null}
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="odds-controls">
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={weightedMode}
-                  onChange={(event) => {
-                    setWeightedMode(event.target.checked);
-                    markCustom();
-                  }}
-                />
-                <span>{t("weightedWheel")}</span>
-                <HelpTip text={t("helpTips.weightedWheel")} />
-              </label>
-              <label className="cooldown-control">
-                <span>{t("cooldownSpins")}</span>
-                <HelpTip text={t("helpTips.cooldown")} />
-                <input
-                  type="range"
-                  min={0}
-                  max={20}
-                  value={cooldownSpins}
-                  onChange={(event) => {
-                    setCooldownSpins(Number(event.target.value));
-                    markCustom();
-                  }}
-                />
-                <strong>{cooldownSpins}</strong>
-              </label>
-            </div>
-
-            <div className="odds-controls">
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={adaptiveRecommendations}
-                  onChange={(event) => {
-                    setAdaptiveRecommendations(event.target.checked);
-                    markCustom();
-                  }}
-                />
-                <span>{t("adaptiveRecommendations")}</span>
-                <HelpTip text={t("helpTips.adaptive")} />
-              </label>
-              <button
-                type="button"
-                className="ghost"
-                onClick={applySuggestedWeights}
-                disabled={behaviorSignalsCount < 3}
-              >
-                <span className="button-label">
-                  <WandSparkles className="ui-icon" aria-hidden="true" />
-                  {t("applySuggestedWeights")}
-                </span>
-              </button>
-            </div>
-            <p className="muted">
-              {t("behaviorSignalsTracked", { count: behaviorSignalsCount })}
-            </p>
-
-            <div className="spin-motion-grid">
-              <label className="filter-field">
-                <span>{t("spinSpeedProfile")}</span>
-                <select
-                  value={spinSpeedProfile}
-                  onChange={(event) => {
-                    setSpinSpeedProfile(event.target.value as SpinSpeedProfile);
-                    markCustom();
-                  }}
-                >
-                  {Object.entries(spinSpeedProfiles).map(([profileId, profile]) => (
-                    <option key={profileId} value={profileId}>
-                      {profile.label}
-                    </option>
-                  ))}
-                </select>
-                <small className="filter-help">
-                  {t("approxSpinTime", { seconds: (effectiveSpinDurationMs / 1000).toFixed(1) })}
-                </small>
-              </label>
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  checked={reducedSpinAnimation}
-                  onChange={(event) => {
-                    setReducedSpinAnimation(event.target.checked);
-                    markCustom();
-                  }}
-                />
-                <span>{t("reducedSpinAnimation")}</span>
-                <HelpTip text={t("helpTips.reducedSpin")} />
-              </label>
-            </div>
-
-            <div className="weights-grid">
-              <p className="muted">
-                {t("perSourceMultipliers")}
-                <HelpTip text={t("helpTips.perSourceMultipliers")} />
-              </p>
-              {sourceKeys.map((source) => (
-                <label key={source} className="weight-row">
-                  <span>{sourceLabels[source]}</span>
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={3}
-                    step={0.1}
-                    disabled={!weightedMode}
-                    value={sourceWeights[source]}
-                    onChange={(event) => {
-                      setSourceWeights((current) => ({
-                        ...current,
-                        [source]: Number(event.target.value),
-                      }));
-                      markCustom();
-                    }}
-                  />
-                  <strong>{sourceWeights[source].toFixed(1)}x</strong>
-                </label>
-              ))}
-            </div>
-
-            <div className="weights-grid">
-              <p className="muted">
-                {t("suggestedMultipliers")}
-                <HelpTip text={t("helpTips.suggestedMultipliers")} />
-              </p>
-              {sourceKeys.map((source) => (
-                <div key={`suggested-${source}`} className="weight-row suggested-row" aria-live="polite">
-                  <span>{sourceLabels[source]}</span>
-                  <div className="suggested-bar" aria-hidden="true" />
-                  <strong>{suggestedSourceWeights[source].toFixed(1)}x</strong>
-                </div>
-              ))}
-            </div>
-
-            {topGamesQuery.isLoading ? (
-              <p className="status" role="status" aria-live="polite">
-                {t("loadingData")}
-              </p>
-            ) : null}
-            {topGamesQuery.isError ? (
-              <p className="status error" role="alert">
-                {(topGamesQuery.error as Error).message}
-              </p>
-            ) : null}
-          </section>
+          <SourcesPanel
+            presetCards={presetCards}
+            activePreset={activePreset}
+            onApplyPreset={(presetId) => {
+              const preset = modePresets.find((candidate) => candidate.id === presetId);
+              if (!preset) return;
+              applyPreset(preset);
+            }}
+            sourceCards={sourceCards}
+            onToggleSource={(source) => {
+              setEnabledSources((current) => ({
+                ...current,
+                [source]: !current[source],
+              }));
+              markCustom();
+            }}
+            weightedMode={weightedMode}
+            onWeightedModeChange={(value) => {
+              setWeightedMode(value);
+              markCustom();
+            }}
+            cooldownSpins={cooldownSpins}
+            onCooldownSpinsChange={(value) => {
+              setCooldownSpins(value);
+              markCustom();
+            }}
+            adaptiveRecommendations={adaptiveRecommendations}
+            onAdaptiveRecommendationsChange={(value) => {
+              setAdaptiveRecommendations(value);
+              markCustom();
+            }}
+            onApplySuggestedWeights={applySuggestedWeights}
+            behaviorSignalsCount={behaviorSignalsCount}
+            spinSpeedProfile={spinSpeedProfile}
+            spinSpeedOptions={spinSpeedOptions}
+            onSpinSpeedProfileChange={(value) => {
+              setSpinSpeedProfile(value);
+              markCustom();
+            }}
+            effectiveSpinDurationMs={effectiveSpinDurationMs}
+            reducedSpinAnimation={reducedSpinAnimation}
+            onReducedSpinAnimationChange={(value) => {
+              setReducedSpinAnimation(value);
+              markCustom();
+            }}
+            weightRows={sourceWeightRows}
+            onSourceWeightChange={(source, value) => {
+              setSourceWeights((current) => ({
+                ...current,
+                [source]: value,
+              }));
+              markCustom();
+            }}
+            loadingData={topGamesQuery.isLoading}
+            loadingError={sourceLoadError}
+          />
 
           <section className="panel" aria-labelledby="advanced-filters-heading">
             <h2 id="advanced-filters-heading" className="section-heading">
@@ -3290,63 +3152,27 @@ export default function App() {
 
         <div className="content-stack">
           {showPlayPane ? (
-            <section className="panel" aria-labelledby="wheel-heading">
-              <h2 id="wheel-heading" className="section-heading">
-                <span className="heading-label">
-                  <Gamepad2 className="ui-icon" aria-hidden="true" />
-                  {t("wheelTitle")}
-                </span>
-              </h2>
-              <p className="muted">
-                {t("poolSummary", {
-                  count: activePool.length,
-                  statusExcluded: exclusionSummarySuffix,
-                  cooldownExcluded: cooldownExcludedSuffix,
-                })}
-              </p>
-              {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
-              {statusExhausted ? (
-                <p className="status">{t("statusExhausted")}</p>
-              ) : null}
-              {cooldownSaturated ? (
-                <p className="status">{t("cooldownExhausted")}</p>
-              ) : null}
-              <Wheel
-                games={activePool.map((candidate) => candidate.name)}
-                rotation={rotation}
-                spinning={spinning}
-                spinDurationMs={effectiveSpinDurationMs}
-                onSpinEnd={onSpinEnd}
-              />
-              <div className="button-row">
-                <button type="button" onClick={handleSpin} disabled={spinning || activePool.length === 0}>
-                  <span className="button-label">
-                    <RotateCw className="ui-icon" aria-hidden="true" />
-                    {spinning ? t("spinning") : t("spinTheWheel")}
-                  </span>
-                </button>
-                <button type="button" className="ghost" onClick={clearHistory}>
-                  <span className="button-label">
-                    <Eraser className="ui-icon" aria-hidden="true" />
-                    {t("clearHistory")}
-                  </span>
-                </button>
-              </div>
-              {winner && winnerMeta ? (
-                <WinnerSummaryCard
-                  prompt={t("youShouldPlay")}
-                  winner={winner}
-                  sourceLabel={t("sourceLabel")}
-                  sourceValue={sourceLabelList(winnerMeta.sources)}
-                  oddsLabel={t("spinOdds")}
-                  oddsValue={formatOdds(winnerMeta.odds)}
-                  playedLabel={t("winnerActions.played")}
-                  completedLabel={t("winnerActions.completed")}
-                  onMarkPlayed={() => markGamesPlayed([winner])}
-                  onMarkCompleted={() => markGamesCompleted([winner])}
-                />
-              ) : null}
-            </section>
+            <PlayPanel
+              activePoolCount={activePool.length}
+              exclusionSummarySuffix={exclusionSummarySuffix}
+              cooldownExcludedSuffix={cooldownExcludedSuffix}
+              advancedFilterExhausted={advancedFilterExhausted}
+              statusExhausted={statusExhausted}
+              cooldownSaturated={cooldownSaturated}
+              games={activePool.map((candidate) => candidate.name)}
+              rotation={rotation}
+              spinning={spinning}
+              spinDurationMs={effectiveSpinDurationMs}
+              onSpinEnd={onSpinEnd}
+              onSpin={handleSpin}
+              onClearHistory={clearHistory}
+              winner={winner}
+              winnerMeta={winnerMeta}
+              formatSourceList={sourceLabelList}
+              formatOdds={formatOdds}
+              onMarkPlayed={() => markGamesPlayed([winner])}
+              onMarkCompleted={() => markGamesCompleted([winner])}
+            />
           ) : null}
 
           {showLibraryPane ? (
@@ -3444,57 +3270,19 @@ export default function App() {
         </div>
       ) : null}
 
-      {showWinnerPopup && winner && winnerMeta ? (
-        <div className="winner-overlay" onClick={() => setShowWinnerPopup(false)}>
-          <div
-            ref={winnerPopupRef}
-            className="winner-popup"
-            key={winnerPulse}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="winner-title"
-            aria-describedby="winner-description"
-            onClick={(event) => event.stopPropagation()}
-            tabIndex={-1}
-          >
-            <div className="winner-glow" />
-            <p className="winner-tag">{t("winner")}</p>
-            <h3 id="winner-title">{winner}</h3>
-            <div className="winner-moment-grid">
-              <div>
-                <span>{t("spinOdds")}</span>
-                <strong>{formatOdds(winnerMeta.odds)}</strong>
-              </div>
-              <div>
-                <span>{t("sourceLabel")}</span>
-                <strong>{sourceLabelList(winnerMeta.sources)}</strong>
-              </div>
-            </div>
-            <p id="winner-description">{t("commitNow")}</p>
-            <div className="button-row">
-              {winnerMeta.appId ? (
-                <a className="button-link" href={`https://store.steampowered.com/app/${winnerMeta.appId}/`} target="_blank" rel="noreferrer">
-                  {t("openSteam")}
-                </a>
-              ) : null}
-              {winnerMeta.url ? (
-                <a className="button-link ghost-link" href={winnerMeta.url} target="_blank" rel="noreferrer">
-                  {t("viewSource")}
-                </a>
-              ) : null}
-              <button type="button" className="ghost" onClick={() => markGamesPlayed([winner])}>
-                {t("winnerActions.played")}
-              </button>
-              <button type="button" className="ghost" onClick={() => markGamesCompleted([winner])}>
-                {t("winnerActions.completed")}
-              </button>
-              <button type="button" onClick={() => setShowWinnerPopup(false)} ref={winnerPopupCloseRef}>
-                {t("nice")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <WinnerModal
+        show={showWinnerPopup}
+        winner={winner}
+        winnerMeta={winnerMeta}
+        winnerPulse={winnerPulse}
+        winnerPopupRef={winnerPopupRef}
+        winnerPopupCloseRef={winnerPopupCloseRef}
+        formatSourceList={sourceLabelList}
+        formatOdds={formatOdds}
+        onClose={() => setShowWinnerPopup(false)}
+        onMarkPlayed={() => markGamesPlayed([winner])}
+        onMarkCompleted={() => markGamesCompleted([winner])}
+      />
     </main>
   );
 }

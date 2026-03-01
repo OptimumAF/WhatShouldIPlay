@@ -1,0 +1,14 @@
+export const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
+export const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
+export const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
+export const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
+export const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
+export const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
+export const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
+export const ACCOUNT_PROFILES_STORAGE_KEY = "pickagame.account-profiles.v1";
+export const ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY = "pickagame.account-profiles.active.v1";
+export const CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY = "pickagame.cloud-sync.restore-points.v1";
+export const CLOUD_SYNC_REFERENCE_STORAGE_KEY = "pickagame.cloud-sync.reference.v1";
+export const THEME_STORAGE_KEY = "pickagame.theme.v1";
+export const ONBOARDING_STORAGE_KEY = "pickagame.onboarding.v1";
+export const MAX_CLOUD_RESTORE_POINTS = 5;

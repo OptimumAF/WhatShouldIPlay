@@ -24,6 +24,23 @@ import { OnboardingModal } from "./features/layout/OnboardingModal";
 import { ToastStack } from "./features/layout/ToastStack";
 import { WorkspaceShell } from "./features/layout/WorkspaceShell";
 import { MainContentPanels } from "./features/layout/MainContentPanels";
+import { useAppPersistence } from "./hooks/useAppPersistence";
+import {
+  ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY,
+  CLOUD_SYNC_REFERENCE_STORAGE_KEY,
+  CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY,
+  EXCLUSION_STORAGE_KEY,
+  HISTORY_STORAGE_KEY,
+  MANUAL_GAMES_STORAGE_KEY,
+  MAX_CLOUD_RESTORE_POINTS,
+  NOTIFICATION_STORAGE_KEY,
+  ONBOARDING_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+  STEAM_IMPORT_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  ACCOUNT_PROFILES_STORAGE_KEY,
+  CLOUD_SYNC_STORAGE_KEY,
+} from "./lib/storageKeys";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -204,21 +221,6 @@ const cloudRestorePointsSchema = z.array(
 );
 
 const accountProfilesSchema = z.array(accountProfileSchema);
-
-const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
-const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
-const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
-const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
-const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
-const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
-const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
-const ACCOUNT_PROFILES_STORAGE_KEY = "pickagame.account-profiles.v1";
-const ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY = "pickagame.account-profiles.active.v1";
-const CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY = "pickagame.cloud-sync.restore-points.v1";
-const CLOUD_SYNC_REFERENCE_STORAGE_KEY = "pickagame.cloud-sync.reference.v1";
-const THEME_STORAGE_KEY = "pickagame.theme.v1";
-const ONBOARDING_STORAGE_KEY = "pickagame.onboarding.v1";
-const MAX_CLOUD_RESTORE_POINTS = 5;
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
@@ -1202,94 +1204,79 @@ export default function App() {
     setFilters((current) => ({ ...current, tag: "any" }));
   }, [availableTags, filters.tag]);
 
-  useEffect(() => {
-    localStorage.setItem(
-      SETTINGS_STORAGE_KEY,
-      JSON.stringify({
-        enabledSources,
-        sourceWeights,
-        weightedMode,
-        adaptiveRecommendations,
-        cooldownSpins,
-        spinSpeedProfile,
-        reducedSpinAnimation,
-        activePreset,
-        filters,
-      } satisfies StoredSettings),
-    );
-  }, [
-    activePreset,
-    adaptiveRecommendations,
-    cooldownSpins,
-    enabledSources,
-    filters,
-    reducedSpinAnimation,
-    sourceWeights,
-    spinSpeedProfile,
-    weightedMode,
-  ]);
+  const persistedSettings = useMemo<StoredSettings>(
+    () => ({
+      enabledSources,
+      sourceWeights,
+      weightedMode,
+      adaptiveRecommendations,
+      cooldownSpins,
+      spinSpeedProfile,
+      reducedSpinAnimation,
+      activePreset,
+      filters,
+    }),
+    [
+      activePreset,
+      adaptiveRecommendations,
+      cooldownSpins,
+      enabledSources,
+      filters,
+      reducedSpinAnimation,
+      sourceWeights,
+      spinSpeedProfile,
+      weightedMode,
+    ],
+  );
+  const persistedSteamImport = useMemo<StoredSteamImport>(
+    () => ({
+      steamApiKey,
+      steamId,
+      steamImportGames,
+    }),
+    [steamApiKey, steamId, steamImportGames],
+  );
+  const persistedExclusions = useMemo<StoredExclusions>(
+    () => ({
+      excludePlayed,
+      excludeCompleted,
+      playedGames,
+      completedGames,
+    }),
+    [completedGames, excludeCompleted, excludePlayed, playedGames],
+  );
+  const persistedNotifications = useMemo<StoredNotificationSettings>(
+    () => ({
+      notificationsEnabled,
+      trendNotifications,
+      reminderNotifications,
+      reminderIntervalMinutes,
+    }),
+    [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications],
+  );
+  const persistedCloudSync = useMemo<StoredCloudSync>(
+    () => ({
+      provider: cloudProvider,
+      gistId,
+      gistToken,
+    }),
+    [cloudProvider, gistId, gistToken],
+  );
 
-  useEffect(() => {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(spinHistory.slice(0, 50)));
-  }, [spinHistory]);
-
-  useEffect(() => {
-    localStorage.setItem(MANUAL_GAMES_STORAGE_KEY, JSON.stringify(manualGames));
-  }, [manualGames]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      STEAM_IMPORT_STORAGE_KEY,
-      JSON.stringify({
-        steamApiKey,
-        steamId,
-        steamImportGames,
-      } satisfies StoredSteamImport),
-    );
-  }, [steamApiKey, steamId, steamImportGames]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      EXCLUSION_STORAGE_KEY,
-      JSON.stringify({
-        excludePlayed,
-        excludeCompleted,
-        playedGames,
-        completedGames,
-      } satisfies StoredExclusions),
-    );
-  }, [completedGames, excludeCompleted, excludePlayed, playedGames]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      NOTIFICATION_STORAGE_KEY,
-      JSON.stringify({
-        notificationsEnabled,
-        trendNotifications,
-        reminderNotifications,
-        reminderIntervalMinutes,
-      } satisfies StoredNotificationSettings),
-    );
-  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      CLOUD_SYNC_STORAGE_KEY,
-      JSON.stringify({
-        provider: cloudProvider,
-        gistId,
-        gistToken,
-      } satisfies StoredCloudSync),
-    );
-  }, [cloudProvider, gistId, gistToken]);
-
-  useEffect(() => {
-    localStorage.setItem(ACCOUNT_PROFILES_STORAGE_KEY, JSON.stringify(accountProfiles));
-  }, [accountProfiles]);
-
-  useEffect(() => {
-    localStorage.setItem(ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY, JSON.stringify(activeAccountProfileId));
-  }, [activeAccountProfileId]);
+  useAppPersistence({
+    settings: persistedSettings,
+    spinHistory,
+    manualGames,
+    steamImport: persistedSteamImport,
+    exclusions: persistedExclusions,
+    notifications: persistedNotifications,
+    cloudSync: persistedCloudSync,
+    accountProfiles,
+    activeAccountProfileId,
+    cloudRestorePoints,
+    cloudSyncReferenceAt,
+    themeMode,
+  });
 
   useEffect(() => {
     if (accountProfiles.length === 0) {
@@ -1302,18 +1289,6 @@ export default function App() {
       setActiveAccountProfileId(accountProfiles[0].id);
     }
   }, [accountProfiles, activeAccountProfileId]);
-
-  useEffect(() => {
-    localStorage.setItem(CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY, JSON.stringify(cloudRestorePoints));
-  }, [cloudRestorePoints]);
-
-  useEffect(() => {
-    localStorage.setItem(CLOUD_SYNC_REFERENCE_STORAGE_KEY, JSON.stringify(cloudSyncReferenceAt));
-  }, [cloudSyncReferenceAt]);
-
-  useEffect(() => {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeMode));
-  }, [themeMode]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -43,3 +43,7 @@ Owner: `@OptimumAF`
 - Keep PRs scoped to one roadmap item when possible.
 - Use `Roadmap Feedback` issues and Discussions to feed prioritization updates.
 - See `docs/feedback-loop.md` for feedback intake and triage cadence.
+
+## Decisions
+
+- Desktop/web UI parity strategy is documented in `docs/desktop-ui-strategy.md`.

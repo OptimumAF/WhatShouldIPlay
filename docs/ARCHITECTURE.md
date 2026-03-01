@@ -36,6 +36,11 @@ WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipel
   - local game scan
   - wheel and winner presentation
 
+### 4. UI Parity Strategy
+
+- Current strategy: dual implementation (React web + Dioxus desktop) with shared behavior contracts.
+- Strategy document: `docs/desktop-ui-strategy.md`
+
 ## Deployment Model
 
 - Web deploy: GitHub Actions workflow builds and deploys static `dist/` to Pages
@@ -48,4 +53,3 @@ WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipel
   - per-source fallback to existing cached data where applicable
   - SteamDB fallback to Steam charts API
 - Static serving avoids backend operational cost and availability risk
-

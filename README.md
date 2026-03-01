@@ -144,6 +144,7 @@ See:
 - [SUPPORT.md](SUPPORT.md)
 - [GOVERNANCE.md](GOVERNANCE.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/desktop-ui-strategy.md](docs/desktop-ui-strategy.md)
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 - [docs/RELEASING.md](docs/RELEASING.md)
 - [docs/feedback-loop.md](docs/feedback-loop.md)

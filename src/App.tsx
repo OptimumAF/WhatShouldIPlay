@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
-import { Settings2, X } from "lucide-react";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
@@ -11,9 +10,6 @@ import {
   SW_TOP_GAMES_UPDATED_MESSAGE,
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
-import { ManualGamesPanel } from "./components/ManualGamesPanel";
-import { SpinHistoryPanel } from "./components/SpinHistoryPanel";
-import { PlayPanel } from "./features/play/PlayPanel";
 import { WinnerModal } from "./features/play/WinnerModal";
 import { SourcesPanel } from "./features/settings/SourcesPanel";
 import { AdvancedOptionsPanel } from "./features/settings/AdvancedOptionsPanel";
@@ -26,6 +22,8 @@ import { AppHeader } from "./features/layout/AppHeader";
 import { UpdateBanners } from "./features/layout/UpdateBanners";
 import { OnboardingModal } from "./features/layout/OnboardingModal";
 import { ToastStack } from "./features/layout/ToastStack";
+import { WorkspaceShell } from "./features/layout/WorkspaceShell";
+import { MainContentPanels } from "./features/layout/MainContentPanels";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -2402,277 +2400,229 @@ export default function App() {
         onDismissFreshTrends={() => setFreshTrendsNotice(false)}
       />
 
-      {settingsSheetMode ? (
-        <button
-          type="button"
-          className="settings-sheet-backdrop"
-          aria-label={t("hideSettings")}
-          onClick={() => setSidebarOpen(false)}
-        />
-      ) : null}
+      <WorkspaceShell
+        settingsSheetMode={settingsSheetMode}
+        hideSettingsLabel={t("hideSettings")}
+        onCloseSettings={() => setSidebarOpen(false)}
+        settingsSidebarVisible={settingsSidebarVisible}
+        showSettingsPane={showSettingsPane}
+        activeTab={activeTab}
+        gameSettingsAriaLabel={t("gameSettingsAria")}
+        settingsSheetTitle={t("settingsSheetTitle")}
+        settingsContent={
+          <>
+            <SourcesPanel
+              presetCards={presetCards}
+              activePreset={activePreset}
+              onApplyPreset={(presetId) => {
+                const preset = modePresets.find((candidate) => candidate.id === presetId);
+                if (!preset) return;
+                applyPreset(preset);
+              }}
+              sourceCards={sourceCards}
+              onToggleSource={(source) => {
+                setEnabledSources((current) => ({
+                  ...current,
+                  [source]: !current[source],
+                }));
+                markCustom();
+              }}
+              weightedMode={weightedMode}
+              onWeightedModeChange={(value) => {
+                setWeightedMode(value);
+                markCustom();
+              }}
+              cooldownSpins={cooldownSpins}
+              onCooldownSpinsChange={(value) => {
+                setCooldownSpins(value);
+                markCustom();
+              }}
+              adaptiveRecommendations={adaptiveRecommendations}
+              onAdaptiveRecommendationsChange={(value) => {
+                setAdaptiveRecommendations(value);
+                markCustom();
+              }}
+              onApplySuggestedWeights={applySuggestedWeights}
+              behaviorSignalsCount={behaviorSignalsCount}
+              spinSpeedProfile={spinSpeedProfile}
+              spinSpeedOptions={spinSpeedOptions}
+              onSpinSpeedProfileChange={(value) => {
+                setSpinSpeedProfile(value);
+                markCustom();
+              }}
+              effectiveSpinDurationMs={effectiveSpinDurationMs}
+              reducedSpinAnimation={reducedSpinAnimation}
+              onReducedSpinAnimationChange={(value) => {
+                setReducedSpinAnimation(value);
+                markCustom();
+              }}
+              weightRows={sourceWeightRows}
+              onSourceWeightChange={(source, value) => {
+                setSourceWeights((current) => ({
+                  ...current,
+                  [source]: value,
+                }));
+                markCustom();
+              }}
+              loadingData={topGamesQuery.isLoading}
+              loadingError={sourceLoadError}
+            />
 
-      <div
-        className={clsx(
-          "workspace",
-          !settingsSidebarVisible && "sidebar-collapsed",
-          !showSettingsPane && "settings-tab-hidden",
-          `tab-${activeTab}`,
-        )}
-        id="main-content"
-      >
-        <aside
-          id="settings-sidebar"
-          aria-label={t("gameSettingsAria")}
-          className={clsx("settings-sidebar", !settingsSidebarVisible && "is-collapsed")}
-          role={settingsSheetMode ? "dialog" : undefined}
-          aria-modal={settingsSheetMode ? true : undefined}
-        >
-          {settingsSheetMode ? (
-            <div className="settings-sheet-head">
-              <strong>{t("settingsSheetTitle")}</strong>
-              <button type="button" className="ghost compact settings-sheet-close" onClick={() => setSidebarOpen(false)}>
-                <span className="button-label">
-                  <X className="ui-icon" aria-hidden="true" />
-                  {t("hideSettings")}
-                </span>
-              </button>
+            <AdvancedOptionsPanel
+              showAdvancedSettings={showAdvancedSettings}
+              onShowAdvancedSettingsChange={setShowAdvancedSettings}
+            />
+
+            <SteamImportPanel
+              steamApiKey={steamApiKey}
+              steamId={steamId}
+              steamImportLoading={steamImportLoading}
+              steamImportStatus={steamImportStatus}
+              onSteamApiKeyChange={setSteamApiKey}
+              onSteamIdChange={setSteamId}
+              onImport={importSteamLibrary}
+              onClear={clearSteamImport}
+            />
+
+            <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
+              <FiltersPanel
+                filters={filters}
+                availableTags={availableTags}
+                onPlatformChange={(value) => {
+                  setFilters((current) => ({ ...current, platform: value as PlatformFilter }));
+                  markCustom();
+                }}
+                onTagChange={(value) => {
+                  setFilters((current) => ({ ...current, tag: value }));
+                  markCustom();
+                }}
+                onLengthChange={(value) => {
+                  setFilters((current) => ({ ...current, length: value as LengthFilter }));
+                  markCustom();
+                }}
+                onReleaseFromChange={(value) => {
+                  setFilters((current) => ({ ...current, releaseFrom: value }));
+                  markCustom();
+                }}
+                onReleaseToChange={(value) => {
+                  setFilters((current) => ({ ...current, releaseTo: value }));
+                  markCustom();
+                }}
+                onMaxPriceChange={(value) => {
+                  setFilters((current) => ({ ...current, maxPriceUsd: value }));
+                  markCustom();
+                }}
+                onFreeOnlyChange={(value) => {
+                  setFilters((current) => ({ ...current, freeOnly: value }));
+                  markCustom();
+                }}
+                onReset={() => {
+                  setFilters(defaultFilters);
+                  markCustom();
+                }}
+              />
+
+              <ExclusionsPanel
+                excludePlayed={excludePlayed}
+                excludeCompleted={excludeCompleted}
+                exclusionInput={exclusionInput}
+                playedGames={playedGames}
+                completedGames={completedGames}
+                onExcludePlayedChange={setExcludePlayed}
+                onExcludeCompletedChange={setExcludeCompleted}
+                onExclusionInputChange={setExclusionInput}
+                onAddPlayed={() => addExclusionFromInput("played")}
+                onAddCompleted={() => addExclusionFromInput("completed")}
+                onRemovePlayed={removePlayedGame}
+                onRemoveCompleted={removeCompletedGame}
+                onClearPlayed={() => setPlayedGames([])}
+                onClearCompleted={() => setCompletedGames([])}
+              />
+
+              <NotificationsPanel
+                notificationsEnabled={notificationsEnabled}
+                trendNotifications={trendNotifications}
+                reminderNotifications={reminderNotifications}
+                reminderIntervalMinutes={reminderIntervalMinutes}
+                notificationStatus={notificationStatus}
+                onNotificationsEnabledChange={(value) => {
+                  void setNotificationsEnabledWithPermission(value);
+                }}
+                onTrendNotificationsChange={setTrendNotifications}
+                onReminderNotificationsChange={setReminderNotifications}
+                onReminderIntervalChange={setReminderIntervalMinutes}
+              />
+
+              <CloudSyncPanel
+                gistToken={gistToken}
+                gistId={gistId}
+                cloudSyncLoading={cloudSyncLoading}
+                cloudSyncStatus={cloudSyncStatus}
+                onGistTokenChange={setGistToken}
+                onGistIdChange={setGistId}
+                onCreateGistPush={createCloudSyncGist}
+                onPushSync={pushCloudSync}
+                onPullSync={pullCloudSync}
+                activeAccountProfileId={activeAccountProfileId}
+                accountProfiles={cloudProfileOptions}
+                accountProfileDraftName={accountProfileDraftName}
+                onActiveAccountProfileChange={setActiveAccountProfileId}
+                onAccountProfileDraftNameChange={setAccountProfileDraftName}
+                onCreateProfile={createAccountProfile}
+                onSaveCurrentToActive={saveCurrentToActiveProfile}
+                onApplyActive={applyActiveAccountProfile}
+                onDeleteActive={deleteActiveAccountProfile}
+                cloudReferenceLabel={cloudReferenceLabel}
+                conflict={cloudConflict}
+                onKeepLocal={dismissCloudConflict}
+                onApplyRemote={applyPendingCloudConflict}
+                restorePoints={cloudRestorePointOptions}
+                onRestorePoint={(id) => {
+                  const point = cloudRestorePoints.find((entry) => entry.id === id);
+                  if (!point) return;
+                  restoreFromCloudPoint(point);
+                }}
+                onClearRestorePoints={() => {
+                  setCloudRestorePoints([]);
+                  pushToast("info", t("messages.cloudRestorePointsCleared"));
+                }}
+              />
             </div>
-          ) : null}
-          <SourcesPanel
-            presetCards={presetCards}
-            activePreset={activePreset}
-            onApplyPreset={(presetId) => {
-              const preset = modePresets.find((candidate) => candidate.id === presetId);
-              if (!preset) return;
-              applyPreset(preset);
-            }}
-            sourceCards={sourceCards}
-            onToggleSource={(source) => {
-              setEnabledSources((current) => ({
-                ...current,
-                [source]: !current[source],
-              }));
-              markCustom();
-            }}
-            weightedMode={weightedMode}
-            onWeightedModeChange={(value) => {
-              setWeightedMode(value);
-              markCustom();
-            }}
-            cooldownSpins={cooldownSpins}
-            onCooldownSpinsChange={(value) => {
-              setCooldownSpins(value);
-              markCustom();
-            }}
-            adaptiveRecommendations={adaptiveRecommendations}
-            onAdaptiveRecommendationsChange={(value) => {
-              setAdaptiveRecommendations(value);
-              markCustom();
-            }}
-            onApplySuggestedWeights={applySuggestedWeights}
-            behaviorSignalsCount={behaviorSignalsCount}
-            spinSpeedProfile={spinSpeedProfile}
-            spinSpeedOptions={spinSpeedOptions}
-            onSpinSpeedProfileChange={(value) => {
-              setSpinSpeedProfile(value);
-              markCustom();
-            }}
-            effectiveSpinDurationMs={effectiveSpinDurationMs}
-            reducedSpinAnimation={reducedSpinAnimation}
-            onReducedSpinAnimationChange={(value) => {
-              setReducedSpinAnimation(value);
-              markCustom();
-            }}
-            weightRows={sourceWeightRows}
-            onSourceWeightChange={(source, value) => {
-              setSourceWeights((current) => ({
-                ...current,
-                [source]: value,
-              }));
-              markCustom();
-            }}
-            loadingData={topGamesQuery.isLoading}
-            loadingError={sourceLoadError}
+          </>
+        }
+        mainContent={
+          <MainContentPanels
+            showPlayPane={showPlayPane}
+            activePoolCount={activePool.length}
+            exclusionSummarySuffix={exclusionSummarySuffix}
+            cooldownExcludedSuffix={cooldownExcludedSuffix}
+            advancedFilterExhausted={advancedFilterExhausted}
+            statusExhausted={statusExhausted}
+            cooldownSaturated={cooldownSaturated}
+            games={activePool.map((candidate) => candidate.name)}
+            rotation={rotation}
+            spinning={spinning}
+            spinDurationMs={effectiveSpinDurationMs}
+            onSpinEnd={onSpinEnd}
+            onSpin={handleSpin}
+            onClearHistory={clearHistory}
+            winner={winner}
+            winnerMeta={winnerMeta}
+            formatSourceList={sourceLabelList}
+            formatOdds={formatOdds}
+            onMarkPlayed={() => markGamesPlayed([winner])}
+            onMarkCompleted={() => markGamesCompleted([winner])}
+            showLibraryPane={showLibraryPane}
+            manualInput={manualInput}
+            onManualInputChange={setManualInput}
+            onAddManual={addManualGames}
+            onClearManual={clearManualGames}
+            showHistoryPane={showHistoryPane}
+            historyDisplayItems={historyDisplayItems}
+            showSettingsGuidance={activeTab === "settings"}
           />
-
-          <AdvancedOptionsPanel
-            showAdvancedSettings={showAdvancedSettings}
-            onShowAdvancedSettingsChange={setShowAdvancedSettings}
-          />
-
-          <SteamImportPanel
-            steamApiKey={steamApiKey}
-            steamId={steamId}
-            steamImportLoading={steamImportLoading}
-            steamImportStatus={steamImportStatus}
-            onSteamApiKeyChange={setSteamApiKey}
-            onSteamIdChange={setSteamId}
-            onImport={importSteamLibrary}
-            onClear={clearSteamImport}
-          />
-
-          <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
-            <FiltersPanel
-              filters={filters}
-              availableTags={availableTags}
-              onPlatformChange={(value) => {
-                setFilters((current) => ({ ...current, platform: value as PlatformFilter }));
-                markCustom();
-              }}
-              onTagChange={(value) => {
-                setFilters((current) => ({ ...current, tag: value }));
-                markCustom();
-              }}
-              onLengthChange={(value) => {
-                setFilters((current) => ({ ...current, length: value as LengthFilter }));
-                markCustom();
-              }}
-              onReleaseFromChange={(value) => {
-                setFilters((current) => ({ ...current, releaseFrom: value }));
-                markCustom();
-              }}
-              onReleaseToChange={(value) => {
-                setFilters((current) => ({ ...current, releaseTo: value }));
-                markCustom();
-              }}
-              onMaxPriceChange={(value) => {
-                setFilters((current) => ({ ...current, maxPriceUsd: value }));
-                markCustom();
-              }}
-              onFreeOnlyChange={(value) => {
-                setFilters((current) => ({ ...current, freeOnly: value }));
-                markCustom();
-              }}
-              onReset={() => {
-                setFilters(defaultFilters);
-                markCustom();
-              }}
-            />
-
-            <ExclusionsPanel
-              excludePlayed={excludePlayed}
-              excludeCompleted={excludeCompleted}
-              exclusionInput={exclusionInput}
-              playedGames={playedGames}
-              completedGames={completedGames}
-              onExcludePlayedChange={setExcludePlayed}
-              onExcludeCompletedChange={setExcludeCompleted}
-              onExclusionInputChange={setExclusionInput}
-              onAddPlayed={() => addExclusionFromInput("played")}
-              onAddCompleted={() => addExclusionFromInput("completed")}
-              onRemovePlayed={removePlayedGame}
-              onRemoveCompleted={removeCompletedGame}
-              onClearPlayed={() => setPlayedGames([])}
-              onClearCompleted={() => setCompletedGames([])}
-            />
-
-            <NotificationsPanel
-              notificationsEnabled={notificationsEnabled}
-              trendNotifications={trendNotifications}
-              reminderNotifications={reminderNotifications}
-              reminderIntervalMinutes={reminderIntervalMinutes}
-              notificationStatus={notificationStatus}
-              onNotificationsEnabledChange={(value) => {
-                void setNotificationsEnabledWithPermission(value);
-              }}
-              onTrendNotificationsChange={setTrendNotifications}
-              onReminderNotificationsChange={setReminderNotifications}
-              onReminderIntervalChange={setReminderIntervalMinutes}
-            />
-
-            <CloudSyncPanel
-              gistToken={gistToken}
-              gistId={gistId}
-              cloudSyncLoading={cloudSyncLoading}
-              cloudSyncStatus={cloudSyncStatus}
-              onGistTokenChange={setGistToken}
-              onGistIdChange={setGistId}
-              onCreateGistPush={createCloudSyncGist}
-              onPushSync={pushCloudSync}
-              onPullSync={pullCloudSync}
-              activeAccountProfileId={activeAccountProfileId}
-              accountProfiles={cloudProfileOptions}
-              accountProfileDraftName={accountProfileDraftName}
-              onActiveAccountProfileChange={setActiveAccountProfileId}
-              onAccountProfileDraftNameChange={setAccountProfileDraftName}
-              onCreateProfile={createAccountProfile}
-              onSaveCurrentToActive={saveCurrentToActiveProfile}
-              onApplyActive={applyActiveAccountProfile}
-              onDeleteActive={deleteActiveAccountProfile}
-              cloudReferenceLabel={cloudReferenceLabel}
-              conflict={cloudConflict}
-              onKeepLocal={dismissCloudConflict}
-              onApplyRemote={applyPendingCloudConflict}
-              restorePoints={cloudRestorePointOptions}
-              onRestorePoint={(id) => {
-                const point = cloudRestorePoints.find((entry) => entry.id === id);
-                if (!point) return;
-                restoreFromCloudPoint(point);
-              }}
-              onClearRestorePoints={() => {
-                setCloudRestorePoints([]);
-                pushToast("info", t("messages.cloudRestorePointsCleared"));
-              }}
-            />
-          </div>
-        </aside>
-
-        <div className="content-stack">
-          {showPlayPane ? (
-            <PlayPanel
-              activePoolCount={activePool.length}
-              exclusionSummarySuffix={exclusionSummarySuffix}
-              cooldownExcludedSuffix={cooldownExcludedSuffix}
-              advancedFilterExhausted={advancedFilterExhausted}
-              statusExhausted={statusExhausted}
-              cooldownSaturated={cooldownSaturated}
-              games={activePool.map((candidate) => candidate.name)}
-              rotation={rotation}
-              spinning={spinning}
-              spinDurationMs={effectiveSpinDurationMs}
-              onSpinEnd={onSpinEnd}
-              onSpin={handleSpin}
-              onClearHistory={clearHistory}
-              winner={winner}
-              winnerMeta={winnerMeta}
-              formatSourceList={sourceLabelList}
-              formatOdds={formatOdds}
-              onMarkPlayed={() => markGamesPlayed([winner])}
-              onMarkCompleted={() => markGamesCompleted([winner])}
-            />
-          ) : null}
-
-          {showLibraryPane ? (
-            <ManualGamesPanel
-              title={t("manualListTitle")}
-              description={t("manualListDescription")}
-              inputValue={manualInput}
-              onInputChange={setManualInput}
-              onAdd={addManualGames}
-              onClear={clearManualGames}
-              addLabel={t("addGames")}
-              clearLabel={t("clearManual")}
-              placeholder={"Helldivers 2\nHades II\nMonster Hunter Wilds"}
-            />
-          ) : null}
-
-          {showHistoryPane ? (
-            <SpinHistoryPanel title={t("spinHistoryTitle")} emptyLabel={t("noSpins")} items={historyDisplayItems} />
-          ) : null}
-
-          {activeTab === "settings" ? (
-            <section className="panel" aria-label={t("settingsGuidanceAria")}>
-              <h2 className="section-heading">
-                <span className="heading-label">
-                  <Settings2 className="ui-icon" aria-hidden="true" />
-                  {t("settingsGuidanceTitle")}
-                </span>
-              </h2>
-              <p className="muted">{t("settingsGuidanceDescription")}</p>
-            </section>
-          ) : null}
-        </div>
-      </div>
+        }
+      />
 
       <OnboardingModal
         show={showOnboarding}

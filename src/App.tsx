@@ -1,19 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as Tabs from "@radix-ui/react-tabs";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
-import {
-  Download,
-  History,
-  Library,
-  PanelLeft,
-  Play,
-  Settings2,
-  WandSparkles,
-  X,
-} from "lucide-react";
+import { Settings2, X } from "lucide-react";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
@@ -32,6 +22,10 @@ import { ExclusionsPanel } from "./features/settings/ExclusionsPanel";
 import { NotificationsPanel } from "./features/settings/NotificationsPanel";
 import { SteamImportPanel } from "./features/settings/SteamImportPanel";
 import { CloudSyncPanel } from "./features/settings/CloudSyncPanel";
+import { AppHeader } from "./features/layout/AppHeader";
+import { UpdateBanners } from "./features/layout/UpdateBanners";
+import { OnboardingModal } from "./features/layout/OnboardingModal";
+import { ToastStack } from "./features/layout/ToastStack";
 import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
 
 const platformSchema = z.enum(["windows", "mac", "linux"]);
@@ -793,7 +787,7 @@ const keepFocusInContainer = (event: KeyboardEvent, root: HTMLElement) => {
 };
 
 export default function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const initialSettings = sanitizeSettings(readStorage<StoredSettings | null>(SETTINGS_STORAGE_KEY, null));
   const initialHistory = readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []);
@@ -895,7 +889,6 @@ export default function App() {
   });
 
   const topGames = topGamesQuery.data;
-  const onboardingLastStep = onboardingSteps.length - 1;
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((toast) => toast.id !== id));
@@ -2350,6 +2343,29 @@ export default function App() {
     timestampLabel: formatSyncTimestamp(point.createdAt, t("unknown")),
     reason: point.reason,
   }));
+  const handleSidebarToggle = () =>
+    setSidebarOpen((current) => {
+      const next = !current;
+      if (!next && activeTab === "settings") {
+        setActiveTab("play");
+      }
+      return next;
+    });
+  const handleOpenQuickTour = () => {
+    setOnboardingStep(0);
+    setShowOnboarding(true);
+  };
+  const handleHeaderTabChange = (value: "play" | "library" | "history" | "settings") => {
+    if (value === "settings") {
+      if (isMobileLayout) {
+        setSidebarOpen(true);
+        return;
+      }
+      setActiveTab("settings");
+      return;
+    }
+    setActiveTab(value);
+  };
 
   return (
     <main className="layout">
@@ -2362,154 +2378,29 @@ export default function App() {
       <div className="sr-only" aria-live="assertive" aria-atomic="true">
         <span key={screenReaderAssertive.id}>{screenReaderAssertive.text}</span>
       </div>
-      <header className="hero">
-        <p className="kicker">{t("appName")}</p>
-        <h1>{t("heroTitle")}</h1>
-        <p>{t("heroDescription")}</p>
-        <div className="hero-actions">
-          <button
-            type="button"
-            className="ghost"
-            aria-controls="settings-sidebar"
-            aria-expanded={settingsSidebarVisible}
-            onClick={() =>
-              setSidebarOpen((current) => {
-                const next = !current;
-                if (!next && activeTab === "settings") {
-                  setActiveTab("play");
-                }
-                return next;
-              })
-            }
-          >
-            <span className="button-label">
-              <PanelLeft className="ui-icon" aria-hidden="true" />
-              {sidebarOpen ? t("hideSettings") : t("showSettings")}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => {
-              setOnboardingStep(0);
-              setShowOnboarding(true);
-            }}
-          >
-            <span className="button-label">
-              <WandSparkles className="ui-icon" aria-hidden="true" />
-              {t("quickTour")}
-            </span>
-          </button>
-          {installPrompt ? (
-            <button type="button" className="ghost" onClick={handleInstall}>
-              <span className="button-label">
-                <Download className="ui-icon" aria-hidden="true" />
-                {t("installApp")}
-              </span>
-            </button>
-          ) : null}
-          <label className="lang-picker">
-            <span className="sr-only">{t("language.label")}</span>
-            <select
-              value={i18n.resolvedLanguage?.startsWith("es") ? "es" : "en"}
-              onChange={(event) => {
-                void i18n.changeLanguage(event.target.value);
-              }}
-            >
-              <option value="en">{t("language.english")}</option>
-              <option value="es">{t("language.spanish")}</option>
-            </select>
-          </label>
-          <label className="theme-picker">
-            <span className="sr-only">{t("theme.label")}</span>
-            <select
-              value={themeMode}
-              onChange={(event) => {
-                setThemeMode(event.target.value as ThemeMode);
-              }}
-            >
-              <option value="system">{t("theme.system")}</option>
-              <option value="light">{t("theme.light")}</option>
-              <option value="dark">{t("theme.dark")}</option>
-              <option value="high-contrast">{t("theme.highContrast")}</option>
-            </select>
-          </label>
-        </div>
-        <Tabs.Root
-          value={settingsTabActive ? "settings" : activeTab}
-          onValueChange={(value) => {
-            if (value === "settings") {
-              if (isMobileLayout) {
-                setSidebarOpen(true);
-                return;
-              }
-              setActiveTab("settings");
-              return;
-            }
-            if (value === "play" || value === "library" || value === "history") {
-              setActiveTab(value);
-            }
-          }}
-        >
-          <Tabs.List className="task-nav" aria-label={t("workspaceSectionsAria")}>
-            <Tabs.Trigger value="play" className="ghost task-trigger">
-              <span className="button-label">
-                <Play className="ui-icon" aria-hidden="true" />
-                {t("tabs.play")}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger value="library" className="ghost task-trigger">
-              <span className="button-label">
-                <Library className="ui-icon" aria-hidden="true" />
-                {t("tabs.library")}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger value="history" className="ghost task-trigger">
-              <span className="button-label">
-                <History className="ui-icon" aria-hidden="true" />
-                {t("tabs.history")}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger value="settings" className="ghost task-trigger">
-              <span className="button-label">
-                <Settings2 className="ui-icon" aria-hidden="true" />
-                {t("tabs.settings")}
-              </span>
-            </Tabs.Trigger>
-          </Tabs.List>
-        </Tabs.Root>
-      </header>
+      <AppHeader
+        sidebarOpen={sidebarOpen}
+        settingsSidebarVisible={settingsSidebarVisible}
+        activeTab={activeTab}
+        settingsTabActive={settingsTabActive}
+        themeMode={themeMode}
+        installAvailable={Boolean(installPrompt)}
+        onToggleSidebar={handleSidebarToggle}
+        onOpenQuickTour={handleOpenQuickTour}
+        onInstall={handleInstall}
+        onThemeModeChange={setThemeMode}
+        onTabChange={handleHeaderTabChange}
+      />
 
-      {swUpdateReady && !dismissedUpdate ? (
-        <section className="update-banner" aria-live="polite">
-          <div>
-            <strong>{t("updateReadyTitle")}</strong>
-            <p>{t("updateReadyDescription")}</p>
-          </div>
-          <div className="button-row">
-            <button type="button" onClick={applyServiceWorkerUpdate} disabled={updateInProgress}>
-              {updateInProgress ? t("updating") : t("updateNow")}
-            </button>
-            <button type="button" className="ghost" onClick={() => setDismissedUpdate(true)} disabled={updateInProgress}>
-              {t("later")}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {freshTrendsNotice ? (
-        <section className="update-banner" aria-live="polite">
-          <div>
-            <strong>{t("trendsReadyTitle")}</strong>
-            <p>{t("trendsReadyDescription")}</p>
-          </div>
-          <div className="button-row">
-            <button type="button" className="ghost" onClick={() => setFreshTrendsNotice(false)}>
-              {t("dismiss")}
-            </button>
-          </div>
-        </section>
-      ) : null}
+      <UpdateBanners
+        swUpdateReady={swUpdateReady}
+        dismissedUpdate={dismissedUpdate}
+        updateInProgress={updateInProgress}
+        freshTrendsNotice={freshTrendsNotice}
+        onApplyServiceWorkerUpdate={applyServiceWorkerUpdate}
+        onDismissUpdate={() => setDismissedUpdate(true)}
+        onDismissFreshTrends={() => setFreshTrendsNotice(false)}
+      />
 
       {settingsSheetMode ? (
         <button
@@ -2783,68 +2674,19 @@ export default function App() {
         </div>
       </div>
 
-      {showOnboarding ? (
-        <div className="onboarding-overlay">
-          <div
-            ref={onboardingCardRef}
-            className="onboarding-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="onboarding-title"
-            aria-describedby="onboarding-description"
-            tabIndex={-1}
-          >
-            <p className="winner-tag">{t("quickStart")}</p>
-            <h3 id="onboarding-title">{t(onboardingSteps[onboardingStep]?.titleKey ?? "onboarding.buildLibraryTitle")}</h3>
-            <p id="onboarding-description">{t(onboardingSteps[onboardingStep]?.descriptionKey ?? "onboarding.buildLibraryDescription")}</p>
-            <div className="onboarding-dots" aria-label={t("onboardingProgress")}>
-              {onboardingSteps.map((step, index) => (
-                <button
-                  key={step.titleKey}
-                  type="button"
-                  className={clsx("ghost compact", onboardingStep === index && "is-active")}
-                  onClick={() => setOnboardingStep(index)}
-                  aria-pressed={onboardingStep === index}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-            <div className="button-row">
-              <button type="button" className="ghost" onClick={() => completeOnboarding("play")}>
-                {t("skip")}
-              </button>
-              {onboardingStep > 0 ? (
-                <button type="button" className="ghost" onClick={() => setOnboardingStep((current) => current - 1)}>
-                  {t("back")}
-                </button>
-              ) : null}
-              {onboardingStep < onboardingLastStep ? (
-                <button type="button" onClick={() => setOnboardingStep((current) => current + 1)}>
-                  {t("next")}
-                </button>
-              ) : (
-                <button type="button" onClick={() => completeOnboarding("play")}>
-                  {t("startSpinning")}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <OnboardingModal
+        show={showOnboarding}
+        onboardingCardRef={onboardingCardRef}
+        steps={onboardingSteps}
+        currentStep={onboardingStep}
+        onStepSelect={setOnboardingStep}
+        onSkip={() => completeOnboarding("play")}
+        onBack={() => setOnboardingStep((current) => current - 1)}
+        onNext={() => setOnboardingStep((current) => current + 1)}
+        onFinish={() => completeOnboarding("play")}
+      />
 
-      {toasts.length > 0 ? (
-        <div className="toast-stack" role="status" aria-live="polite" aria-label={t("toastRegionLabel")}>
-          {toasts.map((toast) => (
-            <div key={toast.id} className={clsx("toast", toast.tone)}>
-              <p>{toast.text}</p>
-              <button type="button" className="ghost compact" onClick={() => dismissToast(toast.id)}>
-                {t("dismissToast")}
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       <WinnerModal
         show={showWinnerPopup}

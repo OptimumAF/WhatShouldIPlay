@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
+import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1903,114 +1904,31 @@ export default function App() {
     setPendingCloudConflictSnapshot(null);
   };
 
-  const dismissCloudConflict = () => {
-    setPendingCloudConflictSnapshot(null);
-    setCloudSyncStatus(t("messages.cloudKeepLocalStatus"));
-    pushToast("info", t("messages.cloudKeepLocalToast"));
-  };
-
-  const applyPendingCloudConflict = () => {
-    if (!pendingCloudConflictSnapshot) return;
-    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeRemoteConflict"));
-    applyCloudSnapshot(pendingCloudConflictSnapshot);
-    setCloudSyncStatus(t("messages.cloudAppliedRemoteStatus"));
-    pushToast("success", t("messages.cloudAppliedRemoteToast"));
-  };
-
-  const restoreFromCloudPoint = (point: CloudRestorePoint) => {
-    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeLocalRecovery"));
-    applyCloudSnapshot(point.snapshot, { updateReference: false });
-    setCloudSyncStatus(
-      t("messages.cloudRestoredPointStatus", { value: formatSyncTimestamp(point.createdAt, t("unknown")) }),
-    );
-    pushToast("success", t("messages.cloudRestoredPointToast"));
-  };
-
-  const createAccountProfile = () => {
-    const name = accountProfileDraftName.trim();
-    if (!name) {
-      pushToast("error", t("messages.profileNameRequired"));
-      return;
-    }
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const profile: AccountProfilePreset = {
-      id,
-      name,
-      updatedAt: new Date().toISOString(),
-      settings: currentSettingsSnapshot(),
-    };
-    setAccountProfiles((current) => [profile, ...current].slice(0, 20));
-    setActiveAccountProfileId(id);
-    setAccountProfileDraftName("");
-    setCloudSyncStatus(t("messages.profileCreatedStatus", { name }));
-    pushToast("success", t("messages.profileCreated", { name }));
-  };
-
-  const saveCurrentToActiveProfile = () => {
-    if (!activeAccountProfileId) {
-      pushToast("error", t("messages.profileSelectOrCreate"));
-      return;
-    }
-    const timestamp = new Date().toISOString();
-    let saved = false;
-    setAccountProfiles((current) =>
-      current.map((profile) => {
-        if (profile.id !== activeAccountProfileId) return profile;
-        saved = true;
-        return {
-          ...profile,
-          updatedAt: timestamp,
-          settings: currentSettingsSnapshot(),
-        };
-      }),
-    );
-    if (!saved) {
-      pushToast("error", t("messages.profileNotFound"));
-      return;
-    }
-    setCloudSyncStatus(t("messages.profileSavedActive"));
-    pushToast("success", t("messages.profileSavedActive"));
-  };
-
-  const applyActiveAccountProfile = () => {
-    if (!activeAccountProfileId) {
-      pushToast("error", t("messages.profileSelectFirst"));
-      return;
-    }
-    const profile = accountProfiles.find((entry) => entry.id === activeAccountProfileId);
-    if (!profile) {
-      pushToast("error", t("messages.profileNotFound"));
-      return;
-    }
-    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeProfileApply", { name: profile.name }));
-    applyStoredSettings(profile.settings);
-    setCloudSyncStatus(t("messages.profileApplied", { name: profile.name }));
-    pushToast("success", t("messages.profileApplied", { name: profile.name }));
-  };
-
-  const deleteActiveAccountProfile = () => {
-    if (!activeAccountProfileId) {
-      pushToast("error", t("messages.profileSelectFirst"));
-      return;
-    }
-    let removedName = "";
-    setAccountProfiles((current) => {
-      return current.filter((profile) => {
-        if (profile.id !== activeAccountProfileId) return true;
-        removedName = profile.name;
-        return false;
-      });
-    });
-    if (!removedName) {
-      pushToast("error", t("messages.profileNotFound"));
-      return;
-    }
-    setCloudSyncStatus(t("messages.profileDeleted", { name: removedName }));
-    pushToast("info", t("messages.profileDeleted", { name: removedName }));
-  };
+  const {
+    dismissCloudConflict,
+    applyPendingCloudConflict,
+    restoreFromCloudPoint,
+    createAccountProfile,
+    saveCurrentToActiveProfile,
+    applyActiveAccountProfile,
+    deleteActiveAccountProfile,
+  } = useCloudProfileActions<StoredSettings, CloudSyncSnapshot>({
+    t,
+    pushToast,
+    accountProfileDraftName,
+    setAccountProfileDraftName,
+    activeAccountProfileId,
+    setActiveAccountProfileId,
+    accountProfiles,
+    setAccountProfiles,
+    pendingCloudConflictSnapshot,
+    setPendingCloudConflictSnapshot,
+    setCloudSyncStatus,
+    currentSettingsSnapshot,
+    applyStoredSettings,
+    pushCloudRestorePoint,
+    applyCloudSnapshot,
+  });
 
   const parseCloudSnapshot = useCallback((raw: unknown) => cloudSyncSnapshotSchema.parse(raw), []);
 

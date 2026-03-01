@@ -363,8 +363,8 @@ interface ScreenReaderAnnouncement {
 }
 
 interface OnboardingStep {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   focusTab: WorkspaceTab;
 }
 
@@ -456,6 +456,13 @@ const modePresets: ModePreset[] = [
   },
 ];
 
+const modePresetTranslationKeys: Record<string, { label: string; description: string }> = {
+  balanced: { label: "modePreset.balanced.label", description: "modePreset.balanced.description" },
+  quick: { label: "modePreset.quick.label", description: "modePreset.quick.description" },
+  "no-repeats": { label: "modePreset.noRepeats.label", description: "modePreset.noRepeats.description" },
+  "owned-first": { label: "modePreset.ownedFirst.label", description: "modePreset.ownedFirst.description" },
+};
+
 const defaultFilters: AdvancedFilters = {
   platform: "any",
   tag: "any",
@@ -530,18 +537,18 @@ const fallbackCloudSync: StoredCloudSync = {
 
 const onboardingSteps: OnboardingStep[] = [
   {
-    title: "Build your library",
-    description: "Use Library to add manual games and Steam imports before you spin.",
+    titleKey: "onboarding.buildLibraryTitle",
+    descriptionKey: "onboarding.buildLibraryDescription",
     focusTab: "library",
   },
   {
-    title: "Tune your rules",
-    description: "Use Settings for source toggles, weighted odds, cooldown, filters, and cloud sync.",
+    titleKey: "onboarding.tuneRulesTitle",
+    descriptionKey: "onboarding.tuneRulesDescription",
     focusTab: "settings",
   },
   {
-    title: "Spin and commit",
-    description: "Go to Play and spin. Winner details include odds and source attribution.",
+    titleKey: "onboarding.spinCommitTitle",
+    descriptionKey: "onboarding.spinCommitDescription",
     focusTab: "play",
   },
 ];
@@ -951,9 +958,9 @@ export default function App() {
         setSidebarOpen(true);
       }
       localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(true));
-      pushToast("success", "Quick start complete. You can reopen it anytime from Quick Tour.");
+      pushToast("success", t("messages.quickStartComplete"));
     },
-    [pushToast],
+    [pushToast, t],
   );
 
   const manualEntries = useMemo<GameEntry[]>(
@@ -1410,11 +1417,11 @@ export default function App() {
       lastTopGamesErrorRef.current = "";
       return;
     }
-    const errorText = (topGamesQuery.error as Error)?.message ?? "Unable to load top game data.";
+    const errorText = (topGamesQuery.error as Error)?.message ?? t("messages.topGamesLoadError");
     if (lastTopGamesErrorRef.current === errorText) return;
     lastTopGamesErrorRef.current = errorText;
-    pushToast("error", `${errorText} Retry in a minute or check your network connection.`);
-  }, [pushToast, topGamesQuery.error, topGamesQuery.isError]);
+    pushToast("error", `${errorText} ${t("messages.retryHint")}`);
+  }, [pushToast, t, topGamesQuery.error, topGamesQuery.isError]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -1506,8 +1513,8 @@ export default function App() {
 
       navigator.serviceWorker.ready
         .then((registration) => {
-          registration.showNotification("Play something now?", {
-            body: "You set a reminder to spin WhatShouldIPlay.",
+          registration.showNotification(t("messages.reminderTitle"), {
+            body: t("messages.reminderBody"),
             tag: "pickagame-reminder",
           });
         })
@@ -1519,7 +1526,7 @@ export default function App() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications]);
+  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, t]);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -1593,7 +1600,7 @@ export default function App() {
       setWeightedMode(true);
     }
     markCustom();
-    pushToast("success", "Applied behavior-based source weight suggestions.");
+    pushToast("success", t("messages.appliedSuggestedWeights"));
   };
 
   const addManualGames = () => {
@@ -1660,13 +1667,13 @@ export default function App() {
     const key = steamApiKey.trim();
     const id = steamId.trim();
     if (!key || !id) {
-      setSteamImportStatus("Enter Steam Web API key and SteamID64.");
-      pushToast("error", "Steam import needs both Steam Web API key and SteamID64.");
+      setSteamImportStatus(t("messages.steamEnterCreds"));
+      pushToast("error", t("messages.steamNeedsBoth"));
       return;
     }
 
     setSteamImportLoading(true);
-    setSteamImportStatus("Importing Steam library...");
+    setSteamImportStatus(t("messages.steamImporting"));
     try {
       const params = new URLSearchParams({
         key,
@@ -1710,7 +1717,7 @@ export default function App() {
     } catch (error) {
       if (error instanceof TypeError) {
         const message =
-          "Steam import blocked in browser (likely CORS/network). Use the desktop app import for reliable account pulls.";
+          t("messages.steamImportBlocked");
         setSteamImportStatus(message);
         pushToast("error", `${message} If needed, verify your API key and Steam privacy settings.`);
       } else {
@@ -1934,7 +1941,7 @@ export default function App() {
   const applyCloudSnapshot = (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
     const parsed = cloudSyncSnapshotSchema.safeParse(rawSnapshot);
     if (!parsed.success) {
-      throw new Error("Cloud snapshot format is invalid.");
+      throw new Error(t("messages.cloudSnapshotInvalid"));
     }
     const snapshot = parsed.data;
 
@@ -1996,29 +2003,29 @@ export default function App() {
 
   const dismissCloudConflict = () => {
     setPendingCloudConflictSnapshot(null);
-    setCloudSyncStatus("Kept local data. Cloud conflict was dismissed.");
-    pushToast("info", "Kept local data. Pull again anytime.");
+    setCloudSyncStatus(t("messages.cloudKeepLocalStatus"));
+    pushToast("info", t("messages.cloudKeepLocalToast"));
   };
 
   const applyPendingCloudConflict = () => {
     if (!pendingCloudConflictSnapshot) return;
     pushCloudRestorePoint("Before applying older remote cloud snapshot");
     applyCloudSnapshot(pendingCloudConflictSnapshot);
-    setCloudSyncStatus("Applied remote snapshot after conflict review.");
-    pushToast("success", "Applied remote snapshot and saved a restore point.");
+    setCloudSyncStatus(t("messages.cloudAppliedRemoteStatus"));
+    pushToast("success", t("messages.cloudAppliedRemoteToast"));
   };
 
   const restoreFromCloudPoint = (point: CloudRestorePoint) => {
     pushCloudRestorePoint("Before local restore point recovery");
     applyCloudSnapshot(point.snapshot, { updateReference: false });
     setCloudSyncStatus(`Restored local state from ${formatSyncTimestamp(point.createdAt)}.`);
-    pushToast("success", "Local state restored from restore point.");
+    pushToast("success", t("messages.cloudRestoredPointToast"));
   };
 
   const createAccountProfile = () => {
     const name = accountProfileDraftName.trim();
     if (!name) {
-      pushToast("error", "Enter a profile name first.");
+      pushToast("error", t("messages.profileNameRequired"));
       return;
     }
     const id =
@@ -2034,13 +2041,13 @@ export default function App() {
     setAccountProfiles((current) => [profile, ...current].slice(0, 20));
     setActiveAccountProfileId(id);
     setAccountProfileDraftName("");
-    setCloudSyncStatus(`Created profile "${name}". Push sync to share across devices.`);
-    pushToast("success", `Created profile "${name}".`);
+    setCloudSyncStatus(t("messages.profileCreatedStatus", { name }));
+    pushToast("success", t("messages.profileCreated", { name }));
   };
 
   const saveCurrentToActiveProfile = () => {
     if (!activeAccountProfileId) {
-      pushToast("error", "Select a profile or create a new one first.");
+      pushToast("error", t("messages.profileSelectOrCreate"));
       return;
     }
     const timestamp = new Date().toISOString();
@@ -2057,32 +2064,32 @@ export default function App() {
       }),
     );
     if (!saved) {
-      pushToast("error", "Selected profile was not found.");
+      pushToast("error", t("messages.profileNotFound"));
       return;
     }
-    setCloudSyncStatus("Saved current settings to active profile.");
-    pushToast("success", "Saved current settings to active profile.");
+    setCloudSyncStatus(t("messages.profileSavedActive"));
+    pushToast("success", t("messages.profileSavedActive"));
   };
 
   const applyActiveAccountProfile = () => {
     if (!activeAccountProfileId) {
-      pushToast("error", "Select a profile first.");
+      pushToast("error", t("messages.profileSelectFirst"));
       return;
     }
     const profile = accountProfiles.find((entry) => entry.id === activeAccountProfileId);
     if (!profile) {
-      pushToast("error", "Selected profile was not found.");
+      pushToast("error", t("messages.profileNotFound"));
       return;
     }
     pushCloudRestorePoint(`Before applying profile "${profile.name}"`);
     applyStoredSettings(profile.settings);
-    setCloudSyncStatus(`Applied profile "${profile.name}".`);
-    pushToast("success", `Applied profile "${profile.name}".`);
+    setCloudSyncStatus(t("messages.profileApplied", { name: profile.name }));
+    pushToast("success", t("messages.profileApplied", { name: profile.name }));
   };
 
   const deleteActiveAccountProfile = () => {
     if (!activeAccountProfileId) {
-      pushToast("error", "Select a profile first.");
+      pushToast("error", t("messages.profileSelectFirst"));
       return;
     }
     let removedName = "";
@@ -2094,28 +2101,28 @@ export default function App() {
       });
     });
     if (!removedName) {
-      pushToast("error", "Selected profile was not found.");
+      pushToast("error", t("messages.profileNotFound"));
       return;
     }
-    setCloudSyncStatus(`Deleted profile "${removedName}".`);
-    pushToast("info", `Deleted profile "${removedName}".`);
+    setCloudSyncStatus(t("messages.profileDeleted", { name: removedName }));
+    pushToast("info", t("messages.profileDeleted", { name: removedName }));
   };
 
   const pushCloudSync = async () => {
     const token = gistToken.trim();
     if (!token) {
-      setCloudSyncStatus("Enter a GitHub token with gist scope.");
-      pushToast("error", "Cloud sync needs a GitHub token with gist scope.");
+      setCloudSyncStatus(t("messages.cloudTokenRequired"));
+      pushToast("error", t("messages.cloudNeedsToken"));
       return;
     }
     if (!gistId.trim()) {
-      setCloudSyncStatus("Enter a Gist ID or create one first.");
-      pushToast("error", "Provide a Gist ID before pushing sync.");
+      setCloudSyncStatus(t("messages.cloudNeedGistOrCreate"));
+      pushToast("error", t("messages.cloudProvideGistBeforePush"));
       return;
     }
 
     setCloudSyncLoading(true);
-    setCloudSyncStatus("Uploading sync snapshot...");
+    setCloudSyncStatus(t("messages.cloudUploading"));
     try {
       const snapshot = buildCloudSnapshot();
       const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
@@ -2138,8 +2145,8 @@ export default function App() {
       }
       setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
       setPendingCloudConflictSnapshot(null);
-      setCloudSyncStatus("Cloud sync uploaded.");
-      pushToast("success", "Cloud sync uploaded.");
+      setCloudSyncStatus(t("messages.cloudUploaded"));
+      pushToast("success", t("messages.cloudUploaded"));
     } catch (error) {
       const message = (error as Error).message;
       setCloudSyncStatus(message);
@@ -2152,13 +2159,13 @@ export default function App() {
   const createCloudSyncGist = async () => {
     const token = gistToken.trim();
     if (!token) {
-      setCloudSyncStatus("Enter a GitHub token with gist scope.");
-      pushToast("error", "Enter a GitHub token with gist scope to create sync gist.");
+      setCloudSyncStatus(t("messages.cloudTokenRequired"));
+      pushToast("error", t("messages.cloudNeedTokenCreate"));
       return;
     }
 
     setCloudSyncLoading(true);
-    setCloudSyncStatus("Creating secret gist...");
+    setCloudSyncStatus(t("messages.cloudCreatingGist"));
     try {
       const snapshot = buildCloudSnapshot();
       const response = await fetch("https://api.github.com/gists", {
@@ -2183,7 +2190,7 @@ export default function App() {
       }
       const json = (await response.json()) as { id?: string };
       if (!json.id) {
-        throw new Error("GitHub API did not return gist id.");
+        throw new Error(t("messages.cloudMissingGistId"));
       }
       setGistId(json.id);
       setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
@@ -2202,18 +2209,18 @@ export default function App() {
   const pullCloudSync = async () => {
     const token = gistToken.trim();
     if (!token) {
-      setCloudSyncStatus("Enter a GitHub token with gist scope.");
-      pushToast("error", "Cloud sync pull needs a GitHub token with gist scope.");
+      setCloudSyncStatus(t("messages.cloudTokenRequired"));
+      pushToast("error", t("messages.cloudNeedTokenPull"));
       return;
     }
     if (!gistId.trim()) {
-      setCloudSyncStatus("Enter a Gist ID to pull from cloud.");
-      pushToast("error", "Provide a Gist ID before pulling sync.");
+      setCloudSyncStatus(t("messages.cloudNeedGistPull"));
+      pushToast("error", t("messages.cloudProvideGistBeforePull"));
       return;
     }
 
     setCloudSyncLoading(true);
-    setCloudSyncStatus("Downloading sync snapshot...");
+    setCloudSyncStatus(t("messages.cloudDownloading"));
     try {
       const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
         headers: {
@@ -2231,7 +2238,7 @@ export default function App() {
         json.files?.["whatshouldiplay-sync.json"] ??
         Object.values(json.files ?? {})[0];
       if (!file) {
-        throw new Error("No sync file found in gist.");
+        throw new Error(t("messages.cloudNoSyncFile"));
       }
       let content = file.content ?? "";
       if (!content && file.raw_url) {
@@ -2242,7 +2249,7 @@ export default function App() {
         content = await raw.text();
       }
       if (!content) {
-        throw new Error("Sync file content is empty.");
+        throw new Error(t("messages.cloudEmptySyncFile"));
       }
       const parsed = JSON.parse(content) as unknown;
       const remoteSnapshot = cloudSyncSnapshotSchema.parse(parsed);
@@ -2258,14 +2265,17 @@ export default function App() {
       ) {
         setPendingCloudConflictSnapshot(remoteSnapshot);
         setCloudSyncStatus(
-          `Conflict detected: cloud snapshot (${formatSyncTimestamp(remoteTimestamp)}) is older than local reference (${formatSyncTimestamp(cloudSyncReferenceAt)}).`,
+          t("cloudConflictOlder", {
+            remote: formatSyncTimestamp(remoteTimestamp),
+            local: formatSyncTimestamp(cloudSyncReferenceAt),
+          }),
         );
-        pushToast("info", "Conflict detected. Choose Keep Local or Apply Remote.");
+        pushToast("info", t("messages.cloudConflictChoose"));
       } else {
         pushCloudRestorePoint("Before applying pulled cloud snapshot");
         applyCloudSnapshot(remoteSnapshot);
-        setCloudSyncStatus("Cloud sync downloaded and applied.");
-        pushToast("success", "Cloud sync downloaded and applied.");
+        setCloudSyncStatus(t("messages.cloudDownloadedApplied"));
+        pushToast("success", t("messages.cloudDownloadedApplied"));
       }
     } catch (error) {
       const message = (error as Error).message;
@@ -2351,7 +2361,7 @@ export default function App() {
           >
             <span className="button-label">
               <WandSparkles className="ui-icon" aria-hidden="true" />
-              Quick Tour
+              {t("quickTour")}
             </span>
           </button>
           {installPrompt ? (
@@ -2375,17 +2385,17 @@ export default function App() {
             </select>
           </label>
           <label className="theme-picker">
-            <span className="sr-only">Theme</span>
+            <span className="sr-only">{t("theme.label")}</span>
             <select
               value={themeMode}
               onChange={(event) => {
                 setThemeMode(event.target.value as ThemeMode);
               }}
             >
-              <option value="system">System Theme</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="high-contrast">High Contrast</option>
+              <option value="system">{t("theme.system")}</option>
+              <option value="light">{t("theme.light")}</option>
+              <option value="dark">{t("theme.dark")}</option>
+              <option value="high-contrast">{t("theme.highContrast")}</option>
             </select>
           </label>
         </div>
@@ -2405,29 +2415,29 @@ export default function App() {
             }
           }}
         >
-          <Tabs.List className="task-nav" aria-label="Primary workspace sections">
+          <Tabs.List className="task-nav" aria-label={t("workspaceSectionsAria")}>
             <Tabs.Trigger value="play" className="ghost task-trigger">
               <span className="button-label">
                 <Play className="ui-icon" aria-hidden="true" />
-                Play
+                {t("tabs.play")}
               </span>
             </Tabs.Trigger>
             <Tabs.Trigger value="library" className="ghost task-trigger">
               <span className="button-label">
                 <Library className="ui-icon" aria-hidden="true" />
-                Library
+                {t("tabs.library")}
               </span>
             </Tabs.Trigger>
             <Tabs.Trigger value="history" className="ghost task-trigger">
               <span className="button-label">
                 <History className="ui-icon" aria-hidden="true" />
-                History
+                {t("tabs.history")}
               </span>
             </Tabs.Trigger>
             <Tabs.Trigger value="settings" className="ghost task-trigger">
               <span className="button-label">
                 <Settings2 className="ui-icon" aria-hidden="true" />
-                Settings
+                {t("tabs.settings")}
               </span>
             </Tabs.Trigger>
           </Tabs.List>
@@ -2485,14 +2495,14 @@ export default function App() {
       >
         <aside
           id="settings-sidebar"
-          aria-label="Game settings"
+          aria-label={t("gameSettingsAria")}
           className={clsx("settings-sidebar", !settingsSidebarVisible && "is-collapsed")}
           role={settingsSheetMode ? "dialog" : undefined}
           aria-modal={settingsSheetMode ? true : undefined}
         >
           {settingsSheetMode ? (
             <div className="settings-sheet-head">
-              <strong>Settings</strong>
+              <strong>{t("settingsSheetTitle")}</strong>
               <button type="button" className="ghost compact settings-sheet-close" onClick={() => setSidebarOpen(false)}>
                 <span className="button-label">
                   <X className="ui-icon" aria-hidden="true" />
@@ -2516,8 +2526,8 @@ export default function App() {
                   className={clsx("preset-card", activePreset === preset.id && "is-active")}
                   onClick={() => applyPreset(preset)}
                 >
-                  <strong>{preset.label}</strong>
-                  <span>{preset.description}</span>
+                  <strong>{t(modePresetTranslationKeys[preset.id]?.label ?? "modePreset.balanced.label")}</strong>
+                  <span>{t(modePresetTranslationKeys[preset.id]?.description ?? "modePreset.balanced.description")}</span>
                 </button>
               ))}
             </div>
@@ -2529,7 +2539,7 @@ export default function App() {
                 <Database className="ui-icon" aria-hidden="true" />
                 {t("sources")}
               </span>
-              <HelpTip text="Enable sources you trust. Games from multiple enabled sources are merged and gain combined weight." />
+              <HelpTip text={t("helpTips.sources")} />
             </h2>
             <div className="grid-sources">
               {sourceKeys.map((source) => {
@@ -2541,9 +2551,9 @@ export default function App() {
                       : (topGames?.sources[source].games.length ?? 0);
                 const note =
                   source === "manual"
-                    ? "Your custom list"
+                    ? t("sourceCustomListNote")
                     : source === "steamImport"
-                      ? "Imported from your Steam account"
+                      ? t("sourceSteamImportNote")
                       : topGames?.sources[source].note;
                 const fetchedAt =
                   source === "manual" || source === "steamImport" ? null : topGames?.sources[source].fetchedAt;
@@ -2584,11 +2594,11 @@ export default function App() {
                   }}
                 />
                 <span>{t("weightedWheel")}</span>
-                <HelpTip text="Weighted mode increases odds for games from stronger sources and higher-ranked entries." />
+                <HelpTip text={t("helpTips.weightedWheel")} />
               </label>
               <label className="cooldown-control">
                 <span>{t("cooldownSpins")}</span>
-                <HelpTip text="Cooldown avoids selecting games that recently won. Increase this for more variety." />
+                <HelpTip text={t("helpTips.cooldown")} />
                 <input
                   type="range"
                   min={0}
@@ -2613,8 +2623,8 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                <span>Adaptive recommendations</span>
-                <HelpTip text="Learns from played/completed history and recent spins to bias odds toward sources you engage with." />
+                <span>{t("adaptiveRecommendations")}</span>
+                <HelpTip text={t("helpTips.adaptive")} />
               </label>
               <button
                 type="button"
@@ -2624,17 +2634,17 @@ export default function App() {
               >
                 <span className="button-label">
                   <WandSparkles className="ui-icon" aria-hidden="true" />
-                  Apply Suggested Weights
+                  {t("applySuggestedWeights")}
                 </span>
               </button>
             </div>
             <p className="muted">
-              Behavior signals tracked: {behaviorSignalsCount}. Suggestions become available after at least 3 signals.
+              {t("behaviorSignalsTracked", { count: behaviorSignalsCount })}
             </p>
 
             <div className="spin-motion-grid">
               <label className="filter-field">
-                <span>Spin Speed Profile</span>
+                <span>{t("spinSpeedProfile")}</span>
                 <select
                   value={spinSpeedProfile}
                   onChange={(event) => {
@@ -2649,7 +2659,7 @@ export default function App() {
                   ))}
                 </select>
                 <small className="filter-help">
-                  Approx spin time: {(effectiveSpinDurationMs / 1000).toFixed(1)}s
+                  {t("approxSpinTime", { seconds: (effectiveSpinDurationMs / 1000).toFixed(1) })}
                 </small>
               </label>
               <label className="inline-check">
@@ -2661,15 +2671,15 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                <span>Reduced spin animation</span>
-                <HelpTip text="Uses a shorter, lower-motion wheel spin while preserving fair random selection." />
+                <span>{t("reducedSpinAnimation")}</span>
+                <HelpTip text={t("helpTips.reducedSpin")} />
               </label>
             </div>
 
             <div className="weights-grid">
               <p className="muted">
-                Per-source multipliers
-                <HelpTip text="Higher multipliers make that source more likely in weighted mode. 1.0x is neutral." />
+                {t("perSourceMultipliers")}
+                <HelpTip text={t("helpTips.perSourceMultipliers")} />
               </p>
               {sourceKeys.map((source) => (
                 <label key={source} className="weight-row">
@@ -2696,8 +2706,8 @@ export default function App() {
 
             <div className="weights-grid">
               <p className="muted">
-                Suggested multipliers
-                <HelpTip text="Based on your played/completed decisions and recent winners. Use Apply Suggested Weights to adopt them." />
+                {t("suggestedMultipliers")}
+                <HelpTip text={t("helpTips.suggestedMultipliers")} />
               </p>
               {sourceKeys.map((source) => (
                 <div key={`suggested-${source}`} className="weight-row suggested-row" aria-live="polite">
@@ -2724,11 +2734,11 @@ export default function App() {
             <h2 id="advanced-filters-heading" className="section-heading">
               <span className="heading-label">
                 <Settings2 className="ui-icon" aria-hidden="true" />
-                Advanced Options
+                {t("advancedOptionsTitle")}
               </span>
-              <HelpTip text="Advanced controls include filters, exclusions, notifications, and cloud sync. Expand only when needed." />
+              <HelpTip text={t("helpTips.advancedControls")} />
             </h2>
-            <p className="muted">Filters, exclusions, notifications, and cloud sync are hidden by default.</p>
+            <p className="muted">{t("advancedOptionsDescription")}</p>
             <Accordion.Root
               type="single"
               collapsible
@@ -2736,11 +2746,11 @@ export default function App() {
               onValueChange={(value) => setShowAdvancedSettings(value === "advanced")}
             >
               <Accordion.Item value="advanced" className="advanced-toggle-item">
-                <Accordion.Header className="sr-only">Advanced Settings Toggle</Accordion.Header>
+                <Accordion.Header className="sr-only">{t("advancedSettingsToggleLabel")}</Accordion.Header>
                 <Accordion.Trigger className="ghost advanced-toggle-trigger" aria-controls="advanced-settings-stack">
                   <span className="button-label">
                     <ChevronsUpDown className="ui-icon" aria-hidden="true" />
-                    {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
+                    {showAdvancedSettings ? t("hideAdvancedOptions") : t("showAdvancedOptions")}
                   </span>
                 </Accordion.Trigger>
               </Accordion.Item>
@@ -2753,7 +2763,7 @@ export default function App() {
                 <KeyRound className="ui-icon" aria-hidden="true" />
                 {t("steamImportTitle")}
               </span>
-              <HelpTip text="Imports owned games from Steam Web API using your API key and SteamID64. Profile privacy must allow owned games." />
+              <HelpTip text={t("helpTips.steamImport")} />
             </h2>
             <p className="muted">
               {t("steamImportDescription")}
@@ -2804,7 +2814,7 @@ export default function App() {
             {steamImportLoading ? (
               <p className="status progress-status" role="status" aria-live="polite">
                 <span className="progress-dot" aria-hidden="true" />
-                Importing your Steam library...
+                {t("steamImportingStatus")}
               </p>
             ) : null}
             {steamImportStatus ? (
@@ -2819,14 +2829,14 @@ export default function App() {
             <h2 id="filters-heading" className="section-heading">
               <span className="heading-label">
                 <Filter className="ui-icon" aria-hidden="true" />
-                Advanced Filters
+                {t("advancedFiltersTitle")}
               </span>
-              <HelpTip text="Filters narrow the candidate pool before cooldown and exclusion logic runs." />
+              <HelpTip text={t("helpTips.advancedFilters")} />
             </h2>
-            <p className="muted">Filter by platform, tags, length, release window, and price.</p>
+            <p className="muted">{t("advancedFiltersDescription")}</p>
             <div className="filters-grid">
               <label className="filter-field">
-                <span>Platform</span>
+                <span>{t("filterPlatform")}</span>
                 <select
                   value={filters.platform}
                   onChange={(event) => {
@@ -2834,15 +2844,15 @@ export default function App() {
                     markCustom();
                   }}
                 >
-                  <option value="any">Any</option>
-                  <option value="windows">Windows</option>
-                  <option value="mac">macOS</option>
-                  <option value="linux">Linux</option>
+                  <option value="any">{t("any")}</option>
+                  <option value="windows">{t("windows")}</option>
+                  <option value="mac">{t("macos")}</option>
+                  <option value="linux">{t("linux")}</option>
                 </select>
               </label>
 
               <label className="filter-field">
-                <span>Genre / Tag</span>
+                <span>{t("filterGenreTag")}</span>
                 <select
                   value={filters.tag}
                   onChange={(event) => {
@@ -2850,7 +2860,7 @@ export default function App() {
                     markCustom();
                   }}
                 >
-                  <option value="any">Any</option>
+                  <option value="any">{t("any")}</option>
                   {availableTags.slice(0, 250).map((tag) => (
                     <option key={tag} value={tag}>
                       {tag}
@@ -2860,7 +2870,7 @@ export default function App() {
               </label>
 
               <label className="filter-field">
-                <span>Estimated Length</span>
+                <span>{t("filterEstimatedLength")}</span>
                 <select
                   value={filters.length}
                   onChange={(event) => {
@@ -2868,15 +2878,15 @@ export default function App() {
                     markCustom();
                   }}
                 >
-                  <option value="any">Any</option>
-                  <option value="short">Short</option>
-                  <option value="medium">Medium</option>
-                  <option value="long">Long</option>
+                  <option value="any">{t("any")}</option>
+                  <option value="short">{t("short")}</option>
+                  <option value="medium">{t("medium")}</option>
+                  <option value="long">{t("long")}</option>
                 </select>
               </label>
 
               <label className="filter-field">
-                <span>Release After</span>
+                <span>{t("filterReleaseAfter")}</span>
                 <input
                   type="date"
                   value={filters.releaseFrom}
@@ -2888,7 +2898,7 @@ export default function App() {
               </label>
 
               <label className="filter-field">
-                <span>Release Before</span>
+                <span>{t("filterReleaseBefore")}</span>
                 <input
                   type="date"
                   value={filters.releaseTo}
@@ -2900,7 +2910,7 @@ export default function App() {
               </label>
 
               <label className="filter-field">
-                <span>Max Price (${filters.maxPriceUsd.toFixed(0)})</span>
+                <span>{t("maxPriceLabel", { price: filters.maxPriceUsd.toFixed(0) })}</span>
                 <input
                   type="range"
                   min={0}
@@ -2914,7 +2924,7 @@ export default function App() {
                   }}
                 />
                 <small className="filter-help">
-                  Games above this price are excluded unless marked as free.
+                  {t("maxPriceHelp")}
                 </small>
               </label>
 
@@ -2927,8 +2937,8 @@ export default function App() {
                     markCustom();
                   }}
                 />
-                <span>Free only</span>
-                <HelpTip text="When enabled, only free-to-play entries are kept and max-price filtering is ignored." />
+                <span>{t("freeOnly")}</span>
+                <HelpTip text={t("helpTips.freeOnly")} />
               </label>
             </div>
             <div className="button-row">
@@ -2942,7 +2952,7 @@ export default function App() {
               >
                 <span className="button-label">
                   <RotateCw className="ui-icon" aria-hidden="true" />
-                  Reset Filters
+                  {t("resetFilters")}
                 </span>
               </button>
             </div>
@@ -2954,14 +2964,14 @@ export default function App() {
                 <Ban className="ui-icon" aria-hidden="true" />
                 {t("playedCompletedTitle")}
               </span>
-              <HelpTip text="Use this to block games you already played or completed so they no longer appear on spins." />
+              <HelpTip text={t("helpTips.playedCompleted")} />
             </h2>
             <p className="muted">{t("playedCompletedDescription")}</p>
             <div className="odds-controls">
               <label className="inline-check">
                 <input type="checkbox" checked={excludePlayed} onChange={(event) => setExcludePlayed(event.target.checked)} />
                 <span>{t("excludePlayed")}</span>
-                <HelpTip text="Removes titles listed in Played from the active wheel pool." />
+                <HelpTip text={t("helpTips.excludePlayed")} />
               </label>
               <label className="inline-check">
                 <input
@@ -2970,7 +2980,7 @@ export default function App() {
                   onChange={(event) => setExcludeCompleted(event.target.checked)}
                 />
                 <span>{t("excludeCompleted")}</span>
-                <HelpTip text="Removes completed titles and keeps them out unless you clear the list." />
+                <HelpTip text={t("helpTips.excludeCompleted")} />
               </label>
             </div>
             <label htmlFor="exclusion-input" className="sr-only">
@@ -3051,7 +3061,7 @@ export default function App() {
                 <BellRing className="ui-icon" aria-hidden="true" />
                 {t("notificationsTitle")}
               </span>
-              <HelpTip text="Browser notifications can alert you about trend refreshes and spin reminders when enabled." />
+              <HelpTip text={t("helpTips.notifications")} />
             </h2>
             <p className="muted">{t("notificationsDescription")}</p>
             <div className="odds-controls">
@@ -3064,7 +3074,7 @@ export default function App() {
                   }}
                 />
                 <span>{t("notificationsEnabled")}</span>
-                <HelpTip text="Requires browser permission. If denied, this setting will stay off." />
+                <HelpTip text={t("helpTips.notificationsPermission")} />
               </label>
               <label className="inline-check">
                 <input
@@ -3074,7 +3084,7 @@ export default function App() {
                   onChange={(event) => setTrendNotifications(event.target.checked)}
                 />
                 <span>{t("newTrendsAlerts")}</span>
-                <HelpTip text="Sends an alert when refreshed trend data is available in the app." />
+                <HelpTip text={t("helpTips.trendAlerts")} />
               </label>
               <label className="inline-check">
                 <input
@@ -3084,11 +3094,11 @@ export default function App() {
                   onChange={(event) => setReminderNotifications(event.target.checked)}
                 />
                 <span>{t("spinReminders")}</span>
-                <HelpTip text="Sends periodic reminders to spin again when the page is not active." />
+                <HelpTip text={t("helpTips.spinReminders")} />
               </label>
               <label className="cooldown-control">
                 <span>{t("reminderInterval")}</span>
-                <HelpTip text="Sets how often reminder notifications can fire, in minutes." />
+                <HelpTip text={t("helpTips.reminderInterval")} />
                 <input
                   type="range"
                   min={15}
@@ -3112,33 +3122,30 @@ export default function App() {
             <h2 id="cloud-sync-heading" className="section-heading">
               <span className="heading-label">
                 <Cloud className="ui-icon" aria-hidden="true" />
-                Cloud Sync (Optional)
+                {t("cloudSyncTitle")}
               </span>
-              <HelpTip text="Syncs settings/history through a private GitHub Gist. Token stays in your local browser storage." />
+              <HelpTip text={t("helpTips.cloudSync")} />
             </h2>
-            <p className="muted">
-              Sync your settings/history across devices using a private GitHub Gist. Your token is stored locally in
-              this browser only.
-            </p>
+            <p className="muted">{t("cloudSyncDescription")}</p>
             <div className="steam-grid">
               <label htmlFor="cloud-token" className="sr-only">
-                GitHub token with gist scope
+                {t("cloudTokenLabel")}
               </label>
               <input
                 id="cloud-token"
                 type="password"
-                placeholder="GitHub token (gist scope)"
+                placeholder={t("cloudTokenPlaceholder")}
                 value={gistToken}
                 onChange={(event) => setGistToken(event.target.value)}
                 autoComplete="off"
               />
               <label htmlFor="cloud-gist-id" className="sr-only">
-                Sync Gist ID
+                {t("cloudGistIdLabel")}
               </label>
               <input
                 id="cloud-gist-id"
                 type="text"
-                placeholder="Gist ID"
+                placeholder={t("cloudGistIdPlaceholder")}
                 value={gistId}
                 onChange={(event) => setGistId(event.target.value)}
                 autoComplete="off"
@@ -3148,36 +3155,36 @@ export default function App() {
               <button type="button" onClick={createCloudSyncGist} disabled={cloudSyncLoading}>
                 <span className="button-label">
                   <FilePlus2 className="ui-icon" aria-hidden="true" />
-                  {cloudSyncLoading ? "Working..." : "Create Gist + Push"}
+                  {cloudSyncLoading ? t("updating") : t("createGistPush")}
                 </span>
               </button>
               <button type="button" className="ghost" onClick={pushCloudSync} disabled={cloudSyncLoading}>
                 <span className="button-label">
                   <Upload className="ui-icon" aria-hidden="true" />
-                  Push Sync
+                  {t("pushSync")}
                 </span>
               </button>
               <button type="button" className="ghost" onClick={pullCloudSync} disabled={cloudSyncLoading}>
                 <span className="button-label">
                   <Download className="ui-icon" aria-hidden="true" />
-                  Pull Sync
+                  {t("pullSync")}
                 </span>
               </button>
             </div>
             <div className="cloud-account-profiles">
-              <strong>Account-linked profile presets</strong>
+              <strong>{t("accountProfilesTitle")}</strong>
               <p className="muted">
-                Save named settings presets and sync them via your cloud snapshot for continuity across devices.
+                {t("accountProfilesDescription")}
               </p>
               <div className="steam-grid">
                 <label className="filter-field" htmlFor="account-profile-select">
-                  <span>Active Profile</span>
+                  <span>{t("activeProfile")}</span>
                   <select
                     id="account-profile-select"
                     value={activeAccountProfileId}
                     onChange={(event) => setActiveAccountProfileId(event.target.value)}
                   >
-                    <option value="">None</option>
+                    <option value="">{t("none")}</option>
                     {accountProfiles.map((profile) => (
                       <option key={profile.id} value={profile.id}>
                         {profile.name} ({formatSyncTimestamp(profile.updatedAt)})
@@ -3186,56 +3193,58 @@ export default function App() {
                   </select>
                 </label>
                 <label className="filter-field" htmlFor="account-profile-name">
-                  <span>New Profile Name</span>
+                  <span>{t("newProfileName")}</span>
                   <input
                     id="account-profile-name"
                     type="text"
                     value={accountProfileDraftName}
                     onChange={(event) => setAccountProfileDraftName(event.target.value)}
-                    placeholder="Weekend backlog, Cozy picks, etc."
+                    placeholder={t("newProfilePlaceholder")}
                   />
                 </label>
               </div>
               <div className="button-row">
                 <button type="button" className="ghost" onClick={createAccountProfile}>
-                  Create Profile
+                  {t("createProfile")}
                 </button>
                 <button type="button" className="ghost" onClick={saveCurrentToActiveProfile} disabled={!activeAccountProfileId}>
-                  Save Current to Active
+                  {t("saveCurrentToActive")}
                 </button>
                 <button type="button" className="ghost" onClick={applyActiveAccountProfile} disabled={!activeAccountProfileId}>
-                  Apply Active
+                  {t("applyActive")}
                 </button>
                 <button type="button" className="ghost" onClick={deleteActiveAccountProfile} disabled={!activeAccountProfileId}>
-                  Delete Active
+                  {t("deleteActive")}
                 </button>
               </div>
               {accountProfiles.length > 0 ? (
-                <p className="muted">Stored profiles: {accountProfiles.length}</p>
+                <p className="muted">{t("profilesStored", { count: accountProfiles.length })}</p>
               ) : (
-                <p className="muted">No profiles saved yet.</p>
+                <p className="muted">{t("noProfilesSaved")}</p>
               )}
             </div>
-            <p className="muted">Local cloud reference: {formatSyncTimestamp(cloudSyncReferenceAt)}</p>
+            <p className="muted">{t("cloudReference", { value: formatSyncTimestamp(cloudSyncReferenceAt) })}</p>
             {pendingCloudConflictSnapshot ? (
               <div className="cloud-sync-conflict" role="alert">
                 <p>
-                  Remote snapshot is older ({formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt)}) than your
-                  local reference ({formatSyncTimestamp(cloudSyncReferenceAt)}).
+                  {t("cloudConflictOlder", {
+                    remote: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt),
+                    local: formatSyncTimestamp(cloudSyncReferenceAt),
+                  })}
                 </p>
                 <div className="button-row">
                   <button type="button" className="ghost" onClick={dismissCloudConflict} disabled={cloudSyncLoading}>
-                    Keep Local
+                    {t("keepLocal")}
                   </button>
                   <button type="button" onClick={applyPendingCloudConflict} disabled={cloudSyncLoading}>
-                    Apply Remote Anyway
+                    {t("applyRemoteAnyway")}
                   </button>
                 </div>
               </div>
             ) : null}
             {cloudRestorePoints.length > 0 ? (
               <div className="cloud-restore-points">
-                <strong>Local restore points</strong>
+                <strong>{t("restorePointsTitle")}</strong>
                 <ul>
                   {cloudRestorePoints.map((point) => (
                     <li key={point.id}>
@@ -3243,7 +3252,7 @@ export default function App() {
                         {formatSyncTimestamp(point.createdAt)} | {point.reason}
                       </span>
                       <button type="button" className="ghost compact" onClick={() => restoreFromCloudPoint(point)}>
-                        Restore
+                        {t("restore")}
                       </button>
                     </li>
                   ))}
@@ -3254,10 +3263,10 @@ export default function App() {
                     className="ghost compact"
                     onClick={() => {
                       setCloudRestorePoints([]);
-                      pushToast("info", "Cleared local cloud restore points.");
+                      pushToast("info", t("messages.cloudRestorePointsCleared"));
                     }}
                   >
-                    Clear Restore Points
+                    {t("clearRestorePoints")}
                   </button>
                 </div>
               </div>
@@ -3265,7 +3274,7 @@ export default function App() {
             {cloudSyncLoading ? (
               <p className="status progress-status" role="status" aria-live="polite">
                 <span className="progress-dot" aria-hidden="true" />
-                Syncing with GitHub Gist...
+                {t("syncingWithGist")}
               </p>
             ) : null}
             {cloudSyncStatus ? (
@@ -3357,17 +3366,14 @@ export default function App() {
           ) : null}
 
           {activeTab === "settings" ? (
-            <section className="panel" aria-label="Settings guidance">
+            <section className="panel" aria-label={t("settingsGuidanceAria")}>
               <h2 className="section-heading">
                 <span className="heading-label">
                   <Settings2 className="ui-icon" aria-hidden="true" />
-                  Settings
+                  {t("settingsGuidanceTitle")}
                 </span>
               </h2>
-              <p className="muted">
-                Configure sources, weights, imports, and advanced options from the left sidebar. Then return to Play
-                to spin.
-              </p>
+              <p className="muted">{t("settingsGuidanceDescription")}</p>
             </section>
           ) : null}
         </div>
@@ -3384,13 +3390,13 @@ export default function App() {
             aria-describedby="onboarding-description"
             tabIndex={-1}
           >
-            <p className="winner-tag">Quick Start</p>
-            <h3 id="onboarding-title">{onboardingSteps[onboardingStep]?.title}</h3>
-            <p id="onboarding-description">{onboardingSteps[onboardingStep]?.description}</p>
-            <div className="onboarding-dots" aria-label="Onboarding progress">
+            <p className="winner-tag">{t("quickStart")}</p>
+            <h3 id="onboarding-title">{t(onboardingSteps[onboardingStep]?.titleKey ?? "onboarding.buildLibraryTitle")}</h3>
+            <p id="onboarding-description">{t(onboardingSteps[onboardingStep]?.descriptionKey ?? "onboarding.buildLibraryDescription")}</p>
+            <div className="onboarding-dots" aria-label={t("onboardingProgress")}>
               {onboardingSteps.map((step, index) => (
                 <button
-                  key={step.title}
+                  key={step.titleKey}
                   type="button"
                   className={clsx("ghost compact", onboardingStep === index && "is-active")}
                   onClick={() => setOnboardingStep(index)}
@@ -3402,20 +3408,20 @@ export default function App() {
             </div>
             <div className="button-row">
               <button type="button" className="ghost" onClick={() => completeOnboarding("play")}>
-                Skip
+                {t("skip")}
               </button>
               {onboardingStep > 0 ? (
                 <button type="button" className="ghost" onClick={() => setOnboardingStep((current) => current - 1)}>
-                  Back
+                  {t("back")}
                 </button>
               ) : null}
               {onboardingStep < onboardingLastStep ? (
                 <button type="button" onClick={() => setOnboardingStep((current) => current + 1)}>
-                  Next
+                  {t("next")}
                 </button>
               ) : (
                 <button type="button" onClick={() => completeOnboarding("play")}>
-                  Start Spinning
+                  {t("startSpinning")}
                 </button>
               )}
             </div>
@@ -3429,7 +3435,7 @@ export default function App() {
             <div key={toast.id} className={clsx("toast", toast.tone)}>
               <p>{toast.text}</p>
               <button type="button" className="ghost compact" onClick={() => dismissToast(toast.id)}>
-                Dismiss
+                {t("dismissToast")}
               </button>
             </div>
           ))}

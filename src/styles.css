@@ -951,6 +951,22 @@ button:active:not(:disabled),
   font-size: var(--text-sm);
 }
 
+.cloud-account-profiles {
+  margin-top: var(--space-3);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  padding: var(--space-2) var(--space-3);
+}
+
+.cloud-account-profiles strong {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-strong);
+}
+
 .winner-overlay {
   position: fixed;
   inset: 0;

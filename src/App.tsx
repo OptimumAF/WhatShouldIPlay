@@ -163,37 +163,50 @@ const spinHistorySchema = z.array(
   }),
 );
 
+const cloudSettingsSchema = z.object({
+  enabledSources: z.record(z.string(), z.boolean()).optional(),
+  sourceWeights: z.record(z.string(), z.number()).optional(),
+  weightedMode: z.boolean().optional(),
+  adaptiveRecommendations: z.boolean().optional(),
+  cooldownSpins: z.number().optional(),
+  spinSpeedProfile: z.enum(["cinematic", "balanced", "rapid"]).optional(),
+  reducedSpinAnimation: z.boolean().optional(),
+  activePreset: z.string().optional(),
+  filters: z
+    .object({
+      platform: z.string().optional(),
+      tag: z.string().optional(),
+      length: z.string().optional(),
+      releaseFrom: z.string().optional(),
+      releaseTo: z.string().optional(),
+      freeOnly: z.boolean().optional(),
+      maxPriceUsd: z.number().optional(),
+    })
+    .optional(),
+});
+
+const accountProfileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  updatedAt: z.string(),
+  settings: cloudSettingsSchema,
+});
+
 const cloudSyncSnapshotSchema = z.object({
   version: z.number().default(1),
   exportedAt: z.string().optional(),
-  settings: z
-    .object({
-      enabledSources: z.record(z.string(), z.boolean()).optional(),
-      sourceWeights: z.record(z.string(), z.number()).optional(),
-      weightedMode: z.boolean().optional(),
-      adaptiveRecommendations: z.boolean().optional(),
-      cooldownSpins: z.number().optional(),
-      spinSpeedProfile: z.enum(["cinematic", "balanced", "rapid"]).optional(),
-      reducedSpinAnimation: z.boolean().optional(),
-      activePreset: z.string().optional(),
-      filters: z
-        .object({
-          platform: z.string().optional(),
-          tag: z.string().optional(),
-          length: z.string().optional(),
-          releaseFrom: z.string().optional(),
-          releaseTo: z.string().optional(),
-          freeOnly: z.boolean().optional(),
-          maxPriceUsd: z.number().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
+  settings: cloudSettingsSchema.optional(),
   spinHistory: spinHistorySchema.optional(),
   manualGames: z.array(z.string()).optional(),
   steamImport: storedSteamImportSchema.optional(),
   exclusions: storedExclusionsSchema.optional(),
   notifications: storedNotificationSettingsSchema.optional(),
+  profiles: z
+    .object({
+      activeProfileId: z.string().optional(),
+      items: z.array(accountProfileSchema).default([]),
+    })
+    .optional(),
 });
 
 const cloudRestorePointsSchema = z.array(
@@ -205,6 +218,8 @@ const cloudRestorePointsSchema = z.array(
   }),
 );
 
+const accountProfilesSchema = z.array(accountProfileSchema);
+
 const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
 const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
@@ -212,6 +227,8 @@ const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
 const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
+const ACCOUNT_PROFILES_STORAGE_KEY = "pickagame.account-profiles.v1";
+const ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY = "pickagame.account-profiles.active.v1";
 const CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY = "pickagame.cloud-sync.restore-points.v1";
 const CLOUD_SYNC_REFERENCE_STORAGE_KEY = "pickagame.cloud-sync.reference.v1";
 const THEME_STORAGE_KEY = "pickagame.theme.v1";
@@ -323,6 +340,13 @@ interface CloudRestorePoint {
   createdAt: string;
   reason: string;
   snapshot: CloudSyncSnapshot;
+}
+
+interface AccountProfilePreset {
+  id: string;
+  name: string;
+  updatedAt: string;
+  settings: StoredSettings;
 }
 
 interface ToastMessage {
@@ -717,6 +741,26 @@ const sanitizeCloudRestorePoints = (input: CloudRestorePoint[] | null): CloudRes
   return parsed.data.slice(0, MAX_CLOUD_RESTORE_POINTS);
 };
 
+const sanitizeAccountProfiles = (input: AccountProfilePreset[] | null): AccountProfilePreset[] => {
+  if (!input) return [];
+  const parsed = accountProfilesSchema.safeParse(input);
+  if (!parsed.success) return [];
+
+  const deduped = new Map<string, AccountProfilePreset>();
+  parsed.data.forEach((entry) => {
+    const id = entry.id.trim();
+    const name = entry.name.trim();
+    if (!id || !name) return;
+    deduped.set(id, {
+      id,
+      name,
+      updatedAt: entry.updatedAt,
+      settings: sanitizeSettings(entry.settings as StoredSettings),
+    });
+  });
+  return [...deduped.values()].slice(0, 20);
+};
+
 const formatSyncTimestamp = (value: string | null | undefined) => {
   if (!value) return "Unknown";
   const date = new Date(value);
@@ -771,6 +815,13 @@ export default function App() {
     readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
   );
   const initialCloudSync = sanitizeCloudSync(readStorage<StoredCloudSync | null>(CLOUD_SYNC_STORAGE_KEY, null));
+  const initialAccountProfiles = sanitizeAccountProfiles(
+    readStorage<AccountProfilePreset[] | null>(ACCOUNT_PROFILES_STORAGE_KEY, null),
+  );
+  const initialActiveAccountProfileId = readStorage<string | null>(ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY, null) ?? "";
+  const normalizedInitialActiveProfileId = initialAccountProfiles.some((profile) => profile.id === initialActiveAccountProfileId)
+    ? initialActiveAccountProfileId
+    : initialAccountProfiles[0]?.id ?? "";
   const initialCloudRestorePoints = sanitizeCloudRestorePoints(
     readStorage<CloudRestorePoint[] | null>(CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY, null),
   );
@@ -811,6 +862,9 @@ export default function App() {
   const [gistToken, setGistToken] = useState(initialCloudSync.gistToken);
   const [cloudSyncStatus, setCloudSyncStatus] = useState("");
   const [cloudSyncLoading, setCloudSyncLoading] = useState(false);
+  const [accountProfiles, setAccountProfiles] = useState<AccountProfilePreset[]>(initialAccountProfiles);
+  const [activeAccountProfileId, setActiveAccountProfileId] = useState(normalizedInitialActiveProfileId);
+  const [accountProfileDraftName, setAccountProfileDraftName] = useState("");
   const [cloudSyncReferenceAt, setCloudSyncReferenceAt] = useState(initialCloudSyncReference);
   const [cloudRestorePoints, setCloudRestorePoints] = useState<CloudRestorePoint[]>(initialCloudRestorePoints);
   const [pendingCloudConflictSnapshot, setPendingCloudConflictSnapshot] = useState<CloudSyncSnapshot | null>(null);
@@ -1248,6 +1302,26 @@ export default function App() {
       } satisfies StoredCloudSync),
     );
   }, [cloudProvider, gistId, gistToken]);
+
+  useEffect(() => {
+    localStorage.setItem(ACCOUNT_PROFILES_STORAGE_KEY, JSON.stringify(accountProfiles));
+  }, [accountProfiles]);
+
+  useEffect(() => {
+    localStorage.setItem(ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY, JSON.stringify(activeAccountProfileId));
+  }, [activeAccountProfileId]);
+
+  useEffect(() => {
+    if (accountProfiles.length === 0) {
+      if (activeAccountProfileId) {
+        setActiveAccountProfileId("");
+      }
+      return;
+    }
+    if (!activeAccountProfileId || !accountProfiles.some((profile) => profile.id === activeAccountProfileId)) {
+      setActiveAccountProfileId(accountProfiles[0].id);
+    }
+  }, [accountProfiles, activeAccountProfileId]);
 
   useEffect(() => {
     localStorage.setItem(CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY, JSON.stringify(cloudRestorePoints));
@@ -1763,10 +1837,8 @@ export default function App() {
     }
   };
 
-  const buildCloudSnapshot = (): CloudSyncSnapshot => ({
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    settings: {
+  const currentSettingsSnapshot = useCallback(
+    (): StoredSettings => ({
       enabledSources,
       sourceWeights,
       weightedMode,
@@ -1776,7 +1848,36 @@ export default function App() {
       reducedSpinAnimation,
       activePreset,
       filters,
-    } satisfies StoredSettings,
+    }),
+    [
+      activePreset,
+      adaptiveRecommendations,
+      cooldownSpins,
+      enabledSources,
+      filters,
+      reducedSpinAnimation,
+      sourceWeights,
+      spinSpeedProfile,
+      weightedMode,
+    ],
+  );
+
+  const applyStoredSettings = useCallback((sanitized: StoredSettings) => {
+    setEnabledSources(sanitized.enabledSources);
+    setSourceWeights(sanitized.sourceWeights);
+    setWeightedMode(sanitized.weightedMode);
+    setAdaptiveRecommendations(sanitized.adaptiveRecommendations);
+    setCooldownSpins(sanitized.cooldownSpins);
+    setSpinSpeedProfile(sanitized.spinSpeedProfile);
+    setReducedSpinAnimation(sanitized.reducedSpinAnimation);
+    setActivePreset(sanitized.activePreset);
+    setFilters(sanitizeFilters(sanitized.filters));
+  }, []);
+
+  const buildCloudSnapshot = (): CloudSyncSnapshot => ({
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: currentSettingsSnapshot(),
     spinHistory: spinHistory.slice(0, 50),
     manualGames,
     steamImport: {
@@ -1796,11 +1897,23 @@ export default function App() {
       reminderNotifications,
       reminderIntervalMinutes,
     } satisfies StoredNotificationSettings,
+    profiles: {
+      activeProfileId: activeAccountProfileId || undefined,
+      items: accountProfiles.map((profile) => ({
+        id: profile.id,
+        name: profile.name,
+        updatedAt: profile.updatedAt,
+        settings: profile.settings,
+      })),
+    },
   });
 
   const pushCloudRestorePoint = useCallback(
     (reason: string) => {
-      const snapshot = buildCloudSnapshot();
+      const snapshot: CloudSyncSnapshot = {
+        ...buildCloudSnapshot(),
+        settings: currentSettingsSnapshot(),
+      };
       const id =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
@@ -1813,30 +1926,7 @@ export default function App() {
       };
       setCloudRestorePoints((current) => [point, ...current].slice(0, MAX_CLOUD_RESTORE_POINTS));
     },
-    [
-      adaptiveRecommendations,
-      completedGames,
-      cooldownSpins,
-      enabledSources,
-      excludeCompleted,
-      excludePlayed,
-      filters,
-      manualGames,
-      notificationsEnabled,
-      playedGames,
-      reducedSpinAnimation,
-      reminderIntervalMinutes,
-      reminderNotifications,
-      sourceWeights,
-      spinHistory,
-      spinSpeedProfile,
-      steamApiKey,
-      steamId,
-      steamImportGames,
-      trendNotifications,
-      weightedMode,
-      activePreset,
-    ],
+    [buildCloudSnapshot, currentSettingsSnapshot],
   );
 
   const applyCloudSnapshot = (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
@@ -1848,15 +1938,7 @@ export default function App() {
 
     if (snapshot.settings) {
       const sanitized = sanitizeSettings(snapshot.settings as StoredSettings);
-      setEnabledSources(sanitized.enabledSources);
-      setSourceWeights(sanitized.sourceWeights);
-      setWeightedMode(sanitized.weightedMode);
-      setAdaptiveRecommendations(sanitized.adaptiveRecommendations);
-      setCooldownSpins(sanitized.cooldownSpins);
-      setSpinSpeedProfile(sanitized.spinSpeedProfile);
-      setReducedSpinAnimation(sanitized.reducedSpinAnimation);
-      setActivePreset(sanitized.activePreset);
-      setFilters(sanitizeFilters(sanitized.filters));
+      applyStoredSettings(sanitized);
     }
 
     if (snapshot.spinHistory) {
@@ -1894,6 +1976,16 @@ export default function App() {
       setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
     }
 
+    if (snapshot.profiles?.items) {
+      const incomingProfiles = sanitizeAccountProfiles(snapshot.profiles.items as AccountProfilePreset[]);
+      setAccountProfiles(incomingProfiles);
+      const incomingActiveId = snapshot.profiles.activeProfileId ?? "";
+      const resolvedActiveId = incomingProfiles.some((profile) => profile.id === incomingActiveId)
+        ? incomingActiveId
+        : incomingProfiles[0]?.id ?? "";
+      setActiveAccountProfileId(resolvedActiveId);
+    }
+
     if (options?.updateReference !== false) {
       setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
     }
@@ -1919,6 +2011,92 @@ export default function App() {
     applyCloudSnapshot(point.snapshot, { updateReference: false });
     setCloudSyncStatus(`Restored local state from ${formatSyncTimestamp(point.createdAt)}.`);
     pushToast("success", "Local state restored from restore point.");
+  };
+
+  const createAccountProfile = () => {
+    const name = accountProfileDraftName.trim();
+    if (!name) {
+      pushToast("error", "Enter a profile name first.");
+      return;
+    }
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const profile: AccountProfilePreset = {
+      id,
+      name,
+      updatedAt: new Date().toISOString(),
+      settings: currentSettingsSnapshot(),
+    };
+    setAccountProfiles((current) => [profile, ...current].slice(0, 20));
+    setActiveAccountProfileId(id);
+    setAccountProfileDraftName("");
+    setCloudSyncStatus(`Created profile "${name}". Push sync to share across devices.`);
+    pushToast("success", `Created profile "${name}".`);
+  };
+
+  const saveCurrentToActiveProfile = () => {
+    if (!activeAccountProfileId) {
+      pushToast("error", "Select a profile or create a new one first.");
+      return;
+    }
+    const timestamp = new Date().toISOString();
+    let saved = false;
+    setAccountProfiles((current) =>
+      current.map((profile) => {
+        if (profile.id !== activeAccountProfileId) return profile;
+        saved = true;
+        return {
+          ...profile,
+          updatedAt: timestamp,
+          settings: currentSettingsSnapshot(),
+        };
+      }),
+    );
+    if (!saved) {
+      pushToast("error", "Selected profile was not found.");
+      return;
+    }
+    setCloudSyncStatus("Saved current settings to active profile.");
+    pushToast("success", "Saved current settings to active profile.");
+  };
+
+  const applyActiveAccountProfile = () => {
+    if (!activeAccountProfileId) {
+      pushToast("error", "Select a profile first.");
+      return;
+    }
+    const profile = accountProfiles.find((entry) => entry.id === activeAccountProfileId);
+    if (!profile) {
+      pushToast("error", "Selected profile was not found.");
+      return;
+    }
+    pushCloudRestorePoint(`Before applying profile "${profile.name}"`);
+    applyStoredSettings(profile.settings);
+    setCloudSyncStatus(`Applied profile "${profile.name}".`);
+    pushToast("success", `Applied profile "${profile.name}".`);
+  };
+
+  const deleteActiveAccountProfile = () => {
+    if (!activeAccountProfileId) {
+      pushToast("error", "Select a profile first.");
+      return;
+    }
+    let removedName = "";
+    setAccountProfiles((current) => {
+      return current.filter((profile) => {
+        if (profile.id !== activeAccountProfileId) return true;
+        removedName = profile.name;
+        return false;
+      });
+    });
+    if (!removedName) {
+      pushToast("error", "Selected profile was not found.");
+      return;
+    }
+    setCloudSyncStatus(`Deleted profile "${removedName}".`);
+    pushToast("info", `Deleted profile "${removedName}".`);
   };
 
   const pushCloudSync = async () => {
@@ -2990,6 +3168,58 @@ export default function App() {
                   Pull Sync
                 </span>
               </button>
+            </div>
+            <div className="cloud-account-profiles">
+              <strong>Account-linked profile presets</strong>
+              <p className="muted">
+                Save named settings presets and sync them via your cloud snapshot for continuity across devices.
+              </p>
+              <div className="steam-grid">
+                <label className="filter-field" htmlFor="account-profile-select">
+                  <span>Active Profile</span>
+                  <select
+                    id="account-profile-select"
+                    value={activeAccountProfileId}
+                    onChange={(event) => setActiveAccountProfileId(event.target.value)}
+                  >
+                    <option value="">None</option>
+                    {accountProfiles.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.name} ({formatSyncTimestamp(profile.updatedAt)})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-field" htmlFor="account-profile-name">
+                  <span>New Profile Name</span>
+                  <input
+                    id="account-profile-name"
+                    type="text"
+                    value={accountProfileDraftName}
+                    onChange={(event) => setAccountProfileDraftName(event.target.value)}
+                    placeholder="Weekend backlog, Cozy picks, etc."
+                  />
+                </label>
+              </div>
+              <div className="button-row">
+                <button type="button" className="ghost" onClick={createAccountProfile}>
+                  Create Profile
+                </button>
+                <button type="button" className="ghost" onClick={saveCurrentToActiveProfile} disabled={!activeAccountProfileId}>
+                  Save Current to Active
+                </button>
+                <button type="button" className="ghost" onClick={applyActiveAccountProfile} disabled={!activeAccountProfileId}>
+                  Apply Active
+                </button>
+                <button type="button" className="ghost" onClick={deleteActiveAccountProfile} disabled={!activeAccountProfileId}>
+                  Delete Active
+                </button>
+              </div>
+              {accountProfiles.length > 0 ? (
+                <p className="muted">Stored profiles: {accountProfiles.length}</p>
+              ) : (
+                <p className="muted">No profiles saved yet.</p>
+              )}
             </div>
             <p className="muted">Local cloud reference: {formatSyncTimestamp(cloudSyncReferenceAt)}</p>
             {pendingCloudConflictSnapshot ? (

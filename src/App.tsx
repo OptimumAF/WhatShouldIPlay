@@ -196,6 +196,15 @@ const cloudSyncSnapshotSchema = z.object({
   notifications: storedNotificationSettingsSchema.optional(),
 });
 
+const cloudRestorePointsSchema = z.array(
+  z.object({
+    id: z.string(),
+    createdAt: z.string(),
+    reason: z.string(),
+    snapshot: cloudSyncSnapshotSchema,
+  }),
+);
+
 const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
 const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
@@ -203,8 +212,11 @@ const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";
 const CLOUD_SYNC_STORAGE_KEY = "pickagame.cloud-sync.v1";
+const CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY = "pickagame.cloud-sync.restore-points.v1";
+const CLOUD_SYNC_REFERENCE_STORAGE_KEY = "pickagame.cloud-sync.reference.v1";
 const THEME_STORAGE_KEY = "pickagame.theme.v1";
 const ONBOARDING_STORAGE_KEY = "pickagame.onboarding.v1";
+const MAX_CLOUD_RESTORE_POINTS = 5;
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
@@ -302,6 +314,15 @@ interface StoredCloudSync {
   provider: "githubGist";
   gistId: string;
   gistToken: string;
+}
+
+type CloudSyncSnapshot = z.infer<typeof cloudSyncSnapshotSchema>;
+
+interface CloudRestorePoint {
+  id: string;
+  createdAt: string;
+  reason: string;
+  snapshot: CloudSyncSnapshot;
 }
 
 interface ToastMessage {
@@ -689,6 +710,20 @@ const sanitizeThemeMode = (input: ThemeMode | null): ThemeMode => {
   return "system";
 };
 
+const sanitizeCloudRestorePoints = (input: CloudRestorePoint[] | null): CloudRestorePoint[] => {
+  if (!input) return [];
+  const parsed = cloudRestorePointsSchema.safeParse(input);
+  if (!parsed.success) return [];
+  return parsed.data.slice(0, MAX_CLOUD_RESTORE_POINTS);
+};
+
+const formatSyncTimestamp = (value: string | null | undefined) => {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
+
 const getFocusableElements = (root: HTMLElement) =>
   [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
     (element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true",
@@ -736,6 +771,10 @@ export default function App() {
     readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
   );
   const initialCloudSync = sanitizeCloudSync(readStorage<StoredCloudSync | null>(CLOUD_SYNC_STORAGE_KEY, null));
+  const initialCloudRestorePoints = sanitizeCloudRestorePoints(
+    readStorage<CloudRestorePoint[] | null>(CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY, null),
+  );
+  const initialCloudSyncReference = readStorage<string | null>(CLOUD_SYNC_REFERENCE_STORAGE_KEY, null) ?? "";
   const initialThemeMode = sanitizeThemeMode(readStorage<ThemeMode | null>(THEME_STORAGE_KEY, null));
   const initialOnboardingDone = readStorage<boolean | null>(ONBOARDING_STORAGE_KEY, null) === true;
 
@@ -772,6 +811,9 @@ export default function App() {
   const [gistToken, setGistToken] = useState(initialCloudSync.gistToken);
   const [cloudSyncStatus, setCloudSyncStatus] = useState("");
   const [cloudSyncLoading, setCloudSyncLoading] = useState(false);
+  const [cloudSyncReferenceAt, setCloudSyncReferenceAt] = useState(initialCloudSyncReference);
+  const [cloudRestorePoints, setCloudRestorePoints] = useState<CloudRestorePoint[]>(initialCloudRestorePoints);
+  const [pendingCloudConflictSnapshot, setPendingCloudConflictSnapshot] = useState<CloudSyncSnapshot | null>(null);
 
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -1206,6 +1248,14 @@ export default function App() {
       } satisfies StoredCloudSync),
     );
   }, [cloudProvider, gistId, gistToken]);
+
+  useEffect(() => {
+    localStorage.setItem(CLOUD_SYNC_RESTORE_POINTS_STORAGE_KEY, JSON.stringify(cloudRestorePoints));
+  }, [cloudRestorePoints]);
+
+  useEffect(() => {
+    localStorage.setItem(CLOUD_SYNC_REFERENCE_STORAGE_KEY, JSON.stringify(cloudSyncReferenceAt));
+  }, [cloudSyncReferenceAt]);
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeMode));
@@ -1713,7 +1763,7 @@ export default function App() {
     }
   };
 
-  const buildCloudSnapshot = () => ({
+  const buildCloudSnapshot = (): CloudSyncSnapshot => ({
     version: 1,
     exportedAt: new Date().toISOString(),
     settings: {
@@ -1748,7 +1798,48 @@ export default function App() {
     } satisfies StoredNotificationSettings,
   });
 
-  const applyCloudSnapshot = (rawSnapshot: unknown) => {
+  const pushCloudRestorePoint = useCallback(
+    (reason: string) => {
+      const snapshot = buildCloudSnapshot();
+      const id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const point: CloudRestorePoint = {
+        id,
+        createdAt: new Date().toISOString(),
+        reason,
+        snapshot,
+      };
+      setCloudRestorePoints((current) => [point, ...current].slice(0, MAX_CLOUD_RESTORE_POINTS));
+    },
+    [
+      adaptiveRecommendations,
+      completedGames,
+      cooldownSpins,
+      enabledSources,
+      excludeCompleted,
+      excludePlayed,
+      filters,
+      manualGames,
+      notificationsEnabled,
+      playedGames,
+      reducedSpinAnimation,
+      reminderIntervalMinutes,
+      reminderNotifications,
+      sourceWeights,
+      spinHistory,
+      spinSpeedProfile,
+      steamApiKey,
+      steamId,
+      steamImportGames,
+      trendNotifications,
+      weightedMode,
+      activePreset,
+    ],
+  );
+
+  const applyCloudSnapshot = (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
     const parsed = cloudSyncSnapshotSchema.safeParse(rawSnapshot);
     if (!parsed.success) {
       throw new Error("Cloud snapshot format is invalid.");
@@ -1802,6 +1893,32 @@ export default function App() {
       setReminderNotifications(sanitized.reminderNotifications);
       setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
     }
+
+    if (options?.updateReference !== false) {
+      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
+    }
+    setPendingCloudConflictSnapshot(null);
+  };
+
+  const dismissCloudConflict = () => {
+    setPendingCloudConflictSnapshot(null);
+    setCloudSyncStatus("Kept local data. Cloud conflict was dismissed.");
+    pushToast("info", "Kept local data. Pull again anytime.");
+  };
+
+  const applyPendingCloudConflict = () => {
+    if (!pendingCloudConflictSnapshot) return;
+    pushCloudRestorePoint("Before applying older remote cloud snapshot");
+    applyCloudSnapshot(pendingCloudConflictSnapshot);
+    setCloudSyncStatus("Applied remote snapshot after conflict review.");
+    pushToast("success", "Applied remote snapshot and saved a restore point.");
+  };
+
+  const restoreFromCloudPoint = (point: CloudRestorePoint) => {
+    pushCloudRestorePoint("Before local restore point recovery");
+    applyCloudSnapshot(point.snapshot, { updateReference: false });
+    setCloudSyncStatus(`Restored local state from ${formatSyncTimestamp(point.createdAt)}.`);
+    pushToast("success", "Local state restored from restore point.");
   };
 
   const pushCloudSync = async () => {
@@ -1820,6 +1937,7 @@ export default function App() {
     setCloudSyncLoading(true);
     setCloudSyncStatus("Uploading sync snapshot...");
     try {
+      const snapshot = buildCloudSnapshot();
       const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
         method: "PATCH",
         headers: {
@@ -1830,7 +1948,7 @@ export default function App() {
         body: JSON.stringify({
           files: {
             "whatshouldiplay-sync.json": {
-              content: JSON.stringify(buildCloudSnapshot(), null, 2),
+              content: JSON.stringify(snapshot, null, 2),
             },
           },
         }),
@@ -1838,6 +1956,8 @@ export default function App() {
       if (!response.ok) {
         throw new Error(`Cloud sync upload failed (${response.status}).`);
       }
+      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
+      setPendingCloudConflictSnapshot(null);
       setCloudSyncStatus("Cloud sync uploaded.");
       pushToast("success", "Cloud sync uploaded.");
     } catch (error) {
@@ -1860,6 +1980,7 @@ export default function App() {
     setCloudSyncLoading(true);
     setCloudSyncStatus("Creating secret gist...");
     try {
+      const snapshot = buildCloudSnapshot();
       const response = await fetch("https://api.github.com/gists", {
         method: "POST",
         headers: {
@@ -1872,7 +1993,7 @@ export default function App() {
           public: false,
           files: {
             "whatshouldiplay-sync.json": {
-              content: JSON.stringify(buildCloudSnapshot(), null, 2),
+              content: JSON.stringify(snapshot, null, 2),
             },
           },
         }),
@@ -1885,6 +2006,8 @@ export default function App() {
         throw new Error("GitHub API did not return gist id.");
       }
       setGistId(json.id);
+      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
+      setPendingCloudConflictSnapshot(null);
       setCloudSyncStatus(`Created sync gist ${json.id}.`);
       pushToast("success", `Created sync gist ${json.id}.`);
     } catch (error) {
@@ -1942,9 +2065,28 @@ export default function App() {
         throw new Error("Sync file content is empty.");
       }
       const parsed = JSON.parse(content) as unknown;
-      applyCloudSnapshot(parsed);
-      setCloudSyncStatus("Cloud sync downloaded and applied.");
-      pushToast("success", "Cloud sync downloaded and applied.");
+      const remoteSnapshot = cloudSyncSnapshotSchema.parse(parsed);
+      const remoteTimestamp = remoteSnapshot.exportedAt;
+      const remoteMillis = remoteTimestamp ? Date.parse(remoteTimestamp) : NaN;
+      const referenceMillis = cloudSyncReferenceAt ? Date.parse(cloudSyncReferenceAt) : NaN;
+      if (
+        remoteTimestamp &&
+        cloudSyncReferenceAt &&
+        Number.isFinite(remoteMillis) &&
+        Number.isFinite(referenceMillis) &&
+        remoteMillis < referenceMillis
+      ) {
+        setPendingCloudConflictSnapshot(remoteSnapshot);
+        setCloudSyncStatus(
+          `Conflict detected: cloud snapshot (${formatSyncTimestamp(remoteTimestamp)}) is older than local reference (${formatSyncTimestamp(cloudSyncReferenceAt)}).`,
+        );
+        pushToast("info", "Conflict detected. Choose Keep Local or Apply Remote.");
+      } else {
+        pushCloudRestorePoint("Before applying pulled cloud snapshot");
+        applyCloudSnapshot(remoteSnapshot);
+        setCloudSyncStatus("Cloud sync downloaded and applied.");
+        pushToast("success", "Cloud sync downloaded and applied.");
+      }
     } catch (error) {
       const message = (error as Error).message;
       setCloudSyncStatus(message);
@@ -2849,6 +2991,52 @@ export default function App() {
                 </span>
               </button>
             </div>
+            <p className="muted">Local cloud reference: {formatSyncTimestamp(cloudSyncReferenceAt)}</p>
+            {pendingCloudConflictSnapshot ? (
+              <div className="cloud-sync-conflict" role="alert">
+                <p>
+                  Remote snapshot is older ({formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt)}) than your
+                  local reference ({formatSyncTimestamp(cloudSyncReferenceAt)}).
+                </p>
+                <div className="button-row">
+                  <button type="button" className="ghost" onClick={dismissCloudConflict} disabled={cloudSyncLoading}>
+                    Keep Local
+                  </button>
+                  <button type="button" onClick={applyPendingCloudConflict} disabled={cloudSyncLoading}>
+                    Apply Remote Anyway
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {cloudRestorePoints.length > 0 ? (
+              <div className="cloud-restore-points">
+                <strong>Local restore points</strong>
+                <ul>
+                  {cloudRestorePoints.map((point) => (
+                    <li key={point.id}>
+                      <span>
+                        {formatSyncTimestamp(point.createdAt)} | {point.reason}
+                      </span>
+                      <button type="button" className="ghost compact" onClick={() => restoreFromCloudPoint(point)}>
+                        Restore
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="ghost compact"
+                    onClick={() => {
+                      setCloudRestorePoints([]);
+                      pushToast("info", "Cleared local cloud restore points.");
+                    }}
+                  >
+                    Clear Restore Points
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {cloudSyncLoading ? (
               <p className="status progress-status" role="status" aria-live="polite">
                 <span className="progress-dot" aria-hidden="true" />

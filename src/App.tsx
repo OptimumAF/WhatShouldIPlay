@@ -4,6 +4,8 @@ import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
+import { createSyncGist, pullSyncSnapshot, updateSyncGist } from "./lib/cloudSyncClient";
+import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -224,8 +226,6 @@ const accountProfilesSchema = z.array(accountProfileSchema);
 
 const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 type SourceToggleKey = (typeof sourceKeys)[number];
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type EnabledSources = Record<SourceToggleKey, boolean>;
 type SourceWeights = Record<SourceToggleKey, number>;
@@ -548,19 +548,6 @@ async function fetchTopGames(): Promise<TopGamesPayload> {
   return payloadSchema.parse(json) as TopGamesPayload;
 }
 
-const readStorage = <T,>(key: string, fallback: T) => {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const formatOdds = (odds: number) => `${(odds * 100).toFixed(odds < 0.01 ? 2 : 1)}%`;
-
 const sourceLabelList = (sources: SourceId[]) =>
   sources
     .map((source) => sourceLabels[source as SourceToggleKey] ?? source)
@@ -753,37 +740,6 @@ const sanitizeAccountProfiles = (input: AccountProfilePreset[] | null): AccountP
     });
   });
   return [...deduped.values()].slice(0, 20);
-};
-
-const formatSyncTimestamp = (value: string | null | undefined, unknownLabel = "Unknown") => {
-  if (!value) return unknownLabel;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-};
-
-const getFocusableElements = (root: HTMLElement) =>
-  [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
-    (element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true",
-  );
-
-const keepFocusInContainer = (event: KeyboardEvent, root: HTMLElement) => {
-  if (event.key !== "Tab") return;
-  const focusable = getFocusableElements(root);
-  if (focusable.length === 0) {
-    event.preventDefault();
-    return;
-  }
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const activeElement = document.activeElement as HTMLElement | null;
-  if (!event.shiftKey && activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  } else if (event.shiftKey && activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  }
 };
 
 export default function App() {
@@ -2073,24 +2029,11 @@ export default function App() {
     setCloudSyncStatus(t("messages.cloudUploading"));
     try {
       const snapshot = buildCloudSnapshot();
-      const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
-        method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${token}`,
-          accept: "application/vnd.github+json",
-        },
-        body: JSON.stringify({
-          files: {
-            "whatshouldiplay-sync.json": {
-              content: JSON.stringify(snapshot, null, 2),
-            },
-          },
-        }),
+      await updateSyncGist({
+        gistId: gistId.trim(),
+        token,
+        snapshot,
       });
-      if (!response.ok) {
-        throw new Error(`Cloud sync upload failed (${response.status}).`);
-      }
       setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
       setPendingCloudConflictSnapshot(null);
       setCloudSyncStatus(t("messages.cloudUploaded"));
@@ -2116,37 +2059,22 @@ export default function App() {
     setCloudSyncStatus(t("messages.cloudCreatingGist"));
     try {
       const snapshot = buildCloudSnapshot();
-      const response = await fetch("https://api.github.com/gists", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${token}`,
-          accept: "application/vnd.github+json",
-        },
-        body: JSON.stringify({
-          description: "WhatShouldIPlay cloud sync",
-          public: false,
-          files: {
-            "whatshouldiplay-sync.json": {
-              content: JSON.stringify(snapshot, null, 2),
-            },
-          },
-        }),
+      const createdGistId = await createSyncGist({
+        token,
+        snapshot,
       });
-      if (!response.ok) {
-        throw new Error(`Could not create gist (${response.status}).`);
-      }
-      const json = (await response.json()) as { id?: string };
-      if (!json.id) {
-        throw new Error(t("messages.cloudMissingGistId"));
-      }
-      setGistId(json.id);
+      setGistId(createdGistId);
       setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
       setPendingCloudConflictSnapshot(null);
-      setCloudSyncStatus(`Created sync gist ${json.id}.`);
-      pushToast("success", `Created sync gist ${json.id}.`);
+      setCloudSyncStatus(`Created sync gist ${createdGistId}.`);
+      pushToast("success", `Created sync gist ${createdGistId}.`);
     } catch (error) {
       const message = (error as Error).message;
+      if (message === "GitHub API did not return gist id.") {
+        setCloudSyncStatus(t("messages.cloudMissingGistId"));
+        pushToast("error", t("messages.cloudMissingGistId"));
+        return;
+      }
       setCloudSyncStatus(message);
       pushToast("error", `${message} Verify token scope and GitHub API availability.`);
     } finally {
@@ -2170,36 +2098,12 @@ export default function App() {
     setCloudSyncLoading(true);
     setCloudSyncStatus(t("messages.cloudDownloading"));
     try {
-      const response = await fetch(`https://api.github.com/gists/${gistId.trim()}`, {
-        headers: {
-          authorization: `Bearer ${token}`,
-          accept: "application/vnd.github+json",
-        },
+      const parsed = await pullSyncSnapshot({
+        gistId: gistId.trim(),
+        token,
+        noFileError: t("messages.cloudNoSyncFile"),
+        emptyFileError: t("messages.cloudEmptySyncFile"),
       });
-      if (!response.ok) {
-        throw new Error(`Cloud sync download failed (${response.status}).`);
-      }
-      const json = (await response.json()) as {
-        files?: Record<string, { content?: string; raw_url?: string }>;
-      };
-      const file =
-        json.files?.["whatshouldiplay-sync.json"] ??
-        Object.values(json.files ?? {})[0];
-      if (!file) {
-        throw new Error(t("messages.cloudNoSyncFile"));
-      }
-      let content = file.content ?? "";
-      if (!content && file.raw_url) {
-        const raw = await fetch(file.raw_url);
-        if (!raw.ok) {
-          throw new Error(`Failed to load gist raw file (${raw.status}).`);
-        }
-        content = await raw.text();
-      }
-      if (!content) {
-        throw new Error(t("messages.cloudEmptySyncFile"));
-      }
-      const parsed = JSON.parse(content) as unknown;
       const remoteSnapshot = cloudSyncSnapshotSchema.parse(parsed);
       const remoteTimestamp = remoteSnapshot.exportedAt;
       const remoteMillis = remoteTimestamp ? Date.parse(remoteTimestamp) : NaN;

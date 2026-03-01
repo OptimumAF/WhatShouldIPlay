@@ -46,6 +46,27 @@ struct SpinHistoryItem {
     odds: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UiLang {
+    En,
+    Es,
+}
+
+fn tr(lang: UiLang, en: &'static str, es: &'static str) -> &'static str {
+    match lang {
+        UiLang::En => en,
+        UiLang::Es => es,
+    }
+}
+
+fn parse_ui_lang(value: &str) -> UiLang {
+    if value.eq_ignore_ascii_case("es") {
+        UiLang::Es
+    } else {
+        UiLang::En
+    }
+}
+
 fn main() {
     dioxus::launch(App);
 }
@@ -76,6 +97,7 @@ fn host_platform_label() -> &'static str {
 
 #[component]
 fn App() -> Element {
+    let mut ui_lang = use_signal(|| UiLang::En);
     let mut steamcharts_games = use_signal(Vec::<GameItem>::new);
     let mut steamdb_games = use_signal(Vec::<GameItem>::new);
     let mut twitch_games = use_signal(Vec::<GameItem>::new);
@@ -86,7 +108,7 @@ fn App() -> Element {
     let mut steam_api_key = use_signal(String::new);
     let mut steam_id = use_signal(String::new);
     let mut steam_import_status = use_signal(String::new);
-    let mut status = use_signal(|| "Idle".to_string());
+    let mut status = use_signal(|| tr(UiLang::En, "Idle", "En espera").to_string());
     let mut steamdb_note = use_signal(String::new);
 
     let mut include_steamcharts = use_signal(|| true);
@@ -207,11 +229,12 @@ fn App() -> Element {
             (entry.weight * source_multiplier).max(0.05)
         })
         .collect::<Vec<_>>();
+    let lang = ui_lang();
     let (profile_label, profile_duration_ms, profile_revolutions, profile_jitter_ratio) =
         match spin_speed_profile().as_str() {
-            "cinematic" => ("Cinematic", 6200.0, 10.5, 0.28),
-            "rapid" => ("Rapid", 3200.0, 6.4, 0.20),
-            _ => ("Balanced", 4800.0, 8.0, 0.24),
+            "cinematic" => (tr(lang, "Cinematic", "Cinematico"), 6200.0, 10.5, 0.28),
+            "rapid" => (tr(lang, "Rapid", "Rapido"), 3200.0, 6.4, 0.20),
+            _ => (tr(lang, "Balanced", "Equilibrado"), 4800.0, 8.0, 0.24),
         };
     let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) = if reduced_spin_animation() {
         (760.0, 2.2, 0.10)
@@ -229,16 +252,26 @@ fn App() -> Element {
         style { "{DESKTOP_CSS}" }
         main { class: format!("layout {}", platform_class),
             section { class: "hero",
-                p { class: "kicker", "PickAGame Desktop" }
-                h1 { "Spin For Your Next Game" }
-                p { "Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner." }
-                p { class: "muted", "Platform style: {platform_label}" }
-                p { class: "status", "Status: {status}" }
+                p { class: "kicker", "{tr(lang, \"PickAGame Desktop\", \"PickAGame Desktop\")}" }
+                h1 { "{tr(lang, \"Spin For Your Next Game\", \"Gira para tu proximo juego\")}" }
+                p { "{tr(lang, \"Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner.\", \"Modos predefinidos, probabilidades ponderadas, historial de enfriamiento, importacion de Steam y escaneo local en una sola ruleta desktop.\")}" }
+                p { class: "muted", "{tr(lang, \"Platform style\", \"Estilo de plataforma\")}: {platform_label}" }
+                p { class: "status", "{tr(lang, \"Status\", \"Estado\")}: {status}" }
                 div { class: "button-row",
+                    select {
+                        value: if matches!(lang, UiLang::Es) { "es" } else { "en" },
+                        oninput: move |evt| ui_lang.set(parse_ui_lang(&evt.value())),
+                        option { value: "en", "{tr(lang, \"English\", \"Ingles\")}" }
+                        option { value: "es", "{tr(lang, \"Spanish\", \"Espanol\")}" }
+                    }
                     button {
                         class: "ghost",
                         onclick: move |_| show_sidebar.set(!show_sidebar()),
-                        if show_sidebar() { "Hide Settings" } else { "Show Settings" }
+                        if show_sidebar() {
+                            tr(lang, "Hide Settings", "Ocultar ajustes")
+                        } else {
+                            tr(lang, "Show Settings", "Mostrar ajustes")
+                        }
                     }
                 }
             }
@@ -247,7 +280,7 @@ fn App() -> Element {
                 if show_sidebar() {
                     aside { class: "sidebar",
                         section { class: "panel",
-                h2 { "Mode Presets + Odds" }
+                h2 { "{tr(lang, \"Mode Presets + Odds\", \"Modos predefinidos + probabilidades\")}" }
                 div { class: "button-row",
                     button {
                         class: "ghost",
@@ -267,7 +300,7 @@ fn App() -> Element {
                             manual_weight.set(0.9);
                             scanned_weight.set(1.0);
                         },
-                        "Balanced Mix"
+                        {tr(lang, "Balanced Mix", "Mezcla equilibrada")}
                     }
                     button {
                         class: "ghost",
@@ -281,7 +314,7 @@ fn App() -> Element {
                             weighted_mode.set(false);
                             cooldown_spins.set(0);
                         },
-                        "Quick Pick"
+                        {tr(lang, "Quick Pick", "Eleccion rapida")}
                     }
                     button {
                         class: "ghost",
@@ -295,7 +328,7 @@ fn App() -> Element {
                             weighted_mode.set(true);
                             cooldown_spins.set(8);
                         },
-                        "No Repeats"
+                        {tr(lang, "No Repeats", "Sin repeticiones")}
                     }
                     button {
                         class: "ghost",
@@ -311,29 +344,29 @@ fn App() -> Element {
                             steam_import_weight.set(1.8);
                             manual_weight.set(1.1);
                         },
-                        "Owned Focus"
+                        {tr(lang, "Owned Focus", "Enfasis en biblioteca propia")}
                     }
                 }
                 div { class: "control-grid",
                     div { class: "control-row",
-                        span { "Weighted wheel" }
+                        span { "{tr(lang, \"Weighted wheel\", \"Ruleta ponderada\")}" }
                         button {
                             class: "ghost",
                             onclick: move |_| weighted_mode.set(!weighted_mode()),
-                            {if weighted_mode() { "ON" } else { "OFF" }}
+                            {if weighted_mode() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
                         }
                     }
                     div { class: "control-row",
-                        span { "Adaptive recommendations" }
+                        span { "{tr(lang, \"Adaptive recommendations\", \"Recomendaciones adaptativas\")}" }
                         button {
                             class: "ghost",
                             onclick: move |_| adaptive_recommendations.set(!adaptive_recommendations()),
-                            {if adaptive_recommendations() { "ON" } else { "OFF" }}
+                            {if adaptive_recommendations() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
                         }
-                        strong { "{behavior_signal_count} signals" }
+                        strong { "{behavior_signal_count} {tr(lang, \"signals\", \"senales\")}" }
                     }
                     label { class: "control-row",
-                        span { "Cooldown spins" }
+                        span { "{tr(lang, \"Cooldown spins\", \"Giros de enfriamiento\")}" }
                         input {
                             r#type: "range",
                             min: "0",
@@ -348,27 +381,27 @@ fn App() -> Element {
                         strong { "{cooldown_spins}" }
                     }
                     label { class: "control-row",
-                        span { "Spin speed profile" }
+                        span { "{tr(lang, \"Spin speed profile\", \"Perfil de velocidad\")}" }
                         select {
                             value: "{spin_speed_profile}",
                             oninput: move |evt| spin_speed_profile.set(evt.value()),
-                            option { value: "cinematic", "Cinematic" }
-                            option { value: "balanced", "Balanced" }
-                            option { value: "rapid", "Rapid" }
+                            option { value: "cinematic", "{tr(lang, \"Cinematic\", \"Cinematico\")}" }
+                            option { value: "balanced", "{tr(lang, \"Balanced\", \"Equilibrado\")}" }
+                            option { value: "rapid", "{tr(lang, \"Rapid\", \"Rapido\")}" }
                         }
                         strong { "{profile_label}" }
                     }
                     div { class: "control-row",
-                        span { "Reduced spin animation" }
+                        span { "{tr(lang, \"Reduced spin animation\", \"Animacion de giro reducida\")}" }
                         button {
                             class: "ghost",
                             onclick: move |_| reduced_spin_animation.set(!reduced_spin_animation()),
-                            {if reduced_spin_animation() { "ON" } else { "OFF" }}
+                            {if reduced_spin_animation() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
                         }
                         strong { "{format!(\"{:.1}s\", spin_duration_ms / 1000.0)}" }
                     }
                     label { class: "control-row",
-                        span { "SteamCharts weight" }
+                        span { "{tr(lang, \"SteamCharts weight\", \"Peso SteamCharts\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -384,7 +417,7 @@ fn App() -> Element {
                         strong { "{steamcharts_weight_label}" }
                     }
                     label { class: "control-row",
-                        span { "SteamDB weight" }
+                        span { "{tr(lang, \"SteamDB weight\", \"Peso SteamDB\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -400,7 +433,7 @@ fn App() -> Element {
                         strong { "{steamdb_weight_label}" }
                     }
                     label { class: "control-row",
-                        span { "Twitch weight" }
+                        span { "{tr(lang, \"Twitch weight\", \"Peso Twitch\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -416,7 +449,7 @@ fn App() -> Element {
                         strong { "{twitch_weight_label}" }
                     }
                     label { class: "control-row",
-                        span { "Steam import weight" }
+                        span { "{tr(lang, \"Steam import weight\", \"Peso importacion Steam\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -432,7 +465,7 @@ fn App() -> Element {
                         strong { "{steam_import_weight_label}" }
                     }
                     label { class: "control-row",
-                        span { "Manual weight" }
+                        span { "{tr(lang, \"Manual weight\", \"Peso manual\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -448,7 +481,7 @@ fn App() -> Element {
                         strong { "{manual_weight_label}" }
                     }
                     label { class: "control-row",
-                        span { "Scanned weight" }
+                        span { "{tr(lang, \"Scanned weight\", \"Peso escaneado\")}" }
                         input {
                             r#type: "range",
                             min: "0.1",
@@ -464,7 +497,7 @@ fn App() -> Element {
                         strong { "{scanned_weight_label}" }
                     }
                     div { class: "control-row",
-                        span { "Apply behavior suggestions" }
+                        span { "{tr(lang, \"Apply behavior suggestions\", \"Aplicar sugerencias de comportamiento\")}" }
                         button {
                             class: "ghost",
                             disabled: behavior_signal_count < 3,
@@ -477,46 +510,46 @@ fn App() -> Element {
                                 scanned_weight.set(suggested_scanned_weight);
                                 weighted_mode.set(true);
                             },
-                            "Apply"
+                            {tr(lang, "Apply", "Aplicar")}
                         }
-                        strong { if behavior_signal_count < 3 { "Need 3+" } else { "Ready" } }
+                        strong { if behavior_signal_count < 3 { tr(lang, "Need 3+", "Necesita 3+") } else { tr(lang, "Ready", "Listo") } }
                     }
                     div { class: "control-row suggested-row",
-                        span { "SteamCharts suggested" }
+                        span { "{tr(lang, \"SteamCharts suggested\", \"Sugerido SteamCharts\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_steamcharts_weight_label}" }
                     }
                     div { class: "control-row suggested-row",
-                        span { "SteamDB suggested" }
+                        span { "{tr(lang, \"SteamDB suggested\", \"Sugerido SteamDB\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_steamdb_weight_label}" }
                     }
                     div { class: "control-row suggested-row",
-                        span { "Twitch suggested" }
+                        span { "{tr(lang, \"Twitch suggested\", \"Sugerido Twitch\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_twitch_weight_label}" }
                     }
                     div { class: "control-row suggested-row",
-                        span { "Steam import suggested" }
+                        span { "{tr(lang, \"Steam import suggested\", \"Sugerido importacion Steam\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_steam_import_weight_label}" }
                     }
                     div { class: "control-row suggested-row",
-                        span { "Manual suggested" }
+                        span { "{tr(lang, \"Manual suggested\", \"Sugerido manual\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_manual_weight_label}" }
                     }
                     div { class: "control-row suggested-row",
-                        span { "Scanned suggested" }
+                        span { "{tr(lang, \"Scanned suggested\", \"Sugerido escaneado\")}" }
                         div { class: "suggested-bar" }
                         strong { "{suggested_scanned_weight_label}" }
                     }
                 }
-                p { class: "muted", "Adaptive mode uses recent spin history to bias sources you consistently land on. Apply suggested weights for a persistent baseline." }
+                p { class: "muted", "{tr(lang, \"Adaptive mode uses recent spin history to bias sources you consistently land on. Apply suggested weights for a persistent baseline.\", \"El modo adaptativo usa historial reciente para sesgar fuentes en las que sueles caer. Aplica sugerencias para una base persistente.\")}" }
             }
 
             section { class: "panel",
-                h2 { "Online Sources" }
+                h2 { "{tr(lang, \"Online Sources\", \"Fuentes online\")}" }
                 div { class: "button-row",
                     button {
                         onclick: move |_| {
@@ -526,63 +559,82 @@ fn App() -> Element {
                             let mut status = status;
                             let mut steamdb_note = steamdb_note;
                             spawn(async move {
-                                status.set("Loading online sources...".to_string());
+                                status.set(tr(lang, "Loading online sources...", "Cargando fuentes online...").to_string());
                                 match fetch_online_sources().await {
                                     Ok(data) => {
                                         steamcharts_games.set(data.steamcharts);
                                         steamdb_games.set(data.steamdb);
                                         twitch_games.set(data.twitchmetrics);
                                         steamdb_note.set(data.steamdb_note);
-                                        status.set("Loaded online sources.".to_string());
+                                        status.set(tr(lang, "Loaded online sources.", "Fuentes online cargadas.").to_string());
                                     }
                                     Err(err) => {
-                                        status.set(format!("Online load failed: {err}"));
+                                        status.set(format!(
+                                            "{}: {err}",
+                                            tr(lang, "Online load failed", "Fallo la carga online")
+                                        ));
                                     }
                                 }
                             });
                         },
-                        "Load Online Sources"
+                        {tr(lang, "Load Online Sources", "Cargar fuentes online")}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_steamcharts.set(!include_steamcharts()),
-                        {format!("SteamCharts: {}", if include_steamcharts() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "SteamCharts", "SteamCharts"),
+                            if include_steamcharts() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_steamdb.set(!include_steamdb()),
-                        {format!("SteamDB: {}", if include_steamdb() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "SteamDB", "SteamDB"),
+                            if include_steamdb() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_twitch.set(!include_twitch()),
-                        {format!("TwitchMetrics: {}", if include_twitch() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "TwitchMetrics", "TwitchMetrics"),
+                            if include_twitch() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_steam_import.set(!include_steam_import()),
-                        {format!("Steam Import: {}", if include_steam_import() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "Steam Import", "Importacion Steam"),
+                            if include_steam_import() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                 }
-                p { class: "muted", "SteamCharts: {steamcharts_games().len()} | SteamDB: {steamdb_games().len()} | TwitchMetrics: {twitch_games().len()} | Steam Import: {steam_import_games().len()}" }
+                p { class: "muted", "{tr(lang, \"SteamCharts\", \"SteamCharts\")}: {steamcharts_games().len()} | {tr(lang, \"SteamDB\", \"SteamDB\")}: {steamdb_games().len()} | {tr(lang, \"TwitchMetrics\", \"TwitchMetrics\")}: {twitch_games().len()} | {tr(lang, \"Steam Import\", \"Importacion Steam\")}: {steam_import_games().len()}" }
                 if !steamdb_note().is_empty() {
                     p { class: "muted", "{steamdb_note}" }
                 }
             }
 
             section { class: "panel",
-                h2 { "Steam Account Import" }
-                p { class: "muted", "Import your owned games with Steam Web API key + SteamID64 (public profile/library required)." }
+                h2 { "{tr(lang, \"Steam Account Import\", \"Importar cuenta de Steam\")}" }
+                p { class: "muted", "{tr(lang, \"Import your owned games with Steam Web API key + SteamID64 (public profile/library required).\", \"Importa tus juegos propios con clave Steam Web API + SteamID64 (perfil/biblioteca publica requerida).\")}" }
                 div { class: "input-grid",
                     input {
                         r#type: "password",
                         value: "{steam_api_key}",
-                        placeholder: "Steam Web API Key",
+                        placeholder: "{tr(lang, \"Steam Web API Key\", \"Clave Steam Web API\")}",
                         oninput: move |evt| steam_api_key.set(evt.value())
                     }
                     input {
                         value: "{steam_id}",
-                        placeholder: "SteamID64",
+                        placeholder: "{tr(lang, \"SteamID64\", \"SteamID64\")}",
                         oninput: move |evt| steam_id.set(evt.value())
                     }
                 }
@@ -592,29 +644,45 @@ fn App() -> Element {
                             let api_key = steam_api_key().trim().to_string();
                             let steam_id = steam_id().trim().to_string();
                             if api_key.is_empty() || steam_id.is_empty() {
-                                steam_import_status.set("Enter API key + SteamID64.".to_string());
+                                steam_import_status.set(
+                                    tr(lang, "Enter API key + SteamID64.", "Ingresa clave API + SteamID64.")
+                                        .to_string(),
+                                );
                                 return;
                             }
                             let mut steam_import_games = steam_import_games;
                             let mut steam_import_status = steam_import_status;
                             let mut status = status;
                             spawn(async move {
-                                status.set("Importing Steam library...".to_string());
+                                status.set(
+                                    tr(lang, "Importing Steam library...", "Importando biblioteca de Steam...")
+                                        .to_string(),
+                                );
                                 match fetch_steam_owned_games(&api_key, &steam_id).await {
                                     Ok(games) => {
                                         let total = games.len();
                                         steam_import_games.set(games);
-                                        steam_import_status.set(format!("Imported {total} Steam games."));
-                                        status.set("Steam import complete.".to_string());
+                                        steam_import_status.set(format!(
+                                            "{} {total} {}.",
+                                            tr(lang, "Imported", "Importados"),
+                                            tr(lang, "Steam games", "juegos de Steam")
+                                        ));
+                                        status.set(tr(lang, "Steam import complete.", "Importacion Steam completa.").to_string());
                                     }
                                     Err(err) => {
-                                        steam_import_status.set(format!("Steam import failed: {err}"));
-                                        status.set("Steam import failed.".to_string());
+                                        steam_import_status.set(format!(
+                                            "{}: {err}",
+                                            tr(lang, "Steam import failed", "Fallo la importacion de Steam")
+                                        ));
+                                        status.set(
+                                            tr(lang, "Steam import failed.", "Fallo la importacion de Steam.")
+                                                .to_string(),
+                                        );
                                     }
                                 }
                             });
                         },
-                        "Import Steam Library"
+                        {tr(lang, "Import Steam Library", "Importar biblioteca de Steam")}
                     }
                     button {
                         class: "ghost",
@@ -622,7 +690,7 @@ fn App() -> Element {
                             steam_import_games.set(Vec::new());
                             steam_import_status.set(String::new());
                         },
-                        "Clear Import"
+                        {tr(lang, "Clear Import", "Limpiar importacion")}
                     }
                 }
                 if !steam_import_status().is_empty() {
@@ -634,10 +702,10 @@ fn App() -> Element {
 
                 div { class: "content-stack",
                     section { class: "panel",
-                h2 { "Wheel" }
-                p { class: "muted", "Current pool: {spin_pool.len()} unique games" }
+                h2 { "{tr(lang, \"Wheel\", \"Ruleta\")}" }
+                p { class: "muted", "{tr(lang, \"Current pool\", \"Pool actual\")}: {spin_pool.len()} {tr(lang, \"unique games\", \"juegos unicos\")}" }
                 if cooldown_exhausted {
-                    p { class: "muted", "Cooldown saturated the pool, so all entries were temporarily re-enabled." }
+                    p { class: "muted", "{tr(lang, \"Cooldown saturated the pool, so all entries were temporarily re-enabled.\", \"El enfriamiento agoto el pool, asi que todas las entradas se reactivaron temporalmente.\")}" }
                 }
                 div { class: "wheel-shell",
                     div { class: "wheel-pointer" }
@@ -680,7 +748,7 @@ fn App() -> Element {
                         },
                         div { class: "wheel-hub" }
                         if spin_pool.is_empty() {
-                            div { class: "wheel-empty", "Add or load games first" }
+                            div { class: "wheel-empty", "{tr(lang, \"Add or load games first\", \"Agrega o carga juegos primero\")}" }
                         } else {
                             for (label_angle, label_flip, game_name) in wheel_labels.iter() {
                                 div {
@@ -739,26 +807,30 @@ fn App() -> Element {
                             spinning.set(true);
                             wheel_rotation.set(next);
                         },
-                        if spinning() { "Spinning..." } else { "Spin Wheel" }
+                        if spinning() {
+                            tr(lang, "Spinning...", "Girando...")
+                        } else {
+                            tr(lang, "Spin Wheel", "Girar ruleta")
+                        }
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| spin_history.set(Vec::new()),
-                        "Clear History"
+                        {tr(lang, "Clear History", "Limpiar historial")}
                     }
                 }
                 if !winner().is_empty() {
                     div { class: "winner",
-                        p { "You should play:" }
+                        p { "{tr(lang, \"You should play:\", \"Deberias jugar:\")}" }
                         strong { "{winner}" }
-                        p { "Sources: {winner_sources}" }
-                        p { "Odds this spin: {format_odds(winner_odds())}" }
+                        p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, &winner_sources())}" }
+                        p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
                     }
                 }
             }
 
                     section { class: "panel",
-                h2 { "Manual + Scan" }
+                h2 { "{tr(lang, \"Manual + Scan\", \"Manual + Escaneo\")}" }
                 textarea {
                     value: "{manual_text}",
                     rows: "4",
@@ -772,12 +844,16 @@ fn App() -> Element {
                             manual_games.set(merged);
                             manual_text.set(String::new());
                         },
-                        "Add Manual Games"
+                        {tr(lang, "Add Manual Games", "Agregar juegos manuales")}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_manual.set(!include_manual()),
-                        {format!("Manual: {}", if include_manual() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "Manual", "Manual"),
+                            if include_manual() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                     button {
                         class: "ghost",
@@ -785,29 +861,33 @@ fn App() -> Element {
                             let games = scan_installed_games();
                             scanned_games.set(games);
                         },
-                        "Scan Game Libraries"
+                        {tr(lang, "Scan Game Libraries", "Escanear bibliotecas de juegos")}
                     }
                     button {
                         class: "ghost",
                         onclick: move |_| include_scanned.set(!include_scanned()),
-                        {format!("Scanned: {}", if include_scanned() { "ON" } else { "OFF" })}
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "Scanned", "Escaneado"),
+                            if include_scanned() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                        )}
                     }
                 }
-                p { class: "muted", "Manual games: {manual_games().len()} | Scanned games: {scanned_games().len()}" }
-                p { class: "muted", "Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default." }
+                p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
+                p { class: "muted", "{tr(lang, \"Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default.\", \"El escaneo desktop revisa manifiestos de Steam, Epic y carpetas comunes de GOG/Ubisoft/Xbox. El rastreo de accesos directos esta desactivado por defecto.\")}" }
             }
 
                     section { class: "panel",
-                h2 { "Spin History" }
+                h2 { "{tr(lang, \"Spin History\", \"Historial de giros\")}" }
                 if spin_history().is_empty() {
-                    p { class: "muted", "No spins yet." }
+                    p { class: "muted", "{tr(lang, \"No spins yet.\", \"Aun no hay giros.\")}" }
                 } else {
                     ul { class: "history-list",
                         for entry in spin_history().iter().take(10) {
                             li {
                                 div {
                                     strong { "{entry.name}" }
-                                    small { "{entry.sources}" }
+                                    small { "{localize_source_chain(lang, &entry.sources)}" }
                                 }
                                 span { "{format_odds(entry.odds)}" }
                             }
@@ -826,14 +906,14 @@ fn App() -> Element {
                     class: "winner-popup",
                     onclick: move |event| event.stop_propagation(),
                     div { class: "winner-glow" }
-                    p { class: "winner-tag", "Winner" }
+                    p { class: "winner-tag", "{tr(lang, \"Winner\", \"Ganador\")}" }
                     h3 { "{winner}" }
-                    p { "Sources: {winner_sources}" }
-                    p { "Odds this spin: {format_odds(winner_odds())}" }
-                    p { "Launch it. No second guessing." }
+                    p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, &winner_sources())}" }
+                    p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
+                    p { "{tr(lang, \"Launch it. No second guessing.\", \"Abre el juego. Sin dudar.\")}" }
                     button {
                         onclick: move |_| show_winner_popup.set(false),
-                        "Nice"
+                        {tr(lang, "Nice", "Genial")}
                     }
                 }
             }
@@ -993,6 +1073,26 @@ fn source_index_from_label(label: &str) -> Option<usize> {
         "Scanned" => Some(5),
         _ => None,
     }
+}
+
+fn source_label_for_lang(lang: UiLang, label: &str) -> &'static str {
+    match label.trim() {
+        "SteamCharts" => tr(lang, "SteamCharts", "SteamCharts"),
+        "SteamDB" => tr(lang, "SteamDB", "SteamDB"),
+        "TwitchMetrics" => tr(lang, "TwitchMetrics", "TwitchMetrics"),
+        "Steam Import" => tr(lang, "Steam Import", "Importacion Steam"),
+        "Manual" => tr(lang, "Manual", "Manual"),
+        "Scanned" => tr(lang, "Scanned", "Escaneado"),
+        _ => tr(lang, "Unknown source", "Fuente desconocida"),
+    }
+}
+
+fn localize_source_chain(lang: UiLang, sources: &str) -> String {
+    let localized = sources
+        .split('+')
+        .map(|part| source_label_for_lang(lang, part))
+        .collect::<Vec<_>>();
+    localized.join(" + ")
 }
 
 fn compute_behavior_multipliers(history: &[SpinHistoryItem]) -> [f64; 6] {

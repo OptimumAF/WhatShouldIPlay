@@ -770,8 +770,8 @@ const sanitizeAccountProfiles = (input: AccountProfilePreset[] | null): AccountP
   return [...deduped.values()].slice(0, 20);
 };
 
-const formatSyncTimestamp = (value: string | null | undefined) => {
-  if (!value) return "Unknown";
+const formatSyncTimestamp = (value: string | null | undefined, unknownLabel = "Unknown") => {
+  if (!value) return unknownLabel;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
@@ -2009,16 +2009,18 @@ export default function App() {
 
   const applyPendingCloudConflict = () => {
     if (!pendingCloudConflictSnapshot) return;
-    pushCloudRestorePoint("Before applying older remote cloud snapshot");
+    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeRemoteConflict"));
     applyCloudSnapshot(pendingCloudConflictSnapshot);
     setCloudSyncStatus(t("messages.cloudAppliedRemoteStatus"));
     pushToast("success", t("messages.cloudAppliedRemoteToast"));
   };
 
   const restoreFromCloudPoint = (point: CloudRestorePoint) => {
-    pushCloudRestorePoint("Before local restore point recovery");
+    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeLocalRecovery"));
     applyCloudSnapshot(point.snapshot, { updateReference: false });
-    setCloudSyncStatus(`Restored local state from ${formatSyncTimestamp(point.createdAt)}.`);
+    setCloudSyncStatus(
+      t("messages.cloudRestoredPointStatus", { value: formatSyncTimestamp(point.createdAt, t("unknown")) }),
+    );
     pushToast("success", t("messages.cloudRestoredPointToast"));
   };
 
@@ -2081,7 +2083,7 @@ export default function App() {
       pushToast("error", t("messages.profileNotFound"));
       return;
     }
-    pushCloudRestorePoint(`Before applying profile "${profile.name}"`);
+    pushCloudRestorePoint(t("messages.cloudRestorePointBeforeProfileApply", { name: profile.name }));
     applyStoredSettings(profile.settings);
     setCloudSyncStatus(t("messages.profileApplied", { name: profile.name }));
     pushToast("success", t("messages.profileApplied", { name: profile.name }));
@@ -2266,13 +2268,13 @@ export default function App() {
         setPendingCloudConflictSnapshot(remoteSnapshot);
         setCloudSyncStatus(
           t("cloudConflictOlder", {
-            remote: formatSyncTimestamp(remoteTimestamp),
-            local: formatSyncTimestamp(cloudSyncReferenceAt),
+            remote: formatSyncTimestamp(remoteTimestamp, t("unknown")),
+            local: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
           }),
         );
         pushToast("info", t("messages.cloudConflictChoose"));
       } else {
-        pushCloudRestorePoint("Before applying pulled cloud snapshot");
+        pushCloudRestorePoint(t("messages.cloudRestorePointBeforePulledApply"));
         applyCloudSnapshot(remoteSnapshot);
         setCloudSyncStatus(t("messages.cloudDownloadedApplied"));
         pushToast("success", t("messages.cloudDownloadedApplied"));
@@ -2280,7 +2282,7 @@ export default function App() {
     } catch (error) {
       const message = (error as Error).message;
       setCloudSyncStatus(message);
-      pushToast("error", `${message} Confirm gist ID/token and retry.`);
+      pushToast("error", `${message} ${t("messages.retryHint")}`);
     } finally {
       setCloudSyncLoading(false);
     }
@@ -2574,8 +2576,8 @@ export default function App() {
                     />
                     <div>
                       <strong>{sourceLabels[source]}</strong>
-                      {loadingSource ? <span className="mini-skeleton" aria-hidden="true" /> : <p>{sourceMeta} games loaded</p>}
-                      {fetchedAt ? <small>Updated {new Date(fetchedAt).toLocaleString()}</small> : null}
+                      {loadingSource ? <span className="mini-skeleton" aria-hidden="true" /> : <p>{t("gamesLoaded", { count: sourceMeta })}</p>}
+                      {fetchedAt ? <small>{t("updatedAt", { value: new Date(fetchedAt).toLocaleString() })}</small> : null}
                       {note ? <small>{note}</small> : null}
                     </div>
                   </label>
@@ -3187,7 +3189,7 @@ export default function App() {
                     <option value="">{t("none")}</option>
                     {accountProfiles.map((profile) => (
                       <option key={profile.id} value={profile.id}>
-                        {profile.name} ({formatSyncTimestamp(profile.updatedAt)})
+                        {profile.name} ({formatSyncTimestamp(profile.updatedAt, t("unknown"))})
                       </option>
                     ))}
                   </select>
@@ -3223,13 +3225,13 @@ export default function App() {
                 <p className="muted">{t("noProfilesSaved")}</p>
               )}
             </div>
-            <p className="muted">{t("cloudReference", { value: formatSyncTimestamp(cloudSyncReferenceAt) })}</p>
+            <p className="muted">{t("cloudReference", { value: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")) })}</p>
             {pendingCloudConflictSnapshot ? (
               <div className="cloud-sync-conflict" role="alert">
                 <p>
-                  {t("cloudConflictOlder", {
-                    remote: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt),
-                    local: formatSyncTimestamp(cloudSyncReferenceAt),
+                    {t("cloudConflictOlder", {
+                    remote: formatSyncTimestamp(pendingCloudConflictSnapshot.exportedAt, t("unknown")),
+                    local: formatSyncTimestamp(cloudSyncReferenceAt, t("unknown")),
                   })}
                 </p>
                 <div className="button-row">
@@ -3249,7 +3251,7 @@ export default function App() {
                   {cloudRestorePoints.map((point) => (
                     <li key={point.id}>
                       <span>
-                        {formatSyncTimestamp(point.createdAt)} | {point.reason}
+                        {formatSyncTimestamp(point.createdAt, t("unknown"))} | {point.reason}
                       </span>
                       <button type="button" className="ghost compact" onClick={() => restoreFromCloudPoint(point)}>
                         {t("restore")}
@@ -3430,7 +3432,7 @@ export default function App() {
       ) : null}
 
       {toasts.length > 0 ? (
-        <div className="toast-stack" role="status" aria-live="polite" aria-label="Notifications">
+        <div className="toast-stack" role="status" aria-live="polite" aria-label={t("toastRegionLabel")}>
           {toasts.map((toast) => (
             <div key={toast.id} className={clsx("toast", toast.tone)}>
               <p>{toast.text}</p>

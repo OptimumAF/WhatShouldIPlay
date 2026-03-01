@@ -33,6 +33,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright E2E (Chromium)
+        run: npm run test:e2e:ci
+
       - name: Lighthouse Accessibility Gate
         run: npx -y @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
 

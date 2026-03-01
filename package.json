@@ -8,9 +8,12 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --project=chromium",
+    "test:e2e:headed": "playwright test --headed --project=chromium",
     "fetch:data": "node ./scripts/fetch-top-games.mjs",
     "build:all": "npm run fetch:data && npm run build",
-    "ci:web": "npm run typecheck && npm run build"
+    "ci:web": "npm run typecheck && npm run build && npm run test:e2e:ci"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -26,6 +29,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.3.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

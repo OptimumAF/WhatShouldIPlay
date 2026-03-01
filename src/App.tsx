@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import * as Accordion from "@radix-ui/react-accordion";
+import * as Tabs from "@radix-ui/react-tabs";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
@@ -2387,58 +2389,49 @@ export default function App() {
             </select>
           </label>
         </div>
-        <nav className="task-nav" aria-label="Primary workspace sections">
-          <button
-            type="button"
-            className={clsx("ghost", activeTab === "play" && "is-active")}
-            onClick={() => setActiveTab("play")}
-            aria-pressed={activeTab === "play"}
-          >
-            <span className="button-label">
-              <Play className="ui-icon" aria-hidden="true" />
-              Play
-            </span>
-          </button>
-          <button
-            type="button"
-            className={clsx("ghost", activeTab === "library" && "is-active")}
-            onClick={() => setActiveTab("library")}
-            aria-pressed={activeTab === "library"}
-          >
-            <span className="button-label">
-              <Library className="ui-icon" aria-hidden="true" />
-              Library
-            </span>
-          </button>
-          <button
-            type="button"
-            className={clsx("ghost", activeTab === "history" && "is-active")}
-            onClick={() => setActiveTab("history")}
-            aria-pressed={activeTab === "history"}
-          >
-            <span className="button-label">
-              <History className="ui-icon" aria-hidden="true" />
-              History
-            </span>
-          </button>
-          <button
-            type="button"
-            className={clsx("ghost", settingsTabActive && "is-active")}
-            onClick={() => {
+        <Tabs.Root
+          value={settingsTabActive ? "settings" : activeTab}
+          onValueChange={(value) => {
+            if (value === "settings") {
               if (isMobileLayout) {
                 setSidebarOpen(true);
                 return;
               }
               setActiveTab("settings");
-            }}
-            aria-pressed={settingsTabActive}
-          >
-            <span className="button-label">
-              <Settings2 className="ui-icon" aria-hidden="true" />
-              Settings
-            </span>
-          </button>
-        </nav>
+              return;
+            }
+            if (value === "play" || value === "library" || value === "history") {
+              setActiveTab(value);
+            }
+          }}
+        >
+          <Tabs.List className="task-nav" aria-label="Primary workspace sections">
+            <Tabs.Trigger value="play" className="ghost task-trigger">
+              <span className="button-label">
+                <Play className="ui-icon" aria-hidden="true" />
+                Play
+              </span>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="library" className="ghost task-trigger">
+              <span className="button-label">
+                <Library className="ui-icon" aria-hidden="true" />
+                Library
+              </span>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="history" className="ghost task-trigger">
+              <span className="button-label">
+                <History className="ui-icon" aria-hidden="true" />
+                History
+              </span>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="settings" className="ghost task-trigger">
+              <span className="button-label">
+                <Settings2 className="ui-icon" aria-hidden="true" />
+                Settings
+              </span>
+            </Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
       </header>
 
       {swUpdateReady && !dismissedUpdate ? (
@@ -2736,20 +2729,22 @@ export default function App() {
               <HelpTip text="Advanced controls include filters, exclusions, notifications, and cloud sync. Expand only when needed." />
             </h2>
             <p className="muted">Filters, exclusions, notifications, and cloud sync are hidden by default.</p>
-            <div className="button-row">
-              <button
-                type="button"
-                className="ghost"
-                aria-expanded={showAdvancedSettings}
-                aria-controls="advanced-settings-stack"
-                onClick={() => setShowAdvancedSettings((current) => !current)}
-              >
-                <span className="button-label">
-                  <ChevronsUpDown className="ui-icon" aria-hidden="true" />
-                  {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
-                </span>
-              </button>
-            </div>
+            <Accordion.Root
+              type="single"
+              collapsible
+              value={showAdvancedSettings ? "advanced" : undefined}
+              onValueChange={(value) => setShowAdvancedSettings(value === "advanced")}
+            >
+              <Accordion.Item value="advanced" className="advanced-toggle-item">
+                <Accordion.Header className="sr-only">Advanced Settings Toggle</Accordion.Header>
+                <Accordion.Trigger className="ghost advanced-toggle-trigger" aria-controls="advanced-settings-stack">
+                  <span className="button-label">
+                    <ChevronsUpDown className="ui-icon" aria-hidden="true" />
+                    {showAdvancedSettings ? "Hide Advanced Options" : "Show Advanced Options"}
+                  </span>
+                </Accordion.Trigger>
+              </Accordion.Item>
+            </Accordion.Root>
           </section>
 
           <section className="panel" aria-labelledby="steam-import-heading">

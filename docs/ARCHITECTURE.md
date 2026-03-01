@@ -41,6 +41,11 @@ WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipel
 - Current strategy: dual implementation (React web + Dioxus desktop) with shared behavior contracts.
 - Strategy document: `docs/desktop-ui-strategy.md`
 
+### 5. Web Component System
+
+- Current strategy: Radix UI primitives with custom design tokens.
+- Strategy document: `docs/component-system.md`
+
 ## Deployment Model
 
 - Web deploy: GitHub Actions workflow builds and deploys static `dist/` to Pages

@@ -8,6 +8,7 @@ import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInConta
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
 import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
+import { useApplyCloudSnapshot } from "./hooks/useApplyCloudSnapshot";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1813,68 +1814,76 @@ export default function App() {
     setCloudRestorePoints,
   });
 
-  const applyCloudSnapshot = (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
-    const parsed = cloudSyncSnapshotSchema.safeParse(rawSnapshot);
-    if (!parsed.success) {
-      throw new Error(t("messages.cloudSnapshotInvalid"));
-    }
-    const snapshot = parsed.data;
-
-    if (snapshot.settings) {
-      const sanitized = sanitizeSettings(snapshot.settings as StoredSettings);
-      applyStoredSettings(sanitized);
-    }
-
-    if (snapshot.spinHistory) {
-      const history = snapshot.spinHistory.map((entry) => ({
-        ...entry,
-        sources: entry.sources as SourceId[],
-      }));
-      setSpinHistory(history.slice(0, 50));
-    }
-
-    if (snapshot.manualGames) {
-      setManualGames(normalizeGames(snapshot.manualGames));
-    }
-
-    if (snapshot.steamImport) {
-      const sanitized = sanitizeSteamImport(snapshot.steamImport as StoredSteamImport);
-      setSteamApiKey(sanitized.steamApiKey);
-      setSteamId(sanitized.steamId);
-      setSteamImportGames(sanitized.steamImportGames);
-    }
-
-    if (snapshot.exclusions) {
-      const sanitized = sanitizeExclusions(snapshot.exclusions as StoredExclusions);
-      setExcludePlayed(sanitized.excludePlayed);
-      setExcludeCompleted(sanitized.excludeCompleted);
-      setPlayedGames(sanitized.playedGames);
-      setCompletedGames(sanitized.completedGames);
-    }
-
-    if (snapshot.notifications) {
-      const sanitized = sanitizeNotificationSettings(snapshot.notifications as StoredNotificationSettings);
-      setNotificationsEnabled(sanitized.notificationsEnabled);
-      setTrendNotifications(sanitized.trendNotifications);
-      setReminderNotifications(sanitized.reminderNotifications);
-      setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
-    }
-
-    if (snapshot.profiles?.items) {
-      const incomingProfiles = sanitizeAccountProfiles(snapshot.profiles.items as AccountProfilePreset[]);
-      setAccountProfiles(incomingProfiles);
-      const incomingActiveId = snapshot.profiles.activeProfileId ?? "";
-      const resolvedActiveId = incomingProfiles.some((profile) => profile.id === incomingActiveId)
-        ? incomingActiveId
-        : incomingProfiles[0]?.id ?? "";
-      setActiveAccountProfileId(resolvedActiveId);
-    }
-
-    if (options?.updateReference !== false) {
-      setCloudSyncReferenceAt(snapshot.exportedAt ?? new Date().toISOString());
-    }
+  const mapSnapshotSpinHistory = useCallback(
+    (entries: Array<{ sources: string[] } & Record<string, unknown>>): SpinHistoryItem[] =>
+      entries.map(
+        (entry) =>
+          ({
+            ...entry,
+            sources: entry.sources as SourceId[],
+          }) as SpinHistoryItem,
+      ),
+    [],
+  );
+  const applySteamImportState = useCallback((sanitized: StoredSteamImport) => {
+    setSteamApiKey(sanitized.steamApiKey);
+    setSteamId(sanitized.steamId);
+    setSteamImportGames(sanitized.steamImportGames);
+  }, []);
+  const applyExclusionsState = useCallback((sanitized: StoredExclusions) => {
+    setExcludePlayed(sanitized.excludePlayed);
+    setExcludeCompleted(sanitized.excludeCompleted);
+    setPlayedGames(sanitized.playedGames);
+    setCompletedGames(sanitized.completedGames);
+  }, []);
+  const applyNotificationsState = useCallback((sanitized: StoredNotificationSettings) => {
+    setNotificationsEnabled(sanitized.notificationsEnabled);
+    setTrendNotifications(sanitized.trendNotifications);
+    setReminderNotifications(sanitized.reminderNotifications);
+    setReminderIntervalMinutes(sanitized.reminderIntervalMinutes);
+  }, []);
+  const applyProfilesState = useCallback((incomingProfiles: AccountProfilePreset[], incomingActiveId: string) => {
+    setAccountProfiles(incomingProfiles);
+    const resolvedActiveId = incomingProfiles.some((profile) => profile.id === incomingActiveId)
+      ? incomingActiveId
+      : incomingProfiles[0]?.id ?? "";
+    setActiveAccountProfileId(resolvedActiveId);
+  }, []);
+  const safeParseCloudSnapshot = useCallback(
+    (raw: unknown) => cloudSyncSnapshotSchema.safeParse(raw) as { success: true; data: CloudSyncSnapshot } | { success: false },
+    [],
+  );
+  const clearPendingCloudConflict = useCallback(() => {
     setPendingCloudConflictSnapshot(null);
-  };
+  }, []);
+
+  const { applyCloudSnapshot } = useApplyCloudSnapshot<
+    StoredSettings,
+    SpinHistoryItem,
+    StoredSteamImport,
+    StoredExclusions,
+    StoredNotificationSettings,
+    AccountProfilePreset
+  >({
+    safeParseSnapshot: safeParseCloudSnapshot,
+    invalidSnapshotMessage: t("messages.cloudSnapshotInvalid"),
+    sanitizeSettings: (raw) => sanitizeSettings(raw as StoredSettings | null),
+    applyStoredSettings,
+    mapSpinHistory: mapSnapshotSpinHistory,
+    setSpinHistory,
+    normalizeManualGames: normalizeGames,
+    setManualGames,
+    sanitizeSteamImport: (raw) => sanitizeSteamImport(raw as StoredSteamImport | null),
+    setSteamImport: applySteamImportState,
+    sanitizeExclusions: (raw) => sanitizeExclusions(raw as StoredExclusions | null),
+    setExclusions: applyExclusionsState,
+    sanitizeNotifications: (raw) => sanitizeNotificationSettings(raw as StoredNotificationSettings | null),
+    setNotifications: applyNotificationsState,
+    sanitizeAccountProfiles: (raw) => sanitizeAccountProfiles(raw as AccountProfilePreset[] | null),
+    setProfiles: applyProfilesState,
+    setCloudSyncReferenceAt,
+    clearPendingCloudConflict,
+  });
 
   const {
     dismissCloudConflict,

@@ -7,6 +7,7 @@ import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
 import { formatOdds, formatSyncTimestamp, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
+import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1786,60 +1787,31 @@ export default function App() {
     setFilters(sanitizeFilters(sanitized.filters));
   }, []);
 
-  const buildCloudSnapshot = (): CloudSyncSnapshot => ({
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    settings: currentSettingsSnapshot(),
-    spinHistory: spinHistory.slice(0, 50),
+  const { buildCloudSnapshot, pushCloudRestorePoint } = useCloudSnapshotBuilders<
+    StoredSettings,
+    GameEntry,
+    SpinHistoryItem,
+    CloudSyncSnapshot
+  >({
+    currentSettingsSnapshot,
+    spinHistory,
     manualGames,
-    steamImport: {
-      steamApiKey,
-      steamId,
-      steamImportGames,
-    } satisfies StoredSteamImport,
-    exclusions: {
-      excludePlayed,
-      excludeCompleted,
-      playedGames,
-      completedGames,
-    } satisfies StoredExclusions,
-    notifications: {
-      notificationsEnabled,
-      trendNotifications,
-      reminderNotifications,
-      reminderIntervalMinutes,
-    } satisfies StoredNotificationSettings,
-    profiles: {
-      activeProfileId: activeAccountProfileId || undefined,
-      items: accountProfiles.map((profile) => ({
-        id: profile.id,
-        name: profile.name,
-        updatedAt: profile.updatedAt,
-        settings: profile.settings,
-      })),
-    },
+    steamApiKey,
+    steamId,
+    steamImportGames,
+    excludePlayed,
+    excludeCompleted,
+    playedGames,
+    completedGames,
+    notificationsEnabled,
+    trendNotifications,
+    reminderNotifications,
+    reminderIntervalMinutes,
+    activeAccountProfileId,
+    accountProfiles,
+    maxCloudRestorePoints: MAX_CLOUD_RESTORE_POINTS,
+    setCloudRestorePoints,
   });
-
-  const pushCloudRestorePoint = useCallback(
-    (reason: string) => {
-      const snapshot: CloudSyncSnapshot = {
-        ...buildCloudSnapshot(),
-        settings: currentSettingsSnapshot(),
-      };
-      const id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const point: CloudRestorePoint = {
-        id,
-        createdAt: new Date().toISOString(),
-        reason,
-        snapshot,
-      };
-      setCloudRestorePoints((current) => [point, ...current].slice(0, MAX_CLOUD_RESTORE_POINTS));
-    },
-    [buildCloudSnapshot, currentSettingsSnapshot],
-  );
 
   const applyCloudSnapshot = (rawSnapshot: unknown, options?: { updateReference?: boolean }) => {
     const parsed = cloudSyncSnapshotSchema.safeParse(rawSnapshot);

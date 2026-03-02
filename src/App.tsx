@@ -12,6 +12,7 @@ import { useApplyCloudSnapshot } from "./hooks/useApplyCloudSnapshot";
 import { useCloudPanelData } from "./hooks/useCloudPanelData";
 import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
 import { useSpinController } from "./hooks/useSpinController";
+import { useLibraryActions } from "./hooks/useLibraryActions";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1505,147 +1506,50 @@ export default function App() {
     };
   }, []);
 
-  const markCustom = () => setActivePreset("custom");
+  const parseSteamOwnedGames = useCallback(
+    (raw: unknown) => steamOwnedSchema.parse(raw).response.games ?? [],
+    [],
+  );
 
-  const applyPreset = (preset: ModePreset) => {
-    setEnabledSources(preset.enabledSources);
-    setSourceWeights(preset.sourceWeights);
-    setWeightedMode(preset.weightedMode);
-    setCooldownSpins(preset.cooldownSpins);
-    setActivePreset(preset.id);
-  };
-
-  const applySuggestedWeights = () => {
-    setSourceWeights(suggestedSourceWeights);
-    if (!weightedMode) {
-      setWeightedMode(true);
-    }
-    markCustom();
-    pushToast("success", t("messages.appliedSuggestedWeights"));
-  };
-
-  const addManualGames = () => {
-    const incoming = normalizeGames(manualInput.split(/\r?\n|,/g));
-    setManualGames((current) => normalizeGames([...current, ...incoming]));
-    setManualInput("");
-    markCustom();
-  };
-
-  const clearManualGames = () => {
-    setManualGames([]);
-    markCustom();
-  };
-
-  const clearSteamImport = () => {
-    setSteamImportGames([]);
-    setSteamImportStatus("");
-    markCustom();
-  };
-
-  const markGamesPlayed = (names: string[]) => {
-    const incoming = normalizeGames(names);
-    if (incoming.length === 0) return;
-    const completedSet = new Set(completedGames.map((name) => name.toLowerCase()));
-    setPlayedGames((current) =>
-      normalizeGames([...current, ...incoming]).filter((name) => !completedSet.has(name.toLowerCase())),
-    );
-  };
-
-  const markGamesCompleted = (names: string[]) => {
-    const incoming = normalizeGames(names);
-    if (incoming.length === 0) return;
-    const incomingSet = new Set(incoming.map((name) => name.toLowerCase()));
-    setCompletedGames((current) => normalizeGames([...current, ...incoming]));
-    setPlayedGames((current) => current.filter((name) => !incomingSet.has(name.toLowerCase())));
-  };
-
-  const removePlayedGame = (name: string) => {
-    const key = name.toLowerCase();
-    setPlayedGames((current) => current.filter((entry) => entry.toLowerCase() !== key));
-  };
-
-  const removeCompletedGame = (name: string) => {
-    const key = name.toLowerCase();
-    setCompletedGames((current) => current.filter((entry) => entry.toLowerCase() !== key));
-  };
-
-  const addExclusionFromInput = (target: "played" | "completed") => {
-    const incoming = normalizeGames(exclusionInput.split(/\r?\n|,/g));
-    if (incoming.length === 0) return;
-    if (target === "played") {
-      markGamesPlayed(incoming);
-    } else {
-      markGamesCompleted(incoming);
-    }
-    setExclusionInput("");
-  };
-
-  const importSteamLibrary = async () => {
-    const key = steamApiKey.trim();
-    const id = steamId.trim();
-    if (!key || !id) {
-      setSteamImportStatus(t("messages.steamEnterCreds"));
-      pushToast("error", t("messages.steamNeedsBoth"));
-      return;
-    }
-
-    setSteamImportLoading(true);
-    setSteamImportStatus(t("messages.steamImporting"));
-    try {
-      const params = new URLSearchParams({
-        key,
-        steamid: id,
-        include_appinfo: "1",
-        include_played_free_games: "1",
-        format: "json",
-      });
-
-      const response = await fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?${params}`);
-      if (!response.ok) {
-        throw new Error(`Steam import failed (${response.status}). Check API key, SteamID64, and profile privacy.`);
-      }
-
-      const json = await response.json();
-      const parsed = steamOwnedSchema.parse(json);
-      const games = parsed.response.games ?? [];
-
-      const deduped = new Map<string, GameEntry>();
-      games.forEach((game, index) => {
-        const cleaned = game.name.trim();
-        if (!cleaned) return;
-        const keyName = cleaned.toLowerCase();
-        if (deduped.has(keyName)) return;
-        deduped.set(keyName, {
-          name: cleaned,
-          source: "steamImport",
-          rank: index + 1,
-          score: game.playtime_forever ?? 0,
-          appId: game.appid,
-          url: `https://store.steampowered.com/app/${game.appid}/`,
-        });
-      });
-
-      const imported = [...deduped.values()];
-      setSteamImportGames(imported);
-      setEnabledSources((current) => ({ ...current, steamImport: true }));
-      setSteamImportStatus(`Imported ${imported.length} Steam games.`);
-      pushToast("success", `Imported ${imported.length} games from Steam.`);
-      markCustom();
-    } catch (error) {
-      if (error instanceof TypeError) {
-        const message =
-          t("messages.steamImportBlocked");
-        setSteamImportStatus(message);
-        pushToast("error", `${message} If needed, verify your API key and Steam privacy settings.`);
-      } else {
-        const message = (error as Error).message;
-        setSteamImportStatus(message);
-        pushToast("error", `${message} Double-check your key, SteamID64, and profile visibility.`);
-      }
-    } finally {
-      setSteamImportLoading(false);
-    }
-  };
+  const {
+    markCustom,
+    applyPreset,
+    applySuggestedWeights,
+    addManualGames,
+    clearManualGames,
+    clearSteamImport,
+    markGamesPlayed,
+    markGamesCompleted,
+    removePlayedGame,
+    removeCompletedGame,
+    addExclusionFromInput,
+    importSteamLibrary,
+  } = useLibraryActions<EnabledSources, SourceWeights>({
+    normalizeGames,
+    t,
+    pushToast,
+    parseOwnedGames: parseSteamOwnedGames,
+    suggestedSourceWeights,
+    weightedMode,
+    manualInput,
+    steamApiKey,
+    steamId,
+    exclusionInput,
+    completedGames,
+    setActivePreset,
+    setEnabledSources,
+    setSourceWeights,
+    setWeightedMode,
+    setCooldownSpins,
+    setManualInput,
+    setManualGames,
+    setSteamImportGames,
+    setSteamImportStatus,
+    setSteamImportLoading,
+    setPlayedGames,
+    setCompletedGames,
+    setExclusionInput,
+  });
 
   const handleInstall = async () => {
     if (!installPrompt) return;

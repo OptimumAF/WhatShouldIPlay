@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
-import { normalizeGames, pickSpinWithWeights } from "./lib/wheel";
+import { normalizeGames } from "./lib/wheel";
 import { formatOdds, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
@@ -11,6 +11,7 @@ import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
 import { useApplyCloudSnapshot } from "./hooks/useApplyCloudSnapshot";
 import { useCloudPanelData } from "./hooks/useCloudPanelData";
 import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
+import { useSpinController } from "./hooks/useSpinController";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -813,15 +814,28 @@ export default function App() {
   const [cloudRestorePoints, setCloudRestorePoints] = useState<CloudRestorePoint[]>(initialCloudRestorePoints);
   const [pendingCloudConflictSnapshot, setPendingCloudConflictSnapshot] = useState<CloudSyncSnapshot | null>(null);
 
-  const [rotation, setRotation] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [winner, setWinner] = useState<string>("");
-  const [pendingWinner, setPendingWinner] = useState<string>("");
-  const [winnerMeta, setWinnerMeta] = useState<WinnerInfo | null>(null);
-  const [pendingWinnerMeta, setPendingWinnerMeta] = useState<WinnerInfo | null>(null);
-  const [showWinnerPopup, setShowWinnerPopup] = useState(false);
-  const [winnerPulse, setWinnerPulse] = useState(0);
-  const [spinHistory, setSpinHistory] = useState<SpinHistoryItem[]>(initialHistory);
+  const {
+    rotation,
+    spinning,
+    winner,
+    winnerMeta,
+    showWinnerPopup,
+    winnerPulse,
+    spinHistory,
+    setShowWinnerPopup,
+    setSpinHistory,
+    spin,
+    onSpinEnd,
+    clearHistory,
+  } = useSpinController<SourceId>({
+    initialHistory,
+    onWinnerResolved: (selectedWinner, meta) => {
+      announceForScreenReader(
+        "success",
+        `Winner selected: ${selectedWinner}. Odds ${formatOdds(meta.odds)}. Sources ${sourceLabelList(meta.sources)}.`,
+      );
+    },
+  });
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [swUpdateReady, setSwUpdateReady] = useState(false);
   const [updateInProgress, setUpdateInProgress] = useState(false);
@@ -1522,10 +1536,6 @@ export default function App() {
     markCustom();
   };
 
-  const clearHistory = () => {
-    setSpinHistory([]);
-  };
-
   const clearSteamImport = () => {
     setSteamImportGames([]);
     setSteamImportStatus("");
@@ -1634,65 +1644,6 @@ export default function App() {
       }
     } finally {
       setSteamImportLoading(false);
-    }
-  };
-
-  const handleSpin = () => {
-    if (spinning || activePool.length === 0) {
-      return;
-    }
-    const behaviorWeighted = weightedMode || adaptiveRecommendations;
-    const spinWeights = behaviorWeighted ? adaptivePoolWeights : undefined;
-    const result = pickSpinWithWeights(activePool.length, rotation, spinWeights, spinMotion);
-    const selected = activePool[result.winnerIndex];
-    if (!selected) return;
-
-    const selectedWeight = spinWeights?.[result.winnerIndex] ?? 1;
-    const totalWeight = behaviorWeighted
-      ? (spinWeights?.reduce((sum, value) => sum + value, 0) ?? activePool.length)
-      : activePool.length;
-    const odds = behaviorWeighted ? selectedWeight / Math.max(totalWeight, 0.0001) : 1 / activePool.length;
-
-    setPendingWinner(selected.name);
-    setPendingWinnerMeta({
-      name: selected.name,
-      sources: selected.sources,
-      odds,
-      appId: selected.appId,
-      url: selected.url,
-    });
-    setWinner("");
-    setWinnerMeta(null);
-    setRotation(result.nextRotation);
-    setSpinning(true);
-  };
-
-  const onSpinEnd = () => {
-    if (!spinning) return;
-    const finalWinner = pendingWinner;
-    const finalMeta = pendingWinnerMeta;
-    setWinner(finalWinner);
-    setPendingWinner("");
-    setPendingWinnerMeta(null);
-    setSpinning(false);
-    if (finalWinner && finalMeta) {
-      setWinnerMeta(finalMeta);
-      setSpinHistory((current) => [
-        {
-          ...finalMeta,
-          spunAt: new Date().toISOString(),
-        },
-        ...current,
-      ]);
-      announceForScreenReader(
-        "success",
-        `Winner selected: ${finalWinner}. Odds ${formatOdds(finalMeta.odds)}. Sources ${sourceLabelList(finalMeta.sources)}.`,
-      );
-      setWinnerPulse((current) => current + 1);
-      setShowWinnerPopup(true);
-      window.setTimeout(() => {
-        setShowWinnerPopup(false);
-      }, 4200);
     }
   };
 
@@ -1923,6 +1874,15 @@ export default function App() {
           revolutions: spinProfileConfig.revolutions,
           jitterRatio: spinProfileConfig.jitterRatio,
         };
+  const handleSpin = () => {
+    spin({
+      activePool,
+      weightedMode,
+      adaptiveRecommendations,
+      adaptivePoolWeights,
+      spinMotion,
+    });
+  };
   const showSettingsPane = isMobileLayout ? sidebarOpen : activeTab === "play" || activeTab === "settings";
   const showPlayPane = activeTab === "play";
   const showLibraryPane = isMobileLayout ? activeTab === "library" : activeTab === "play" || activeTab === "library";

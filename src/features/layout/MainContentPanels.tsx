@@ -17,7 +17,7 @@ interface HistoryDisplayItem {
   odds: string;
 }
 
-interface MainContentPanelsProps {
+export interface MainContentPanelsProps {
   showPlayPane: boolean;
   activePoolCount: number;
   exclusionSummarySuffix: string;

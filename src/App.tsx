@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames } from "./lib/wheel";
 import { formatOdds } from "./lib/appUtils";
@@ -41,23 +40,11 @@ import {
   SW_TOP_GAMES_UPDATED_MESSAGE,
   SW_UPDATE_READY_EVENT,
 } from "./lib/pwa";
-import { WinnerModal } from "./features/play/WinnerModal";
-import { SourcesPanel } from "./features/settings/SourcesPanel";
-import { AdvancedOptionsPanel } from "./features/settings/AdvancedOptionsPanel";
-import { FiltersPanel } from "./features/settings/FiltersPanel";
-import { ExclusionsPanel } from "./features/settings/ExclusionsPanel";
-import { NotificationsPanel } from "./features/settings/NotificationsPanel";
-import { SteamImportPanel } from "./features/settings/SteamImportPanel";
-import { CloudSyncPanel } from "./features/settings/CloudSyncPanel";
-import { AppHeader } from "./features/layout/AppHeader";
-import { UpdateBanners } from "./features/layout/UpdateBanners";
-import { OnboardingModal } from "./features/layout/OnboardingModal";
-import { ToastStack } from "./features/layout/ToastStack";
-import { WorkspaceShell } from "./features/layout/WorkspaceShell";
-import { MainContentPanels } from "./features/layout/MainContentPanels";
+import type { SettingsContentProps } from "./features/settings/SettingsContent";
+import type { MainContentPanelsProps } from "./features/layout/MainContentPanels";
+import { AppShellView } from "./features/layout/AppShellView";
 import { ONBOARDING_STORAGE_KEY } from "./lib/storageKeys";
 import type { SourceId } from "./types";
-
 
 export default function App() {
   const { t } = useTranslation();
@@ -571,228 +558,211 @@ export default function App() {
       fallbackDurationMs: effectiveSpinDurationMs,
     });
   };
+
+  const settingsContentProps: SettingsContentProps = {
+    presetCards,
+    activePreset,
+    onApplyPreset,
+    sourceCards,
+    onToggleSource,
+    weightedMode,
+    onWeightedModeChange,
+    cooldownSpins,
+    onCooldownSpinsChange,
+    adaptiveRecommendations,
+    onAdaptiveRecommendationsChange,
+    onApplySuggestedWeights: applySuggestedWeights,
+    behaviorSignalsCount,
+    spinSpeedProfile,
+    spinSpeedOptions,
+    onSpinSpeedProfileChange,
+    effectiveSpinDurationMs,
+    reducedSpinAnimation,
+    onReducedSpinAnimationChange,
+    sourceWeightRows,
+    onSourceWeightChange,
+    loadingData: topGamesQuery.isLoading,
+    loadingError: sourceLoadError,
+    showAdvancedSettings,
+    onShowAdvancedSettingsChange: setShowAdvancedSettings,
+    steamApiKey,
+    steamId,
+    steamImportLoading,
+    steamImportStatus,
+    onSteamApiKeyChange: setSteamApiKey,
+    onSteamIdChange: setSteamId,
+    onImportSteamLibrary: importSteamLibrary,
+    onClearSteamImport: clearSteamImport,
+    filters,
+    availableTags,
+    onPlatformChange,
+    onTagChange,
+    onLengthChange,
+    onReleaseFromChange,
+    onReleaseToChange,
+    onMaxPriceChange,
+    onFreeOnlyChange,
+    onResetFilters,
+    excludePlayed,
+    excludeCompleted,
+    exclusionInput,
+    playedGames,
+    completedGames,
+    onExcludePlayedChange: setExcludePlayed,
+    onExcludeCompletedChange: setExcludeCompleted,
+    onExclusionInputChange: setExclusionInput,
+    onAddPlayed,
+    onAddCompleted,
+    onRemovePlayed: removePlayedGame,
+    onRemoveCompleted: removeCompletedGame,
+    onClearPlayed,
+    onClearCompleted,
+    notificationsEnabled,
+    trendNotifications,
+    reminderNotifications,
+    reminderIntervalMinutes,
+    notificationStatus,
+    onNotificationsEnabledChange,
+    onTrendNotificationsChange: setTrendNotifications,
+    onReminderNotificationsChange: setReminderNotifications,
+    onReminderIntervalChange: setReminderIntervalMinutes,
+    gistToken,
+    gistId,
+    cloudSyncLoading,
+    cloudSyncStatus,
+    onGistTokenChange: setGistToken,
+    onGistIdChange: setGistId,
+    onCreateGistPush: createCloudSyncGist,
+    onPushSync: pushCloudSync,
+    onPullSync: pullCloudSync,
+    activeAccountProfileId,
+    accountProfiles: cloudProfileOptions,
+    accountProfileDraftName,
+    onActiveAccountProfileChange: setActiveAccountProfileId,
+    onAccountProfileDraftNameChange: setAccountProfileDraftName,
+    onCreateProfile: createAccountProfile,
+    onSaveCurrentToActive: saveCurrentToActiveProfile,
+    onApplyActive: applyActiveAccountProfile,
+    onDeleteActive: deleteActiveAccountProfile,
+    cloudReferenceLabel,
+    cloudConflict,
+    onKeepLocal: dismissCloudConflict,
+    onApplyRemote: applyPendingCloudConflict,
+    cloudRestorePointOptions,
+    onRestorePoint,
+    onClearRestorePoints,
+  };
+
+  const mainContentProps: MainContentPanelsProps = {
+    showPlayPane,
+    activePoolCount: activePool.length,
+    exclusionSummarySuffix,
+    cooldownExcludedSuffix,
+    advancedFilterExhausted,
+    statusExhausted,
+    cooldownSaturated,
+    games: activePool.map((candidate) => candidate.name),
+    rotation,
+    spinning,
+    spinDurationMs: effectiveSpinDurationMs,
+    onSpinEnd,
+    onSpin: handleSpin,
+    onClearHistory: clearHistory,
+    winner,
+    winnerMeta,
+    formatSourceList: sourceLabelList,
+    formatOdds,
+    onMarkPlayed: () => markGamesPlayed([winner]),
+    onMarkCompleted: () => markGamesCompleted([winner]),
+    showLibraryPane,
+    manualInput,
+    onManualInputChange: setManualInput,
+    onAddManual: addManualGames,
+    onClearManual: clearManualGames,
+    showHistoryPane,
+    historyDisplayItems,
+    showSettingsGuidance: activeTab === "settings",
+  };
+
+  const appHeaderProps = {
+    sidebarOpen,
+    settingsSidebarVisible,
+    activeTab,
+    settingsTabActive,
+    themeMode,
+    installAvailable: Boolean(installPrompt),
+    onToggleSidebar: handleSidebarToggle,
+    onOpenQuickTour: handleOpenQuickTour,
+    onInstall: handleInstall,
+    onThemeModeChange: setThemeMode,
+    onTabChange: handleHeaderTabChange,
+  };
+
+  const updateBannerProps = {
+    swUpdateReady,
+    dismissedUpdate,
+    updateInProgress,
+    freshTrendsNotice,
+    onApplyServiceWorkerUpdate: applyServiceWorkerUpdate,
+    onDismissUpdate: () => setDismissedUpdate(true),
+    onDismissFreshTrends: () => setFreshTrendsNotice(false),
+  };
+
+  const onboardingModalProps = {
+    show: showOnboarding,
+    onboardingCardRef,
+    steps: onboardingSteps,
+    currentStep: onboardingStep,
+    onStepSelect: setOnboardingStep,
+    onSkip: () => completeOnboarding("play"),
+    onBack: () => setOnboardingStep((current) => current - 1),
+    onNext: () => setOnboardingStep((current) => current + 1),
+    onFinish: () => completeOnboarding("play"),
+  };
+
+  const winnerModalProps = {
+    show: showWinnerPopup,
+    winner,
+    winnerMeta,
+    winnerPulse,
+    winnerPopupRef,
+    winnerPopupCloseRef,
+    formatSourceList: sourceLabelList,
+    formatOdds,
+    onClose: () => setShowWinnerPopup(false),
+    onMarkPlayed: () => markGamesPlayed([winner]),
+    onMarkCompleted: () => markGamesCompleted([winner]),
+  };
+
+  const workspaceShellProps = {
+    settingsSheetMode,
+    hideSettingsLabel: t("hideSettings"),
+    onCloseSettings: () => setSidebarOpen(false),
+    settingsSidebarVisible,
+    showSettingsPane,
+    activeTab,
+    gameSettingsAriaLabel: t("gameSettingsAria"),
+    settingsSheetTitle: t("settingsSheetTitle"),
+  };
+
+  const toastStackProps = {
+    toasts,
+    onDismiss: dismissToast,
+  };
+
   return (
-    <main className="layout">
-      <a className="skip-link" href="#main-content">
-        {t("skipToMain")}
-      </a>
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        <span key={screenReaderPolite.id}>{screenReaderPolite.text}</span>
-      </div>
-      <div className="sr-only" aria-live="assertive" aria-atomic="true">
-        <span key={screenReaderAssertive.id}>{screenReaderAssertive.text}</span>
-      </div>
-      <AppHeader
-        sidebarOpen={sidebarOpen}
-        settingsSidebarVisible={settingsSidebarVisible}
-        activeTab={activeTab}
-        settingsTabActive={settingsTabActive}
-        themeMode={themeMode}
-        installAvailable={Boolean(installPrompt)}
-        onToggleSidebar={handleSidebarToggle}
-        onOpenQuickTour={handleOpenQuickTour}
-        onInstall={handleInstall}
-        onThemeModeChange={setThemeMode}
-        onTabChange={handleHeaderTabChange}
-      />
-
-      <UpdateBanners
-        swUpdateReady={swUpdateReady}
-        dismissedUpdate={dismissedUpdate}
-        updateInProgress={updateInProgress}
-        freshTrendsNotice={freshTrendsNotice}
-        onApplyServiceWorkerUpdate={applyServiceWorkerUpdate}
-        onDismissUpdate={() => setDismissedUpdate(true)}
-        onDismissFreshTrends={() => setFreshTrendsNotice(false)}
-      />
-
-      <WorkspaceShell
-        settingsSheetMode={settingsSheetMode}
-        hideSettingsLabel={t("hideSettings")}
-        onCloseSettings={() => setSidebarOpen(false)}
-        settingsSidebarVisible={settingsSidebarVisible}
-        showSettingsPane={showSettingsPane}
-        activeTab={activeTab}
-        gameSettingsAriaLabel={t("gameSettingsAria")}
-        settingsSheetTitle={t("settingsSheetTitle")}
-        settingsContent={
-          <>
-            <SourcesPanel
-              presetCards={presetCards}
-              activePreset={activePreset}
-              onApplyPreset={onApplyPreset}
-              sourceCards={sourceCards}
-              onToggleSource={onToggleSource}
-              weightedMode={weightedMode}
-              onWeightedModeChange={onWeightedModeChange}
-              cooldownSpins={cooldownSpins}
-              onCooldownSpinsChange={onCooldownSpinsChange}
-              adaptiveRecommendations={adaptiveRecommendations}
-              onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
-              onApplySuggestedWeights={applySuggestedWeights}
-              behaviorSignalsCount={behaviorSignalsCount}
-              spinSpeedProfile={spinSpeedProfile}
-              spinSpeedOptions={spinSpeedOptions}
-              onSpinSpeedProfileChange={onSpinSpeedProfileChange}
-              effectiveSpinDurationMs={effectiveSpinDurationMs}
-              reducedSpinAnimation={reducedSpinAnimation}
-              onReducedSpinAnimationChange={onReducedSpinAnimationChange}
-              weightRows={sourceWeightRows}
-              onSourceWeightChange={onSourceWeightChange}
-              loadingData={topGamesQuery.isLoading}
-              loadingError={sourceLoadError}
-            />
-
-            <AdvancedOptionsPanel
-              showAdvancedSettings={showAdvancedSettings}
-              onShowAdvancedSettingsChange={setShowAdvancedSettings}
-            />
-
-            <SteamImportPanel
-              steamApiKey={steamApiKey}
-              steamId={steamId}
-              steamImportLoading={steamImportLoading}
-              steamImportStatus={steamImportStatus}
-              onSteamApiKeyChange={setSteamApiKey}
-              onSteamIdChange={setSteamId}
-              onImport={importSteamLibrary}
-              onClear={clearSteamImport}
-            />
-
-            <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
-              <FiltersPanel
-                filters={filters}
-                availableTags={availableTags}
-                onPlatformChange={onPlatformChange}
-                onTagChange={onTagChange}
-                onLengthChange={onLengthChange}
-                onReleaseFromChange={onReleaseFromChange}
-                onReleaseToChange={onReleaseToChange}
-                onMaxPriceChange={onMaxPriceChange}
-                onFreeOnlyChange={onFreeOnlyChange}
-                onReset={onResetFilters}
-              />
-
-              <ExclusionsPanel
-                excludePlayed={excludePlayed}
-                excludeCompleted={excludeCompleted}
-                exclusionInput={exclusionInput}
-                playedGames={playedGames}
-                completedGames={completedGames}
-                onExcludePlayedChange={setExcludePlayed}
-                onExcludeCompletedChange={setExcludeCompleted}
-                onExclusionInputChange={setExclusionInput}
-                onAddPlayed={onAddPlayed}
-                onAddCompleted={onAddCompleted}
-                onRemovePlayed={removePlayedGame}
-                onRemoveCompleted={removeCompletedGame}
-                onClearPlayed={onClearPlayed}
-                onClearCompleted={onClearCompleted}
-              />
-
-              <NotificationsPanel
-                notificationsEnabled={notificationsEnabled}
-                trendNotifications={trendNotifications}
-                reminderNotifications={reminderNotifications}
-                reminderIntervalMinutes={reminderIntervalMinutes}
-                notificationStatus={notificationStatus}
-                onNotificationsEnabledChange={onNotificationsEnabledChange}
-                onTrendNotificationsChange={setTrendNotifications}
-                onReminderNotificationsChange={setReminderNotifications}
-                onReminderIntervalChange={setReminderIntervalMinutes}
-              />
-
-              <CloudSyncPanel
-                gistToken={gistToken}
-                gistId={gistId}
-                cloudSyncLoading={cloudSyncLoading}
-                cloudSyncStatus={cloudSyncStatus}
-                onGistTokenChange={setGistToken}
-                onGistIdChange={setGistId}
-                onCreateGistPush={createCloudSyncGist}
-                onPushSync={pushCloudSync}
-                onPullSync={pullCloudSync}
-                activeAccountProfileId={activeAccountProfileId}
-                accountProfiles={cloudProfileOptions}
-                accountProfileDraftName={accountProfileDraftName}
-                onActiveAccountProfileChange={setActiveAccountProfileId}
-                onAccountProfileDraftNameChange={setAccountProfileDraftName}
-                onCreateProfile={createAccountProfile}
-                onSaveCurrentToActive={saveCurrentToActiveProfile}
-                onApplyActive={applyActiveAccountProfile}
-                onDeleteActive={deleteActiveAccountProfile}
-                cloudReferenceLabel={cloudReferenceLabel}
-                conflict={cloudConflict}
-                onKeepLocal={dismissCloudConflict}
-                onApplyRemote={applyPendingCloudConflict}
-                restorePoints={cloudRestorePointOptions}
-                onRestorePoint={onRestorePoint}
-                onClearRestorePoints={onClearRestorePoints}
-              />
-            </div>
-          </>
-        }
-        mainContent={
-          <MainContentPanels
-            showPlayPane={showPlayPane}
-            activePoolCount={activePool.length}
-            exclusionSummarySuffix={exclusionSummarySuffix}
-            cooldownExcludedSuffix={cooldownExcludedSuffix}
-            advancedFilterExhausted={advancedFilterExhausted}
-            statusExhausted={statusExhausted}
-            cooldownSaturated={cooldownSaturated}
-            games={activePool.map((candidate) => candidate.name)}
-            rotation={rotation}
-            spinning={spinning}
-            spinDurationMs={effectiveSpinDurationMs}
-            onSpinEnd={onSpinEnd}
-            onSpin={handleSpin}
-            onClearHistory={clearHistory}
-            winner={winner}
-            winnerMeta={winnerMeta}
-            formatSourceList={sourceLabelList}
-            formatOdds={formatOdds}
-            onMarkPlayed={() => markGamesPlayed([winner])}
-            onMarkCompleted={() => markGamesCompleted([winner])}
-            showLibraryPane={showLibraryPane}
-            manualInput={manualInput}
-            onManualInputChange={setManualInput}
-            onAddManual={addManualGames}
-            onClearManual={clearManualGames}
-            showHistoryPane={showHistoryPane}
-            historyDisplayItems={historyDisplayItems}
-            showSettingsGuidance={activeTab === "settings"}
-          />
-        }
-      />
-
-      <OnboardingModal
-        show={showOnboarding}
-        onboardingCardRef={onboardingCardRef}
-        steps={onboardingSteps}
-        currentStep={onboardingStep}
-        onStepSelect={setOnboardingStep}
-        onSkip={() => completeOnboarding("play")}
-        onBack={() => setOnboardingStep((current) => current - 1)}
-        onNext={() => setOnboardingStep((current) => current + 1)}
-        onFinish={() => completeOnboarding("play")}
-      />
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
-
-      <WinnerModal
-        show={showWinnerPopup}
-        winner={winner}
-        winnerMeta={winnerMeta}
-        winnerPulse={winnerPulse}
-        winnerPopupRef={winnerPopupRef}
-        winnerPopupCloseRef={winnerPopupCloseRef}
-        formatSourceList={sourceLabelList}
-        formatOdds={formatOdds}
-        onClose={() => setShowWinnerPopup(false)}
-        onMarkPlayed={() => markGamesPlayed([winner])}
-        onMarkCompleted={() => markGamesCompleted([winner])}
-      />
-    </main>
+    <AppShellView
+      skipToMainLabel={t("skipToMain")}
+      appHeaderProps={appHeaderProps}
+      updateBannerProps={updateBannerProps}
+      workspaceShellProps={workspaceShellProps}
+      settingsContentProps={settingsContentProps}
+      mainContentProps={mainContentProps}
+      onboardingModalProps={onboardingModalProps}
+      toastStackProps={toastStackProps}
+      winnerModalProps={winnerModalProps}
+      screenReaderPolite={screenReaderPolite}
+      screenReaderAssertive={screenReaderAssertive}
+    />
   );
 }

@@ -55,6 +55,7 @@ import { useShellLayoutEffects } from "./hooks/useShellLayoutEffects";
 import { useRuntimeEffects } from "./hooks/useRuntimeEffects";
 import { useModalFocusEffects } from "./hooks/useModalFocusEffects";
 import { useActiveProfileSelection } from "./hooks/useActiveProfileSelection";
+import { useNavigationActions } from "./hooks/useNavigationActions";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -212,20 +213,6 @@ export default function App() {
   });
 
   const topGames = topGamesQuery.data;
-
-  const completeOnboarding = useCallback(
-    (nextTab: WorkspaceTab = "play") => {
-      setShowOnboarding(false);
-      setOnboardingStep(0);
-      setActiveTab(nextTab);
-      if (nextTab === "settings") {
-        setSidebarOpen(true);
-      }
-      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(true));
-      pushToast("success", t("messages.quickStartComplete"));
-    },
-    [pushToast, t],
-  );
 
   const manualEntries = useMemo<GameEntry[]>(
     () =>
@@ -607,6 +594,18 @@ export default function App() {
     updateReadyEventName: SW_UPDATE_READY_EVENT,
   });
 
+  const { completeOnboarding, handleSidebarToggle, handleOpenQuickTour, handleHeaderTabChange } = useNavigationActions({
+    activeTab,
+    isMobileLayout,
+    setShowOnboarding,
+    setOnboardingStep,
+    setActiveTab,
+    setSidebarOpen,
+    pushToast,
+    t,
+    onboardingStorageKey: ONBOARDING_STORAGE_KEY,
+  });
+
   useModalFocusEffects({
     showWinnerPopup,
     winnerPopupRef,
@@ -828,30 +827,6 @@ export default function App() {
     sourceWeights,
     suggestedSourceWeights,
   });
-  const handleSidebarToggle = () =>
-    setSidebarOpen((current) => {
-      const next = !current;
-      if (!next && activeTab === "settings") {
-        setActiveTab("play");
-      }
-      return next;
-    });
-  const handleOpenQuickTour = () => {
-    setOnboardingStep(0);
-    setShowOnboarding(true);
-  };
-  const handleHeaderTabChange = (value: "play" | "library" | "history" | "settings") => {
-    if (value === "settings") {
-      if (isMobileLayout) {
-        setSidebarOpen(true);
-        return;
-      }
-      setActiveTab("settings");
-      return;
-    }
-    setActiveTab(value);
-  };
-
   return (
     <main className="layout">
       <a className="skip-link" href="#main-content">

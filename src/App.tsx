@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames } from "./lib/wheel";
-import { formatOdds, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
+import { formatOdds, readStorage } from "./lib/appUtils";
 import { fetchTopGames, steamOwnedSchema, type CloudSyncSnapshot } from "./lib/appSchemas";
 import {
   defaultFilters,
@@ -53,6 +53,8 @@ import { useSettingsPanelViewModels } from "./hooks/useSettingsPanelViewModels";
 import { useFeedbackCenter } from "./hooks/useFeedbackCenter";
 import { useShellLayoutEffects } from "./hooks/useShellLayoutEffects";
 import { useRuntimeEffects } from "./hooks/useRuntimeEffects";
+import { useModalFocusEffects } from "./hooks/useModalFocusEffects";
+import { useActiveProfileSelection } from "./hooks/useActiveProfileSelection";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -567,17 +569,11 @@ export default function App() {
     themeMode,
   });
 
-  useEffect(() => {
-    if (accountProfiles.length === 0) {
-      if (activeAccountProfileId) {
-        setActiveAccountProfileId("");
-      }
-      return;
-    }
-    if (!activeAccountProfileId || !accountProfiles.some((profile) => profile.id === activeAccountProfileId)) {
-      setActiveAccountProfileId(accountProfiles[0].id);
-    }
-  }, [accountProfiles, activeAccountProfileId]);
+  useActiveProfileSelection({
+    accountProfiles,
+    activeAccountProfileId,
+    setActiveAccountProfileId,
+  });
 
   useShellLayoutEffects({
     themeMode,
@@ -611,52 +607,15 @@ export default function App() {
     updateReadyEventName: SW_UPDATE_READY_EVENT,
   });
 
-  useEffect(() => {
-    if (!showWinnerPopup) return;
-    const container = winnerPopupRef.current;
-    if (!container) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const focusable = getFocusableElements(container);
-    const initialFocus = winnerPopupCloseRef.current ?? focusable[0] ?? container;
-    initialFocus.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowWinnerPopup(false);
-        return;
-      }
-      keepFocusInContainer(event, container);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      previousFocus?.focus();
-    };
-  }, [showWinnerPopup]);
-
-  useEffect(() => {
-    if (!showOnboarding) return;
-    const container = onboardingCardRef.current;
-    if (!container) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const focusable = getFocusableElements(container);
-    (focusable[0] ?? container).focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowOnboarding(false);
-        return;
-      }
-      keepFocusInContainer(event, container);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      previousFocus?.focus();
-    };
-  }, [showOnboarding]);
+  useModalFocusEffects({
+    showWinnerPopup,
+    winnerPopupRef,
+    winnerPopupCloseRef,
+    setShowWinnerPopup,
+    showOnboarding,
+    onboardingCardRef,
+    setShowOnboarding,
+  });
 
   const parseSteamOwnedGames = useCallback(
     (raw: unknown) => steamOwnedSchema.parse(raw).response.games ?? [],

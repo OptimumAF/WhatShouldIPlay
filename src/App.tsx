@@ -31,7 +31,6 @@ import {
   type LengthFilter,
   type PlatformFilter,
   type PoolGame,
-  type ScreenReaderAnnouncement,
   type SourceToggleKey,
   type SourceWeights,
   type SpinHistoryItem,
@@ -42,7 +41,6 @@ import {
   type StoredSettings,
   type StoredSteamImport,
   type ThemeMode,
-  type ToastMessage,
   type WorkspaceTab,
 } from "./lib/appConfig";
 import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
@@ -52,6 +50,7 @@ import { useRuntimeActions } from "./hooks/useRuntimeActions";
 import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout";
 import { useCloudWorkspace } from "./hooks/useCloudWorkspace";
 import { useSettingsPanelViewModels } from "./hooks/useSettingsPanelViewModels";
+import { useFeedbackCenter } from "./hooks/useFeedbackCenter";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -156,6 +155,14 @@ export default function App() {
   const [cloudSyncReferenceAt, setCloudSyncReferenceAt] = useState(initialCloudSyncReference);
   const [cloudRestorePoints, setCloudRestorePoints] = useState<CloudRestorePoint[]>(initialCloudRestorePoints);
   const [pendingCloudConflictSnapshot, setPendingCloudConflictSnapshot] = useState<CloudSyncSnapshot | null>(null);
+  const {
+    toasts,
+    screenReaderPolite,
+    screenReaderAssertive,
+    dismissToast,
+    announceForScreenReader,
+    pushToast,
+  } = useFeedbackCenter();
 
   const {
     rotation,
@@ -190,15 +197,10 @@ export default function App() {
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!initialOnboardingDone);
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [screenReaderPolite, setScreenReaderPolite] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
-  const [screenReaderAssertive, setScreenReaderAssertive] = useState<ScreenReaderAnnouncement>({ id: 0, text: "" });
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
   const winnerPopupRef = useRef<HTMLDivElement | null>(null);
   const onboardingCardRef = useRef<HTMLDivElement | null>(null);
-  const toastTimeoutsRef = useRef<number[]>([]);
   const lastTopGamesErrorRef = useRef("");
-  const announcementCounterRef = useRef(0);
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -207,38 +209,6 @@ export default function App() {
   });
 
   const topGames = topGamesQuery.data;
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
-  }, []);
-
-  const announceForScreenReader = useCallback((tone: ToastMessage["tone"], text: string) => {
-    const cleaned = text.trim();
-    if (!cleaned) return;
-    announcementCounterRef.current += 1;
-    const payload = { id: announcementCounterRef.current, text: cleaned };
-    if (tone === "error") {
-      setScreenReaderAssertive(payload);
-      return;
-    }
-    setScreenReaderPolite(payload);
-  }, []);
-
-  const pushToast = useCallback(
-    (tone: ToastMessage["tone"], text: string) => {
-      const id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setToasts((current) => [...current, { id, tone, text }]);
-      announceForScreenReader(tone, text);
-      const timeoutId = window.setTimeout(() => {
-        dismissToast(id);
-      }, 5200);
-      toastTimeoutsRef.current.push(timeoutId);
-    },
-    [announceForScreenReader, dismissToast],
-  );
 
   const completeOnboarding = useCallback(
     (nextTab: WorkspaceTab = "play") => {
@@ -658,13 +628,6 @@ export default function App() {
       document.body.style.overflow = previousOverflow;
     };
   }, [isMobileLayout, sidebarOpen]);
-
-  useEffect(() => {
-    return () => {
-      toastTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
-      toastTimeoutsRef.current = [];
-    };
-  }, []);
 
   useEffect(() => {
     if (!showOnboarding) return;

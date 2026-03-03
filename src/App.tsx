@@ -1,10 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { normalizeGames } from "./lib/wheel";
 import { formatOdds, getFocusableElements, keepFocusInContainer, readStorage } from "./lib/appUtils";
+import {
+  cloudSyncSnapshotSchema,
+  fetchTopGames,
+  steamOwnedSchema,
+  type CloudSyncSnapshot,
+} from "./lib/appSchemas";
+import {
+  defaultFilters,
+  defaultSourceWeights,
+  gameWeight,
+  modePresetTranslationKeys,
+  modePresets,
+  onboardingSteps,
+  sanitizeAccountProfiles,
+  sanitizeCloudRestorePoints,
+  sanitizeCloudSync,
+  sanitizeExclusions,
+  sanitizeFilters,
+  sanitizeNotificationSettings,
+  sanitizeSettings,
+  sanitizeSteamImport,
+  sanitizeThemeMode,
+  sourceKeys,
+  sourceLabelList,
+  sourceLabels,
+  spinSpeedProfiles,
+  type AccountProfilePreset,
+  type AdvancedFilters,
+  type BeforeInstallPromptEvent,
+  type CloudRestorePoint,
+  type EnabledSources,
+  type LengthFilter,
+  type PlatformFilter,
+  type PoolGame,
+  type ScreenReaderAnnouncement,
+  type SourceToggleKey,
+  type SourceWeights,
+  type SpinHistoryItem,
+  type SpinSpeedProfile,
+  type StoredCloudSync,
+  type StoredExclusions,
+  type StoredNotificationSettings,
+  type StoredSettings,
+  type StoredSteamImport,
+  type ThemeMode,
+  type ToastMessage,
+  type WorkspaceTab,
+} from "./lib/appConfig";
 import { useCloudSyncTransport } from "./hooks/useCloudSyncTransport";
 import { useCloudProfileActions } from "./hooks/useCloudProfileActions";
 import { useCloudSnapshotBuilders } from "./hooks/useCloudSnapshotBuilders";
@@ -13,6 +60,8 @@ import { useCloudPanelData } from "./hooks/useCloudPanelData";
 import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
 import { useSpinController } from "./hooks/useSpinController";
 import { useLibraryActions } from "./hooks/useLibraryActions";
+import { useRuntimeActions } from "./hooks/useRuntimeActions";
+import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -50,704 +99,8 @@ import {
   ACCOUNT_PROFILES_STORAGE_KEY,
   CLOUD_SYNC_STORAGE_KEY,
 } from "./lib/storageKeys";
-import type { GameEntry, GameLength, GamePlatform, SourceId, TopGamesPayload } from "./types";
+import type { GameEntry, SourceId } from "./types";
 
-const platformSchema = z.enum(["windows", "mac", "linux"]);
-const gameLengthSchema = z.enum(["short", "medium", "long"]);
-
-const payloadGameSchema = z.object({
-  name: z.string(),
-  source: z.string(),
-  rank: z.number().optional(),
-  score: z.number().optional(),
-  appId: z.number().optional(),
-  url: z.string().optional(),
-  platforms: z.array(platformSchema).optional(),
-  tags: z.array(z.string()).optional(),
-  releaseDate: z.string().optional(),
-  priceUsd: z.number().optional(),
-  isFree: z.boolean().optional(),
-  estimatedLength: gameLengthSchema.optional(),
-});
-
-const payloadSchema = z.object({
-  generatedAt: z.string(),
-  sources: z.object({
-    steamcharts: z.object({
-      id: z.literal("steamcharts"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    steamdb: z.object({
-      id: z.literal("steamdb"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    twitchmetrics: z.object({
-      id: z.literal("twitchmetrics"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    itchio: z.object({
-      id: z.literal("itchio"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-  }),
-});
-
-const steamOwnedSchema = z.object({
-  response: z
-    .object({
-      game_count: z.number().optional(),
-      games: z
-        .array(
-          z.object({
-            appid: z.number(),
-            name: z.string(),
-            playtime_forever: z.number().optional(),
-          }),
-        )
-        .optional(),
-    })
-    .default({}),
-});
-
-const storedSteamImportSchema = z.object({
-  steamApiKey: z.string().default(""),
-  steamId: z.string().default(""),
-  steamImportGames: z
-    .array(
-      z.object({
-        name: z.string(),
-        rank: z.number().optional(),
-        score: z.number().optional(),
-        appId: z.number().optional(),
-        url: z.string().optional(),
-        platforms: z.array(platformSchema).optional(),
-        tags: z.array(z.string()).optional(),
-        releaseDate: z.string().optional(),
-        priceUsd: z.number().optional(),
-        isFree: z.boolean().optional(),
-        estimatedLength: gameLengthSchema.optional(),
-      }),
-    )
-    .default([]),
-});
-
-const storedExclusionsSchema = z.object({
-  excludePlayed: z.boolean().default(true),
-  excludeCompleted: z.boolean().default(true),
-  playedGames: z.array(z.string()).default([]),
-  completedGames: z.array(z.string()).default([]),
-});
-
-const storedNotificationSettingsSchema = z.object({
-  notificationsEnabled: z.boolean().default(false),
-  trendNotifications: z.boolean().default(true),
-  reminderNotifications: z.boolean().default(false),
-  reminderIntervalMinutes: z.number().default(120),
-});
-
-const storedCloudSyncSchema = z.object({
-  provider: z.literal("githubGist").default("githubGist"),
-  gistId: z.string().default(""),
-  gistToken: z.string().default(""),
-});
-
-const spinHistorySchema = z.array(
-  z.object({
-    name: z.string(),
-    sources: z.array(z.string()),
-    odds: z.number(),
-    appId: z.number().optional(),
-    url: z.string().optional(),
-    spunAt: z.string(),
-  }),
-);
-
-const cloudSettingsSchema = z.object({
-  enabledSources: z.record(z.string(), z.boolean()).optional(),
-  sourceWeights: z.record(z.string(), z.number()).optional(),
-  weightedMode: z.boolean().optional(),
-  adaptiveRecommendations: z.boolean().optional(),
-  cooldownSpins: z.number().optional(),
-  spinSpeedProfile: z.enum(["cinematic", "balanced", "rapid"]).optional(),
-  reducedSpinAnimation: z.boolean().optional(),
-  activePreset: z.string().optional(),
-  filters: z
-    .object({
-      platform: z.string().optional(),
-      tag: z.string().optional(),
-      length: z.string().optional(),
-      releaseFrom: z.string().optional(),
-      releaseTo: z.string().optional(),
-      freeOnly: z.boolean().optional(),
-      maxPriceUsd: z.number().optional(),
-    })
-    .optional(),
-});
-
-const accountProfileSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  updatedAt: z.string(),
-  settings: cloudSettingsSchema,
-});
-
-const cloudSyncSnapshotSchema = z.object({
-  version: z.number().default(1),
-  exportedAt: z.string().optional(),
-  settings: cloudSettingsSchema.optional(),
-  spinHistory: spinHistorySchema.optional(),
-  manualGames: z.array(z.string()).optional(),
-  steamImport: storedSteamImportSchema.optional(),
-  exclusions: storedExclusionsSchema.optional(),
-  notifications: storedNotificationSettingsSchema.optional(),
-  profiles: z
-    .object({
-      activeProfileId: z.string().optional(),
-      items: z.array(accountProfileSchema).default([]),
-    })
-    .optional(),
-});
-
-const cloudRestorePointsSchema = z.array(
-  z.object({
-    id: z.string(),
-    createdAt: z.string(),
-    reason: z.string(),
-    snapshot: cloudSyncSnapshotSchema,
-  }),
-);
-
-const accountProfilesSchema = z.array(accountProfileSchema);
-
-const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
-type SourceToggleKey = (typeof sourceKeys)[number];
-
-type EnabledSources = Record<SourceToggleKey, boolean>;
-type SourceWeights = Record<SourceToggleKey, number>;
-type ThemeMode = "system" | "light" | "dark" | "high-contrast";
-type WorkspaceTab = "play" | "library" | "history" | "settings";
-type SpinSpeedProfile = "cinematic" | "balanced" | "rapid";
-
-interface PoolGame {
-  name: string;
-  sources: SourceId[];
-  weight: number;
-  appId?: number;
-  url?: string;
-  platforms?: GamePlatform[];
-  tags?: string[];
-  releaseDate?: string;
-  priceUsd?: number;
-  isFree?: boolean;
-  estimatedLength?: GameLength;
-}
-
-interface WinnerInfo {
-  name: string;
-  sources: SourceId[];
-  odds: number;
-  appId?: number;
-  url?: string;
-}
-
-interface SpinHistoryItem extends WinnerInfo {
-  spunAt: string;
-}
-
-interface ModePreset {
-  id: string;
-  label: string;
-  description: string;
-  enabledSources: EnabledSources;
-  sourceWeights: SourceWeights;
-  weightedMode: boolean;
-  cooldownSpins: number;
-}
-
-interface StoredSettings {
-  enabledSources: EnabledSources;
-  sourceWeights: SourceWeights;
-  weightedMode: boolean;
-  adaptiveRecommendations: boolean;
-  cooldownSpins: number;
-  spinSpeedProfile: SpinSpeedProfile;
-  reducedSpinAnimation: boolean;
-  activePreset: string;
-  filters: AdvancedFilters;
-}
-
-type PlatformFilter = "any" | GamePlatform;
-type LengthFilter = "any" | GameLength;
-
-interface AdvancedFilters {
-  platform: PlatformFilter;
-  tag: string;
-  length: LengthFilter;
-  releaseFrom: string;
-  releaseTo: string;
-  freeOnly: boolean;
-  maxPriceUsd: number;
-}
-
-interface StoredSteamImport {
-  steamApiKey: string;
-  steamId: string;
-  steamImportGames: GameEntry[];
-}
-
-interface StoredExclusions {
-  excludePlayed: boolean;
-  excludeCompleted: boolean;
-  playedGames: string[];
-  completedGames: string[];
-}
-
-interface StoredNotificationSettings {
-  notificationsEnabled: boolean;
-  trendNotifications: boolean;
-  reminderNotifications: boolean;
-  reminderIntervalMinutes: number;
-}
-
-interface StoredCloudSync {
-  provider: "githubGist";
-  gistId: string;
-  gistToken: string;
-}
-
-type CloudSyncSnapshot = z.infer<typeof cloudSyncSnapshotSchema>;
-
-interface CloudRestorePoint {
-  id: string;
-  createdAt: string;
-  reason: string;
-  snapshot: CloudSyncSnapshot;
-}
-
-interface AccountProfilePreset {
-  id: string;
-  name: string;
-  updatedAt: string;
-  settings: StoredSettings;
-}
-
-interface ToastMessage {
-  id: string;
-  tone: "info" | "success" | "error";
-  text: string;
-}
-
-interface ScreenReaderAnnouncement {
-  id: number;
-  text: string;
-}
-
-interface OnboardingStep {
-  titleKey: string;
-  descriptionKey: string;
-  focusTab: WorkspaceTab;
-}
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{
-    outcome: "accepted" | "dismissed";
-    platform: string;
-  }>;
-}
-
-const sourceLabels: Record<SourceToggleKey, string> = {
-  steamcharts: "SteamCharts",
-  steamdb: "SteamDB",
-  twitchmetrics: "TwitchMetrics",
-  itchio: "itch.io",
-  manual: "Manual",
-  steamImport: "Steam Library",
-};
-
-const defaultEnabledSources: EnabledSources = {
-  steamcharts: true,
-  steamdb: true,
-  twitchmetrics: true,
-  itchio: false,
-  manual: true,
-  steamImport: true,
-};
-
-const defaultSourceWeights: SourceWeights = {
-  steamcharts: 1.2,
-  steamdb: 1.15,
-  twitchmetrics: 1,
-  itchio: 0.95,
-  manual: 0.9,
-  steamImport: 1.35,
-};
-
-const modePresets: ModePreset[] = [
-  {
-    id: "balanced",
-    label: "Balanced Mix",
-    description: "Weighted by popularity + source confidence, with light anti-repeat cooldown.",
-    enabledSources: { ...defaultEnabledSources },
-    sourceWeights: { ...defaultSourceWeights },
-    weightedMode: true,
-    cooldownSpins: 2,
-  },
-  {
-    id: "quick",
-    label: "Quick Pick",
-    description: "Simple equal odds. Fast and unpredictable.",
-    enabledSources: { ...defaultEnabledSources },
-    sourceWeights: { ...defaultSourceWeights },
-    weightedMode: false,
-    cooldownSpins: 0,
-  },
-  {
-    id: "no-repeats",
-    label: "No Repeats",
-    description: "Aggressive cooldown to force variety across spins.",
-    enabledSources: { ...defaultEnabledSources },
-    sourceWeights: { ...defaultSourceWeights },
-    weightedMode: true,
-    cooldownSpins: 8,
-  },
-  {
-    id: "owned-first",
-    label: "Owned Focus",
-    description: "Favors games you actually own/imported from Steam.",
-    enabledSources: {
-      steamcharts: false,
-      steamdb: false,
-      twitchmetrics: false,
-      itchio: false,
-      manual: true,
-      steamImport: true,
-    },
-    sourceWeights: {
-      steamcharts: 0.6,
-      steamdb: 0.6,
-      twitchmetrics: 0.6,
-      itchio: 0.8,
-      manual: 1.1,
-      steamImport: 1.8,
-    },
-    weightedMode: true,
-    cooldownSpins: 5,
-  },
-];
-
-const modePresetTranslationKeys: Record<string, { label: string; description: string }> = {
-  balanced: { label: "modePreset.balanced.label", description: "modePreset.balanced.description" },
-  quick: { label: "modePreset.quick.label", description: "modePreset.quick.description" },
-  "no-repeats": { label: "modePreset.noRepeats.label", description: "modePreset.noRepeats.description" },
-  "owned-first": { label: "modePreset.ownedFirst.label", description: "modePreset.ownedFirst.description" },
-};
-
-const defaultFilters: AdvancedFilters = {
-  platform: "any",
-  tag: "any",
-  length: "any",
-  releaseFrom: "",
-  releaseTo: "",
-  freeOnly: false,
-  maxPriceUsd: 70,
-};
-
-const spinSpeedProfiles: Record<
-  SpinSpeedProfile,
-  { label: string; durationMs: number; revolutions: number; jitterRatio: number }
-> = {
-  cinematic: {
-    label: "Cinematic",
-    durationMs: 6200,
-    revolutions: 10.5,
-    jitterRatio: 0.28,
-  },
-  balanced: {
-    label: "Balanced",
-    durationMs: 4800,
-    revolutions: 8,
-    jitterRatio: 0.24,
-  },
-  rapid: {
-    label: "Rapid",
-    durationMs: 3200,
-    revolutions: 6.4,
-    jitterRatio: 0.2,
-  },
-};
-
-const fallbackSettings: StoredSettings = {
-  enabledSources: defaultEnabledSources,
-  sourceWeights: defaultSourceWeights,
-  weightedMode: true,
-  adaptiveRecommendations: false,
-  cooldownSpins: 2,
-  spinSpeedProfile: "balanced",
-  reducedSpinAnimation: false,
-  activePreset: "balanced",
-  filters: defaultFilters,
-};
-
-const fallbackSteamImport: StoredSteamImport = {
-  steamApiKey: "",
-  steamId: "",
-  steamImportGames: [],
-};
-
-const fallbackExclusions: StoredExclusions = {
-  excludePlayed: true,
-  excludeCompleted: true,
-  playedGames: [],
-  completedGames: [],
-};
-
-const fallbackNotificationSettings: StoredNotificationSettings = {
-  notificationsEnabled: false,
-  trendNotifications: true,
-  reminderNotifications: false,
-  reminderIntervalMinutes: 120,
-};
-
-const fallbackCloudSync: StoredCloudSync = {
-  provider: "githubGist",
-  gistId: "",
-  gistToken: "",
-};
-
-const onboardingSteps: OnboardingStep[] = [
-  {
-    titleKey: "onboarding.buildLibraryTitle",
-    descriptionKey: "onboarding.buildLibraryDescription",
-    focusTab: "library",
-  },
-  {
-    titleKey: "onboarding.tuneRulesTitle",
-    descriptionKey: "onboarding.tuneRulesDescription",
-    focusTab: "settings",
-  },
-  {
-    titleKey: "onboarding.spinCommitTitle",
-    descriptionKey: "onboarding.spinCommitDescription",
-    focusTab: "play",
-  },
-];
-
-async function fetchTopGames(): Promise<TopGamesPayload> {
-  const url = `${import.meta.env.BASE_URL}data/top-games.json`;
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Unable to load game data (${response.status})`);
-  }
-  const json = await response.json();
-  return payloadSchema.parse(json) as TopGamesPayload;
-}
-
-const sourceLabelList = (sources: SourceId[]) =>
-  sources
-    .map((source) => sourceLabels[source as SourceToggleKey] ?? source)
-    .filter((value, index, arr) => arr.indexOf(value) === index)
-    .join(" + ");
-
-const gameWeight = (entry: GameEntry, sourceWeights: SourceWeights, weightedMode: boolean) => {
-  if (!weightedMode) return 1;
-  const sourceWeight = sourceWeights[entry.source as SourceToggleKey] ?? 1;
-  const rankBoost = entry.rank ? Math.max(0.7, 1.45 - (entry.rank - 1) / 40) : 1;
-  const scoreBoost = entry.score ? Math.min(1.9, 1 + Math.log10(entry.score + 10) / 4) : 1;
-  return Math.max(0.1, sourceWeight * rankBoost * scoreBoost);
-};
-
-const sanitizeFilters = (input: AdvancedFilters | null | undefined): AdvancedFilters => {
-  if (!input) return defaultFilters;
-  const validPlatforms: PlatformFilter[] = ["any", "windows", "mac", "linux"];
-  const validLengths: LengthFilter[] = ["any", "short", "medium", "long"];
-
-  return {
-    platform: validPlatforms.includes(input.platform) ? input.platform : defaultFilters.platform,
-    tag: typeof input.tag === "string" && input.tag.trim() ? input.tag.trim() : "any",
-    length: validLengths.includes(input.length) ? input.length : defaultFilters.length,
-    releaseFrom: typeof input.releaseFrom === "string" ? input.releaseFrom : "",
-    releaseTo: typeof input.releaseTo === "string" ? input.releaseTo : "",
-    freeOnly: Boolean(input.freeOnly),
-    maxPriceUsd:
-      typeof input.maxPriceUsd === "number" && Number.isFinite(input.maxPriceUsd)
-        ? Math.max(0, Math.min(120, input.maxPriceUsd))
-        : defaultFilters.maxPriceUsd,
-  };
-};
-
-const sanitizeSpinSpeedProfile = (input: unknown): SpinSpeedProfile => {
-  if (input === "cinematic" || input === "balanced" || input === "rapid") {
-    return input;
-  }
-  return fallbackSettings.spinSpeedProfile;
-};
-
-const sanitizeSettings = (input: StoredSettings | null): StoredSettings => {
-  if (!input) return fallbackSettings;
-  const activePreset = input.activePreset || fallbackSettings.activePreset;
-  const matchedPreset = activePreset === "custom" ? undefined : modePresets.find((preset) => preset.id === activePreset);
-  const fallbackCooldown =
-    typeof input.cooldownSpins === "number" && Number.isFinite(input.cooldownSpins)
-      ? Math.max(0, Math.min(20, Math.round(input.cooldownSpins)))
-      : fallbackSettings.cooldownSpins;
-  const partialSettings = input as Partial<StoredSettings>;
-  const spinSpeedProfile = sanitizeSpinSpeedProfile(partialSettings.spinSpeedProfile);
-  const reducedSpinAnimation =
-    typeof partialSettings.reducedSpinAnimation === "boolean"
-      ? partialSettings.reducedSpinAnimation
-      : fallbackSettings.reducedSpinAnimation;
-  const adaptiveRecommendations =
-    typeof partialSettings.adaptiveRecommendations === "boolean"
-      ? partialSettings.adaptiveRecommendations
-      : fallbackSettings.adaptiveRecommendations;
-
-  if (matchedPreset) {
-    return {
-      enabledSources: { ...matchedPreset.enabledSources },
-      sourceWeights: { ...matchedPreset.sourceWeights },
-      weightedMode: matchedPreset.weightedMode,
-      adaptiveRecommendations,
-      cooldownSpins: matchedPreset.cooldownSpins,
-      spinSpeedProfile,
-      reducedSpinAnimation,
-      activePreset,
-      filters: sanitizeFilters(input.filters),
-    };
-  }
-
-  return {
-    enabledSources: { ...defaultEnabledSources, ...(input.enabledSources ?? {}) },
-    sourceWeights: { ...defaultSourceWeights, ...(input.sourceWeights ?? {}) },
-    weightedMode: typeof input.weightedMode === "boolean" ? input.weightedMode : fallbackSettings.weightedMode,
-    adaptiveRecommendations,
-    cooldownSpins: fallbackCooldown,
-    spinSpeedProfile,
-    reducedSpinAnimation,
-    activePreset,
-    filters: sanitizeFilters(input.filters),
-  };
-};
-
-const sanitizeSteamImport = (input: StoredSteamImport | null): StoredSteamImport => {
-  if (!input) return fallbackSteamImport;
-  const parsed = storedSteamImportSchema.safeParse(input);
-  if (!parsed.success) return fallbackSteamImport;
-
-  const deduped = new Map<string, GameEntry>();
-  parsed.data.steamImportGames.forEach((entry, index) => {
-    const cleaned = entry.name.trim();
-    if (!cleaned) return;
-    const key = cleaned.toLowerCase();
-    if (deduped.has(key)) return;
-    deduped.set(key, {
-      name: cleaned,
-      source: "steamImport",
-      rank: entry.rank ?? index + 1,
-      score: entry.score,
-      appId: entry.appId,
-      url: entry.url,
-      platforms: entry.platforms,
-      tags: entry.tags,
-      releaseDate: entry.releaseDate,
-      priceUsd: entry.priceUsd,
-      isFree: entry.isFree,
-      estimatedLength: entry.estimatedLength,
-    });
-  });
-
-  return {
-    steamApiKey: parsed.data.steamApiKey,
-    steamId: parsed.data.steamId,
-    steamImportGames: [...deduped.values()],
-  };
-};
-
-const sanitizeExclusions = (input: StoredExclusions | null): StoredExclusions => {
-  if (!input) return fallbackExclusions;
-  const parsed = storedExclusionsSchema.safeParse(input);
-  if (!parsed.success) return fallbackExclusions;
-
-  const completedGames = normalizeGames(parsed.data.completedGames);
-  const completedSet = new Set(completedGames.map((name) => name.toLowerCase()));
-  const playedGames = normalizeGames(parsed.data.playedGames).filter((name) => !completedSet.has(name.toLowerCase()));
-
-  return {
-    excludePlayed: parsed.data.excludePlayed,
-    excludeCompleted: parsed.data.excludeCompleted,
-    playedGames,
-    completedGames,
-  };
-};
-
-const sanitizeNotificationSettings = (input: StoredNotificationSettings | null): StoredNotificationSettings => {
-  if (!input) return fallbackNotificationSettings;
-  const parsed = storedNotificationSettingsSchema.safeParse(input);
-  if (!parsed.success) return fallbackNotificationSettings;
-  return {
-    notificationsEnabled: parsed.data.notificationsEnabled,
-    trendNotifications: parsed.data.trendNotifications,
-    reminderNotifications: parsed.data.reminderNotifications,
-    reminderIntervalMinutes: Math.max(15, Math.min(720, Math.round(parsed.data.reminderIntervalMinutes))),
-  };
-};
-
-const sanitizeCloudSync = (input: StoredCloudSync | null): StoredCloudSync => {
-  if (!input) return fallbackCloudSync;
-  const parsed = storedCloudSyncSchema.safeParse(input);
-  if (!parsed.success) return fallbackCloudSync;
-  return {
-    provider: "githubGist",
-    gistId: parsed.data.gistId.trim(),
-    gistToken: parsed.data.gistToken.trim(),
-  };
-};
-
-const sanitizeThemeMode = (input: ThemeMode | null): ThemeMode => {
-  if (input === "light" || input === "dark" || input === "high-contrast" || input === "system") {
-    return input;
-  }
-  return "system";
-};
-
-const sanitizeCloudRestorePoints = (input: CloudRestorePoint[] | null): CloudRestorePoint[] => {
-  if (!input) return [];
-  const parsed = cloudRestorePointsSchema.safeParse(input);
-  if (!parsed.success) return [];
-  return parsed.data.slice(0, MAX_CLOUD_RESTORE_POINTS);
-};
-
-const sanitizeAccountProfiles = (input: AccountProfilePreset[] | null): AccountProfilePreset[] => {
-  if (!input) return [];
-  const parsed = accountProfilesSchema.safeParse(input);
-  if (!parsed.success) return [];
-
-  const deduped = new Map<string, AccountProfilePreset>();
-  parsed.data.forEach((entry) => {
-    const id = entry.id.trim();
-    const name = entry.name.trim();
-    if (!id || !name) return;
-    deduped.set(id, {
-      id,
-      name,
-      updatedAt: entry.updatedAt,
-      settings: sanitizeSettings(entry.settings as StoredSettings),
-    });
-  });
-  return [...deduped.values()].slice(0, 20);
-};
 
 export default function App() {
   const { t } = useTranslation();
@@ -1550,63 +903,16 @@ export default function App() {
     setCompletedGames,
     setExclusionInput,
   });
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
-  };
-
-  const applyServiceWorkerUpdate = async () => {
-    if (!("serviceWorker" in navigator)) return;
-
-    setUpdateInProgress(true);
-    try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration?.waiting) {
-        setSwUpdateReady(false);
-        setUpdateInProgress(false);
-        return;
-      }
-
-      registration.waiting.postMessage({ type: SW_SKIP_WAITING_MESSAGE });
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 1800);
-    } catch {
-      setUpdateInProgress(false);
-    }
-  };
-
-  const setNotificationsEnabledWithPermission = async (enabled: boolean) => {
-    if (!enabled) {
-      setNotificationsEnabled(false);
-      setNotificationStatus(t("notificationsDisabledStatus"));
-      return;
-    }
-
-    if (!("Notification" in window)) {
-      setNotificationsEnabled(false);
-      setNotificationStatus(t("notificationsUnsupportedStatus"));
-      return;
-    }
-
-    if (Notification.permission === "granted") {
-      setNotificationsEnabled(true);
-      setNotificationStatus(t("notificationsEnabledStatus"));
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      setNotificationsEnabled(true);
-      setNotificationStatus(t("notificationsEnabledStatus"));
-    } else {
-      setNotificationsEnabled(false);
-      setNotificationStatus(t("notificationsDeniedStatus"));
-    }
-  };
+  const { handleInstall, applyServiceWorkerUpdate, setNotificationsEnabledWithPermission } = useRuntimeActions({
+    installPrompt,
+    skipWaitingMessageType: SW_SKIP_WAITING_MESSAGE,
+    clearInstallPrompt: () => setInstallPrompt(null),
+    setUpdateInProgress,
+    setSwUpdateReady,
+    setNotificationsEnabled,
+    setNotificationStatus,
+    t,
+  });
 
   const { currentSettingsSnapshot, applyStoredSettings } = useStoredSettingsState<
     EnabledSources,
@@ -1785,21 +1091,30 @@ export default function App() {
       adaptiveRecommendations,
       adaptivePoolWeights,
       spinMotion,
+      fallbackDurationMs: effectiveSpinDurationMs,
     });
   };
-  const showSettingsPane = isMobileLayout ? sidebarOpen : activeTab === "play" || activeTab === "settings";
-  const showPlayPane = activeTab === "play";
-  const showLibraryPane = isMobileLayout ? activeTab === "library" : activeTab === "play" || activeTab === "library";
-  const showHistoryPane = isMobileLayout ? activeTab === "history" : activeTab === "play" || activeTab === "history";
-  const settingsSidebarVisible = sidebarOpen && showSettingsPane;
-  const settingsSheetMode = isMobileLayout && settingsSidebarVisible;
-  const settingsTabActive = activeTab === "settings" || settingsSheetMode;
-  const historyDisplayItems = spinHistory.slice(0, 10).map((item, index) => ({
-    key: `${item.name}-${item.spunAt}-${index}`,
-    name: item.name,
-    meta: `${new Date(item.spunAt).toLocaleString()} | ${sourceLabelList(item.sources)}`,
-    odds: formatOdds(item.odds),
-  }));
+  const {
+    showSettingsPane,
+    showPlayPane,
+    showLibraryPane,
+    showHistoryPane,
+    settingsSidebarVisible,
+    settingsSheetMode,
+    settingsTabActive,
+    historyDisplayItems,
+  } = useWorkspaceLayout<SourceId, WorkspaceTab>({
+    activeTab,
+    settingsTabValue: "settings",
+    playTabValue: "play",
+    libraryTabValue: "library",
+    historyTabValue: "history",
+    isMobileLayout,
+    sidebarOpen,
+    spinHistory,
+    sourceLabelList,
+    formatOdds,
+  });
   const presetCards = modePresets.map((preset) => ({
     id: preset.id,
     label: t(modePresetTranslationKeys[preset.id]?.label ?? "modePreset.balanced.label"),

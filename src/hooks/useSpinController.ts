@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useState } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import { pickSpinWithWeights } from "../lib/wheel";
 
 interface PoolEntry<TSource extends string> {
@@ -44,6 +44,54 @@ export const useSpinController = <TSource extends string>({
 
   const [pendingWinner, setPendingWinner] = useState<string>("");
   const [pendingWinnerMeta, setPendingWinnerMeta] = useState<WinnerInfo<TSource> | null>(null);
+  const spinningRef = useRef(false);
+  const pendingWinnerRef = useRef("");
+  const pendingWinnerMetaRef = useRef<WinnerInfo<TSource> | null>(null);
+  const fallbackTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    spinningRef.current = spinning;
+  }, [spinning]);
+  useEffect(() => {
+    pendingWinnerRef.current = pendingWinner;
+  }, [pendingWinner]);
+  useEffect(() => {
+    pendingWinnerMetaRef.current = pendingWinnerMeta;
+  }, [pendingWinnerMeta]);
+
+  const clearFallbackTimer = useCallback(() => {
+    if (fallbackTimerRef.current === null) return;
+    window.clearTimeout(fallbackTimerRef.current);
+    fallbackTimerRef.current = null;
+  }, []);
+
+  const finalizeSpin = useCallback(() => {
+    if (!spinningRef.current) return;
+    clearFallbackTimer();
+    const finalWinner = pendingWinnerRef.current;
+    const finalMeta = pendingWinnerMetaRef.current;
+    setWinner(finalWinner);
+    setPendingWinner("");
+    setPendingWinnerMeta(null);
+    spinningRef.current = false;
+    setSpinning(false);
+    if (finalWinner && finalMeta) {
+      setWinnerMeta(finalMeta);
+      setSpinHistory((current) => [
+        {
+          ...finalMeta,
+          spunAt: new Date().toISOString(),
+        },
+        ...current,
+      ]);
+      onWinnerResolved?.(finalWinner, finalMeta);
+      setWinnerPulse((current) => current + 1);
+      setShowWinnerPopup(true);
+      window.setTimeout(() => {
+        setShowWinnerPopup(false);
+      }, 4200);
+    }
+  }, [clearFallbackTimer, onWinnerResolved]);
 
   const spin = useCallback((params: {
     activePool: PoolEntry<TSource>[];
@@ -51,8 +99,9 @@ export const useSpinController = <TSource extends string>({
     adaptiveRecommendations: boolean;
     adaptivePoolWeights: number[];
     spinMotion: SpinMotion;
+    fallbackDurationMs?: number;
   }) => {
-    const { activePool, weightedMode, adaptiveRecommendations, adaptivePoolWeights, spinMotion } = params;
+    const { activePool, weightedMode, adaptiveRecommendations, adaptivePoolWeights, spinMotion, fallbackDurationMs } = params;
     if (spinning || activePool.length === 0) {
       return;
     }
@@ -76,37 +125,35 @@ export const useSpinController = <TSource extends string>({
       appId: selected.appId,
       url: selected.url,
     });
+    pendingWinnerRef.current = selected.name;
+    pendingWinnerMetaRef.current = {
+      name: selected.name,
+      sources: selected.sources,
+      odds,
+      appId: selected.appId,
+      url: selected.url,
+    };
     setWinner("");
     setWinnerMeta(null);
     setRotation(result.nextRotation);
+    spinningRef.current = true;
     setSpinning(true);
-  }, [rotation, spinning]);
+    clearFallbackTimer();
+    const fallbackDelay = Math.max(1200, fallbackDurationMs ?? 6400) + 450;
+    fallbackTimerRef.current = window.setTimeout(() => {
+      finalizeSpin();
+    }, fallbackDelay);
+  }, [clearFallbackTimer, finalizeSpin, rotation, spinning]);
 
   const onSpinEnd = useCallback(() => {
-    if (!spinning) return;
-    const finalWinner = pendingWinner;
-    const finalMeta = pendingWinnerMeta;
-    setWinner(finalWinner);
-    setPendingWinner("");
-    setPendingWinnerMeta(null);
-    setSpinning(false);
-    if (finalWinner && finalMeta) {
-      setWinnerMeta(finalMeta);
-      setSpinHistory((current) => [
-        {
-          ...finalMeta,
-          spunAt: new Date().toISOString(),
-        },
-        ...current,
-      ]);
-      onWinnerResolved?.(finalWinner, finalMeta);
-      setWinnerPulse((current) => current + 1);
-      setShowWinnerPopup(true);
-      window.setTimeout(() => {
-        setShowWinnerPopup(false);
-      }, 4200);
-    }
-  }, [onWinnerResolved, pendingWinner, pendingWinnerMeta, spinning]);
+    finalizeSpin();
+  }, [finalizeSpin]);
+
+  useEffect(() => {
+    return () => {
+      clearFallbackTimer();
+    };
+  }, [clearFallbackTimer]);
 
   const clearHistory = useCallback(() => {
     setSpinHistory([]);

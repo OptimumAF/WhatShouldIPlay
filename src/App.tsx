@@ -52,6 +52,7 @@ import { useCloudWorkspace } from "./hooks/useCloudWorkspace";
 import { useSettingsPanelViewModels } from "./hooks/useSettingsPanelViewModels";
 import { useFeedbackCenter } from "./hooks/useFeedbackCenter";
 import { useShellLayoutEffects } from "./hooks/useShellLayoutEffects";
+import { useRuntimeEffects } from "./hooks/useRuntimeEffects";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -201,7 +202,6 @@ export default function App() {
   const winnerPopupCloseRef = useRef<HTMLButtonElement | null>(null);
   const winnerPopupRef = useRef<HTMLDivElement | null>(null);
   const onboardingCardRef = useRef<HTMLDivElement | null>(null);
-  const lastTopGamesErrorRef = useRef("");
 
   const topGamesQuery = useQuery({
     queryKey: ["top-games"],
@@ -592,50 +592,24 @@ export default function App() {
     onboardingSteps,
   });
 
-  useEffect(() => {
-    if (!topGamesQuery.isError) {
-      lastTopGamesErrorRef.current = "";
-      return;
-    }
-    const errorText = (topGamesQuery.error as Error)?.message ?? t("messages.topGamesLoadError");
-    if (lastTopGamesErrorRef.current === errorText) return;
-    lastTopGamesErrorRef.current = errorText;
-    pushToast("error", `${errorText} ${t("messages.retryHint")}`);
-  }, [pushToast, t, topGamesQuery.error, topGamesQuery.isError]);
-
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    const postPrefs = async () => {
-      const payload = {
-        enabled: notificationsEnabled,
-        newTrends: trendNotifications,
-      };
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        registration.active?.postMessage({ type: SW_NOTIFICATION_PREFS_MESSAGE, payload });
-        navigator.serviceWorker.controller?.postMessage({ type: SW_NOTIFICATION_PREFS_MESSAGE, payload });
-      } catch {
-        // Best effort only.
-      }
-    };
-
-    void postPrefs();
-  }, [notificationsEnabled, trendNotifications]);
-
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    const onServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type !== SW_TOP_GAMES_UPDATED_MESSAGE) return;
-      setFreshTrendsNotice(true);
-    };
-
-    navigator.serviceWorker.addEventListener("message", onServiceWorkerMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener("message", onServiceWorkerMessage);
-    };
-  }, []);
+  useRuntimeEffects({
+    t,
+    pushToast,
+    topGamesIsError: topGamesQuery.isError,
+    topGamesError: topGamesQuery.error,
+    notificationsEnabled,
+    trendNotifications,
+    reminderNotifications,
+    reminderIntervalMinutes,
+    setFreshTrendsNotice,
+    setInstallPrompt,
+    setSwUpdateReady,
+    setDismissedUpdate,
+    setUpdateInProgress,
+    notificationPrefsMessageType: SW_NOTIFICATION_PREFS_MESSAGE,
+    topGamesUpdatedMessageType: SW_TOP_GAMES_UPDATED_MESSAGE,
+    updateReadyEventName: SW_UPDATE_READY_EVENT,
+  });
 
   useEffect(() => {
     if (!showWinnerPopup) return;
@@ -683,86 +657,6 @@ export default function App() {
       previousFocus?.focus();
     };
   }, [showOnboarding]);
-
-  useEffect(() => {
-    if (!notificationsEnabled || !reminderNotifications) return;
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
-
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") return;
-
-      navigator.serviceWorker.ready
-        .then((registration) => {
-          registration.showNotification(t("messages.reminderTitle"), {
-            body: t("messages.reminderBody"),
-            tag: "pickagame-reminder",
-          });
-        })
-        .catch(() => {
-          // Ignore transient notification failures.
-        });
-    }, Math.max(15, reminderIntervalMinutes) * 60 * 1000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, t]);
-
-  useEffect(() => {
-    const onBeforeInstallPrompt = (event: Event) => {
-      const promptEvent = event as BeforeInstallPromptEvent;
-      promptEvent.preventDefault();
-      setInstallPrompt(promptEvent);
-    };
-
-    const onInstalled = () => {
-      setInstallPrompt(null);
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt as EventListener);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt as EventListener);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    let cancelled = false;
-
-    const refreshUpdateState = async () => {
-      try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (cancelled) return;
-        setSwUpdateReady(Boolean(registration?.waiting));
-      } catch {
-        if (cancelled) return;
-        setSwUpdateReady(false);
-      }
-    };
-
-    const onUpdateReady = () => {
-      setDismissedUpdate(false);
-      setUpdateInProgress(false);
-      void refreshUpdateState();
-    };
-
-    const onControllerChange = () => {
-      window.location.reload();
-    };
-
-    window.addEventListener(SW_UPDATE_READY_EVENT, onUpdateReady);
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    void refreshUpdateState();
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener(SW_UPDATE_READY_EVENT, onUpdateReady);
-      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
-    };
-  }, []);
 
   const parseSteamOwnedGames = useCallback(
     (raw: unknown) => steamOwnedSchema.parse(raw).response.games ?? [],

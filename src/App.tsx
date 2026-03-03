@@ -9,7 +9,6 @@ import {
   defaultFilters,
   defaultSourceWeights,
   gameWeight,
-  modePresetTranslationKeys,
   modePresets,
   onboardingSteps,
   sanitizeAccountProfiles,
@@ -23,7 +22,6 @@ import {
   sanitizeThemeMode,
   sourceKeys,
   sourceLabelList,
-  sourceLabels,
   spinSpeedProfiles,
   type AccountProfilePreset,
   type AdvancedFilters,
@@ -53,6 +51,7 @@ import { useLibraryActions } from "./hooks/useLibraryActions";
 import { useRuntimeActions } from "./hooks/useRuntimeActions";
 import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout";
 import { useCloudWorkspace } from "./hooks/useCloudWorkspace";
+import { useSettingsPanelViewModels } from "./hooks/useSettingsPanelViewModels";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -1048,43 +1047,18 @@ export default function App() {
     sourceLabelList,
     formatOdds,
   });
-  const presetCards = modePresets.map((preset) => ({
-    id: preset.id,
-    label: t(modePresetTranslationKeys[preset.id]?.label ?? "modePreset.balanced.label"),
-    description: t(modePresetTranslationKeys[preset.id]?.description ?? "modePreset.balanced.description"),
-  }));
-  const sourceCards = sourceKeys.map((source) => ({
-    source,
-    label: sourceLabels[source],
-    enabled: enabledSources[source],
-    loadedCount:
-      source === "manual"
-        ? manualGames.length
-        : source === "steamImport"
-          ? steamImportGames.length
-          : (topGames?.sources[source].games.length ?? 0),
-    loading: topGamesQuery.isLoading && source !== "manual" && source !== "steamImport",
-    fetchedAt: source === "manual" || source === "steamImport" ? null : (topGames?.sources[source].fetchedAt ?? null),
-    note:
-      source === "manual"
-        ? t("sourceCustomListNote")
-        : source === "steamImport"
-          ? t("sourceSteamImportNote")
-          : topGames?.sources[source].note,
-  }));
-  const sourceWeightRows = sourceKeys.map((source) => ({
-    source,
-    label: sourceLabels[source],
-    value: sourceWeights[source],
-    suggested: suggestedSourceWeights[source],
-  }));
-  const spinSpeedOptions = (Object.entries(spinSpeedProfiles) as [SpinSpeedProfile, (typeof spinSpeedProfiles)[SpinSpeedProfile]][]).map(
-    ([id, profile]) => ({
-      id,
-      label: profile.label,
-    }),
-  );
-  const sourceLoadError = topGamesQuery.isError ? (topGamesQuery.error as Error).message : null;
+  const { presetCards, sourceCards, sourceWeightRows, spinSpeedOptions, sourceLoadError } = useSettingsPanelViewModels({
+    t,
+    topGames,
+    topGamesIsLoading: topGamesQuery.isLoading,
+    topGamesIsError: topGamesQuery.isError,
+    topGamesError: topGamesQuery.error,
+    enabledSources,
+    manualGamesCount: manualGames.length,
+    steamImportGamesCount: steamImportGames.length,
+    sourceWeights,
+    suggestedSourceWeights,
+  });
   const handleSidebarToggle = () =>
     setSidebarOpen((current) => {
       const next = !current;

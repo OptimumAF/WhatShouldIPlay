@@ -56,6 +56,7 @@ import { useRuntimeEffects } from "./hooks/useRuntimeEffects";
 import { useModalFocusEffects } from "./hooks/useModalFocusEffects";
 import { useActiveProfileSelection } from "./hooks/useActiveProfileSelection";
 import { useNavigationActions } from "./hooks/useNavigationActions";
+import { usePersistenceBridge } from "./hooks/usePersistenceBridge";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -76,7 +77,6 @@ import { OnboardingModal } from "./features/layout/OnboardingModal";
 import { ToastStack } from "./features/layout/ToastStack";
 import { WorkspaceShell } from "./features/layout/WorkspaceShell";
 import { MainContentPanels } from "./features/layout/MainContentPanels";
-import { useAppPersistence } from "./hooks/useAppPersistence";
 import {
   ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY,
   CLOUD_SYNC_REFERENCE_STORAGE_KEY,
@@ -482,73 +482,32 @@ export default function App() {
     setFilters((current) => ({ ...current, tag: "any" }));
   }, [availableTags, filters.tag]);
 
-  const persistedSettings = useMemo<StoredSettings>(
-    () => ({
-      enabledSources,
-      sourceWeights,
-      weightedMode,
-      adaptiveRecommendations,
-      cooldownSpins,
-      spinSpeedProfile,
-      reducedSpinAnimation,
-      activePreset,
-      filters,
-    }),
-    [
-      activePreset,
-      adaptiveRecommendations,
-      cooldownSpins,
-      enabledSources,
-      filters,
-      reducedSpinAnimation,
-      sourceWeights,
-      spinSpeedProfile,
-      weightedMode,
-    ],
-  );
-  const persistedSteamImport = useMemo<StoredSteamImport>(
-    () => ({
-      steamApiKey,
-      steamId,
-      steamImportGames,
-    }),
-    [steamApiKey, steamId, steamImportGames],
-  );
-  const persistedExclusions = useMemo<StoredExclusions>(
-    () => ({
-      excludePlayed,
-      excludeCompleted,
-      playedGames,
-      completedGames,
-    }),
-    [completedGames, excludeCompleted, excludePlayed, playedGames],
-  );
-  const persistedNotifications = useMemo<StoredNotificationSettings>(
-    () => ({
-      notificationsEnabled,
-      trendNotifications,
-      reminderNotifications,
-      reminderIntervalMinutes,
-    }),
-    [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications],
-  );
-  const persistedCloudSync = useMemo<StoredCloudSync>(
-    () => ({
-      provider: cloudProvider,
-      gistId,
-      gistToken,
-    }),
-    [cloudProvider, gistId, gistToken],
-  );
-
-  useAppPersistence({
-    settings: persistedSettings,
+  usePersistenceBridge({
+    enabledSources,
+    sourceWeights,
+    weightedMode,
+    adaptiveRecommendations,
+    cooldownSpins,
+    spinSpeedProfile,
+    reducedSpinAnimation,
+    activePreset,
+    filters,
     spinHistory,
     manualGames,
-    steamImport: persistedSteamImport,
-    exclusions: persistedExclusions,
-    notifications: persistedNotifications,
-    cloudSync: persistedCloudSync,
+    steamApiKey,
+    steamId,
+    steamImportGames,
+    excludePlayed,
+    excludeCompleted,
+    playedGames,
+    completedGames,
+    notificationsEnabled,
+    trendNotifications,
+    reminderNotifications,
+    reminderIntervalMinutes,
+    cloudProvider,
+    gistId,
+    gistToken,
     accountProfiles,
     activeAccountProfileId,
     cloudRestorePoints,

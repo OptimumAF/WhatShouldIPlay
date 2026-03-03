@@ -6,8 +6,6 @@ import { normalizeGames } from "./lib/wheel";
 import { formatOdds } from "./lib/appUtils";
 import { fetchTopGames, steamOwnedSchema } from "./lib/appSchemas";
 import {
-  defaultFilters,
-  modePresets,
   onboardingSteps,
   sanitizeAccountProfiles,
   sanitizeExclusions,
@@ -18,8 +16,6 @@ import {
   sourceLabelList,
   type AdvancedFilters,
   type EnabledSources,
-  type LengthFilter,
-  type PlatformFilter,
   type SourceWeights,
   type SpinSpeedProfile,
 } from "./lib/appConfig";
@@ -38,6 +34,7 @@ import { usePersistenceBridge } from "./hooks/usePersistenceBridge";
 import { useGamePoolData } from "./hooks/useGamePoolData";
 import { useUiDerivedData } from "./hooks/useUiDerivedData";
 import { useAppState } from "./hooks/useAppState";
+import { useSettingsInteractions } from "./hooks/useSettingsInteractions";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -525,6 +522,44 @@ export default function App() {
     spinSpeedProfile,
     reducedSpinAnimation,
   });
+  const {
+    onApplyPreset,
+    onToggleSource,
+    onWeightedModeChange,
+    onCooldownSpinsChange,
+    onAdaptiveRecommendationsChange,
+    onSpinSpeedProfileChange,
+    onReducedSpinAnimationChange,
+    onSourceWeightChange,
+    onPlatformChange,
+    onTagChange,
+    onLengthChange,
+    onReleaseFromChange,
+    onReleaseToChange,
+    onMaxPriceChange,
+    onFreeOnlyChange,
+    onResetFilters,
+    onAddPlayed,
+    onAddCompleted,
+    onClearPlayed,
+    onClearCompleted,
+    onNotificationsEnabledChange,
+  } = useSettingsInteractions({
+    applyPreset,
+    markCustom,
+    setEnabledSources,
+    setWeightedMode,
+    setCooldownSpins,
+    setAdaptiveRecommendations,
+    setSpinSpeedProfile,
+    setReducedSpinAnimation,
+    setSourceWeights,
+    setFilters,
+    addExclusionFromInput,
+    setPlayedGames,
+    setCompletedGames,
+    setNotificationsEnabledWithPermission,
+  });
 
   const handleSpin = () => {
     spin({
@@ -585,56 +620,25 @@ export default function App() {
             <SourcesPanel
               presetCards={presetCards}
               activePreset={activePreset}
-              onApplyPreset={(presetId) => {
-                const preset = modePresets.find((candidate) => candidate.id === presetId);
-                if (!preset) return;
-                applyPreset(preset);
-              }}
+              onApplyPreset={onApplyPreset}
               sourceCards={sourceCards}
-              onToggleSource={(source) => {
-                setEnabledSources((current) => ({
-                  ...current,
-                  [source]: !current[source],
-                }));
-                markCustom();
-              }}
+              onToggleSource={onToggleSource}
               weightedMode={weightedMode}
-              onWeightedModeChange={(value) => {
-                setWeightedMode(value);
-                markCustom();
-              }}
+              onWeightedModeChange={onWeightedModeChange}
               cooldownSpins={cooldownSpins}
-              onCooldownSpinsChange={(value) => {
-                setCooldownSpins(value);
-                markCustom();
-              }}
+              onCooldownSpinsChange={onCooldownSpinsChange}
               adaptiveRecommendations={adaptiveRecommendations}
-              onAdaptiveRecommendationsChange={(value) => {
-                setAdaptiveRecommendations(value);
-                markCustom();
-              }}
+              onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
               onApplySuggestedWeights={applySuggestedWeights}
               behaviorSignalsCount={behaviorSignalsCount}
               spinSpeedProfile={spinSpeedProfile}
               spinSpeedOptions={spinSpeedOptions}
-              onSpinSpeedProfileChange={(value) => {
-                setSpinSpeedProfile(value);
-                markCustom();
-              }}
+              onSpinSpeedProfileChange={onSpinSpeedProfileChange}
               effectiveSpinDurationMs={effectiveSpinDurationMs}
               reducedSpinAnimation={reducedSpinAnimation}
-              onReducedSpinAnimationChange={(value) => {
-                setReducedSpinAnimation(value);
-                markCustom();
-              }}
+              onReducedSpinAnimationChange={onReducedSpinAnimationChange}
               weightRows={sourceWeightRows}
-              onSourceWeightChange={(source, value) => {
-                setSourceWeights((current) => ({
-                  ...current,
-                  [source]: value,
-                }));
-                markCustom();
-              }}
+              onSourceWeightChange={onSourceWeightChange}
               loadingData={topGamesQuery.isLoading}
               loadingError={sourceLoadError}
             />
@@ -659,38 +663,14 @@ export default function App() {
               <FiltersPanel
                 filters={filters}
                 availableTags={availableTags}
-                onPlatformChange={(value) => {
-                  setFilters((current) => ({ ...current, platform: value as PlatformFilter }));
-                  markCustom();
-                }}
-                onTagChange={(value) => {
-                  setFilters((current) => ({ ...current, tag: value }));
-                  markCustom();
-                }}
-                onLengthChange={(value) => {
-                  setFilters((current) => ({ ...current, length: value as LengthFilter }));
-                  markCustom();
-                }}
-                onReleaseFromChange={(value) => {
-                  setFilters((current) => ({ ...current, releaseFrom: value }));
-                  markCustom();
-                }}
-                onReleaseToChange={(value) => {
-                  setFilters((current) => ({ ...current, releaseTo: value }));
-                  markCustom();
-                }}
-                onMaxPriceChange={(value) => {
-                  setFilters((current) => ({ ...current, maxPriceUsd: value }));
-                  markCustom();
-                }}
-                onFreeOnlyChange={(value) => {
-                  setFilters((current) => ({ ...current, freeOnly: value }));
-                  markCustom();
-                }}
-                onReset={() => {
-                  setFilters(defaultFilters);
-                  markCustom();
-                }}
+                onPlatformChange={onPlatformChange}
+                onTagChange={onTagChange}
+                onLengthChange={onLengthChange}
+                onReleaseFromChange={onReleaseFromChange}
+                onReleaseToChange={onReleaseToChange}
+                onMaxPriceChange={onMaxPriceChange}
+                onFreeOnlyChange={onFreeOnlyChange}
+                onReset={onResetFilters}
               />
 
               <ExclusionsPanel
@@ -702,12 +682,12 @@ export default function App() {
                 onExcludePlayedChange={setExcludePlayed}
                 onExcludeCompletedChange={setExcludeCompleted}
                 onExclusionInputChange={setExclusionInput}
-                onAddPlayed={() => addExclusionFromInput("played")}
-                onAddCompleted={() => addExclusionFromInput("completed")}
+                onAddPlayed={onAddPlayed}
+                onAddCompleted={onAddCompleted}
                 onRemovePlayed={removePlayedGame}
                 onRemoveCompleted={removeCompletedGame}
-                onClearPlayed={() => setPlayedGames([])}
-                onClearCompleted={() => setCompletedGames([])}
+                onClearPlayed={onClearPlayed}
+                onClearCompleted={onClearCompleted}
               />
 
               <NotificationsPanel
@@ -716,9 +696,7 @@ export default function App() {
                 reminderNotifications={reminderNotifications}
                 reminderIntervalMinutes={reminderIntervalMinutes}
                 notificationStatus={notificationStatus}
-                onNotificationsEnabledChange={(value) => {
-                  void setNotificationsEnabledWithPermission(value);
-                }}
+                onNotificationsEnabledChange={onNotificationsEnabledChange}
                 onTrendNotificationsChange={setTrendNotifications}
                 onReminderNotificationsChange={setReminderNotifications}
                 onReminderIntervalChange={setReminderIntervalMinutes}

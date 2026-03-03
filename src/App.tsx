@@ -19,7 +19,6 @@ import {
   sanitizeSteamImport,
   sanitizeThemeMode,
   sourceLabelList,
-  spinSpeedProfiles,
   type AccountProfilePreset,
   type AdvancedFilters,
   type BeforeInstallPromptEvent,
@@ -42,9 +41,7 @@ import { useStoredSettingsState } from "./hooks/useStoredSettingsState";
 import { useSpinController } from "./hooks/useSpinController";
 import { useLibraryActions } from "./hooks/useLibraryActions";
 import { useRuntimeActions } from "./hooks/useRuntimeActions";
-import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout";
 import { useCloudWorkspace } from "./hooks/useCloudWorkspace";
-import { useSettingsPanelViewModels } from "./hooks/useSettingsPanelViewModels";
 import { useFeedbackCenter } from "./hooks/useFeedbackCenter";
 import { useShellLayoutEffects } from "./hooks/useShellLayoutEffects";
 import { useRuntimeEffects } from "./hooks/useRuntimeEffects";
@@ -53,6 +50,7 @@ import { useActiveProfileSelection } from "./hooks/useActiveProfileSelection";
 import { useNavigationActions } from "./hooks/useNavigationActions";
 import { usePersistenceBridge } from "./hooks/usePersistenceBridge";
 import { useGamePoolData } from "./hooks/useGamePoolData";
+import { useUiDerivedData } from "./hooks/useUiDerivedData";
 import {
   SW_NOTIFICATION_PREFS_MESSAGE,
   SW_SKIP_WAITING_MESSAGE,
@@ -486,21 +484,49 @@ export default function App() {
     sanitizeAccountProfiles,
   });
 
-  const filterExcludedSuffix = filterExcludedCount > 0 ? t("filteredSuffix", { count: filterExcludedCount }) : "";
-  const statusExcludedSuffix =
-    statusExcludedCount > 0 ? t("statusExcludedSuffix", { count: statusExcludedCount }) : "";
-  const cooldownExcludedSuffix =
-    cooldownSpins > 0 ? t("cooldownExcludedSuffix", { count: cooldownExcludedCount }) : "";
-  const exclusionSummarySuffix = `${filterExcludedSuffix}${statusExcludedSuffix}`;
-  const spinProfileConfig = spinSpeedProfiles[spinSpeedProfile];
-  const effectiveSpinDurationMs = reducedSpinAnimation ? 760 : spinProfileConfig.durationMs;
-  const spinMotion =
-    reducedSpinAnimation
-      ? { revolutions: 2.2, jitterRatio: 0.1 }
-      : {
-          revolutions: spinProfileConfig.revolutions,
-          jitterRatio: spinProfileConfig.jitterRatio,
-        };
+  const {
+    showSettingsPane,
+    showPlayPane,
+    showLibraryPane,
+    showHistoryPane,
+    settingsSidebarVisible,
+    settingsSheetMode,
+    settingsTabActive,
+    historyDisplayItems,
+    presetCards,
+    sourceCards,
+    sourceWeightRows,
+    spinSpeedOptions,
+    sourceLoadError,
+    exclusionSummarySuffix,
+    cooldownExcludedSuffix,
+    effectiveSpinDurationMs,
+    spinMotion,
+  } = useUiDerivedData({
+    t,
+    activeTab,
+    isMobileLayout,
+    sidebarOpen,
+    spinHistory,
+    sourceLabelList,
+    formatOdds,
+    topGames,
+    topGamesIsLoading: topGamesQuery.isLoading,
+    topGamesIsError: topGamesQuery.isError,
+    topGamesError: topGamesQuery.error,
+    enabledSources,
+    manualGamesCount: manualGames.length,
+    steamImportGamesCount: steamImportGames.length,
+    sourceWeights,
+    suggestedSourceWeights,
+    filterExcludedCount,
+    statusExcludedCount,
+    cooldownSpins,
+    cooldownExcludedCount,
+    spinSpeedProfile,
+    reducedSpinAnimation,
+  });
+
   const handleSpin = () => {
     spin({
       activePool,
@@ -511,39 +537,6 @@ export default function App() {
       fallbackDurationMs: effectiveSpinDurationMs,
     });
   };
-  const {
-    showSettingsPane,
-    showPlayPane,
-    showLibraryPane,
-    showHistoryPane,
-    settingsSidebarVisible,
-    settingsSheetMode,
-    settingsTabActive,
-    historyDisplayItems,
-  } = useWorkspaceLayout<SourceId, WorkspaceTab>({
-    activeTab,
-    settingsTabValue: "settings",
-    playTabValue: "play",
-    libraryTabValue: "library",
-    historyTabValue: "history",
-    isMobileLayout,
-    sidebarOpen,
-    spinHistory,
-    sourceLabelList,
-    formatOdds,
-  });
-  const { presetCards, sourceCards, sourceWeightRows, spinSpeedOptions, sourceLoadError } = useSettingsPanelViewModels({
-    t,
-    topGames,
-    topGamesIsLoading: topGamesQuery.isLoading,
-    topGamesIsError: topGamesQuery.isError,
-    topGamesError: topGamesQuery.error,
-    enabledSources,
-    manualGamesCount: manualGames.length,
-    steamImportGamesCount: steamImportGames.length,
-    sourceWeights,
-    suggestedSourceWeights,
-  });
   return (
     <main className="layout">
       <a className="skip-link" href="#main-content">

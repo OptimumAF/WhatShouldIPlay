@@ -13,7 +13,7 @@ interface ScreenReaderAnnouncement {
   text: string;
 }
 
-interface AppShellViewProps {
+export interface AppShellViewProps {
   skipToMainLabel: string;
   appHeaderProps: ComponentProps<typeof AppHeader>;
   updateBannerProps: ComponentProps<typeof UpdateBanners>;

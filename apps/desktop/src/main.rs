@@ -13,9 +13,13 @@ use std::fs;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 
+mod contracts;
+use contracts::TopGamesPayloadContract;
+
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 const TOP_N: usize = 30;
+const SHARED_TOP_GAMES_URL: &str = "https://optimumaf.github.io/WhatShouldIPlay/data/top-games.json";
 
 #[derive(Clone, Debug, Default)]
 struct OnlineData {
@@ -1149,11 +1153,61 @@ fn merge_lines(existing: &[String], input: &str) -> Vec<String> {
     dedupe_and_sort(merged)
 }
 
+fn map_contract_games(items: Vec<contracts::GameContract>) -> Vec<GameItem> {
+    let mut mapped = Vec::new();
+    for (index, entry) in items.into_iter().enumerate() {
+        let name = normalize_name(&entry.name);
+        if name.is_empty() {
+            continue;
+        }
+        mapped.push(GameItem {
+            name,
+            rank: entry.rank.or(Some(index + 1)),
+            score: entry.score,
+        });
+    }
+    dedupe_game_items(mapped)
+}
+
+fn online_data_from_contract(payload: TopGamesPayloadContract) -> OnlineData {
+    let steamdb_note = payload
+        .sources
+        .steamdb
+        .note
+        .unwrap_or_else(|| "Shared top-games contract feed.".to_string());
+
+    OnlineData {
+        steamcharts: map_contract_games(payload.sources.steamcharts.games),
+        steamdb: map_contract_games(payload.sources.steamdb.games),
+        twitchmetrics: map_contract_games(payload.sources.twitchmetrics.games),
+        steamdb_note,
+    }
+}
+
+async fn fetch_shared_top_games(client: &Client) -> Result<TopGamesPayloadContract> {
+    let url = std::env::var("WHATSHOULDIPLAY_TOP_GAMES_URL")
+        .unwrap_or_else(|_| SHARED_TOP_GAMES_URL.to_string());
+    client
+        .get(url)
+        .send()
+        .await
+        .context("shared top-games request failed")?
+        .error_for_status()
+        .context("shared top-games status was not successful")?
+        .json::<TopGamesPayloadContract>()
+        .await
+        .context("shared top-games JSON parse failed")
+}
+
 async fn fetch_online_sources() -> Result<OnlineData> {
     let client = Client::builder()
         .user_agent(USER_AGENT)
         .build()
         .context("failed to build HTTP client")?;
+
+    if let Ok(shared_payload) = fetch_shared_top_games(&client).await {
+        return Ok(online_data_from_contract(shared_payload));
+    }
 
     let steamcharts_html = client
         .get("https://steamcharts.com/top")

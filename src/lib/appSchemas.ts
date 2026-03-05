@@ -1,57 +1,11 @@
 import { z } from "zod";
+import {
+  gameMetadataSchema,
+  topGamesPayloadSchema,
+} from "../contracts/topGamesContract";
 import type { TopGamesPayload } from "../types";
 
-const platformSchema = z.enum(["windows", "mac", "linux"]);
-const gameLengthSchema = z.enum(["short", "medium", "long"]);
-
-const payloadGameSchema = z.object({
-  name: z.string(),
-  source: z.string(),
-  rank: z.number().optional(),
-  score: z.number().optional(),
-  appId: z.number().optional(),
-  url: z.string().optional(),
-  platforms: z.array(platformSchema).optional(),
-  tags: z.array(z.string()).optional(),
-  releaseDate: z.string().optional(),
-  priceUsd: z.number().optional(),
-  isFree: z.boolean().optional(),
-  estimatedLength: gameLengthSchema.optional(),
-});
-
-export const payloadSchema = z.object({
-  generatedAt: z.string(),
-  sources: z.object({
-    steamcharts: z.object({
-      id: z.literal("steamcharts"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    steamdb: z.object({
-      id: z.literal("steamdb"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    twitchmetrics: z.object({
-      id: z.literal("twitchmetrics"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-    itchio: z.object({
-      id: z.literal("itchio"),
-      label: z.string(),
-      fetchedAt: z.string(),
-      note: z.string().optional(),
-      games: z.array(payloadGameSchema),
-    }),
-  }),
-});
+export const payloadSchema = topGamesPayloadSchema;
 
 export const steamOwnedSchema = z.object({
   response: z
@@ -73,23 +27,7 @@ export const steamOwnedSchema = z.object({
 export const storedSteamImportSchema = z.object({
   steamApiKey: z.string().default(""),
   steamId: z.string().default(""),
-  steamImportGames: z
-    .array(
-      z.object({
-        name: z.string(),
-        rank: z.number().optional(),
-        score: z.number().optional(),
-        appId: z.number().optional(),
-        url: z.string().optional(),
-        platforms: z.array(platformSchema).optional(),
-        tags: z.array(z.string()).optional(),
-        releaseDate: z.string().optional(),
-        priceUsd: z.number().optional(),
-        isFree: z.boolean().optional(),
-        estimatedLength: gameLengthSchema.optional(),
-      }),
-    )
-    .default([]),
+  steamImportGames: z.array(gameMetadataSchema).default([]),
 });
 
 export const storedExclusionsSchema = z.object({

@@ -1,6 +1,9 @@
-export type SourceId = "steamcharts" | "steamdb" | "twitchmetrics" | "itchio" | "manual" | "scan" | "steamImport";
-export type GamePlatform = "windows" | "mac" | "linux";
-export type GameLength = "short" | "medium" | "long";
+import type {
+  GameLength as ContractGameLength,
+  GamePlatform as ContractGamePlatform,
+  TopGameSourceId,
+  TopGamesPayloadContract,
+} from "./contracts/topGamesContract";
 
 export interface GameEntry {
   name: string;
@@ -18,7 +21,7 @@ export interface GameEntry {
 }
 
 export interface SourcePayload {
-  id: "steamcharts" | "steamdb" | "twitchmetrics" | "itchio";
+  id: TopGameSourceId;
   label: string;
   fetchedAt: string;
   note?: string;
@@ -27,5 +30,9 @@ export interface SourcePayload {
 
 export interface TopGamesPayload {
   generatedAt: string;
-  sources: Record<"steamcharts" | "steamdb" | "twitchmetrics" | "itchio", SourcePayload>;
+  sources: TopGamesPayloadContract["sources"];
 }
+
+export type SourceId = TopGameSourceId | "manual" | "scan" | "steamImport";
+export type GamePlatform = ContractGamePlatform;
+export type GameLength = ContractGameLength;

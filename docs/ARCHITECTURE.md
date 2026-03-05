@@ -2,11 +2,12 @@
 
 ## Overview
 
-WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipeline:
+WhatShouldIPlay is a monorepo with two runtime targets, a shared data pipeline, and shared data contracts:
 
 - Web app (`src/`) served as static assets on GitHub Pages
 - Desktop app (`apps/desktop/`) built with Rust + Dioxus
 - Source ingestion script (`scripts/fetch-top-games.mjs`) generating static JSON consumed by web
+- Shared contract definitions (`contracts/`, `src/contracts/`, `apps/desktop/src/contracts.rs`)
 
 ## System Components
 
@@ -19,6 +20,10 @@ WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipel
   - SteamDB (direct parse attempt)
   - Steam charts API fallback when SteamDB is blocked
   - TwitchMetrics (HTML parse)
+- Contract:
+  - Canonical schema: `contracts/top-games.schema.json`
+  - TypeScript contract implementation: `src/contracts/topGamesContract.ts`
+  - Rust contract implementation: `apps/desktop/src/contracts.rs`
 
 ### 2. Web Application
 
@@ -35,6 +40,9 @@ WhatShouldIPlay is a monorepo with two runtime targets and one shared data pipel
   - manual list
   - local game scan
   - wheel and winner presentation
+- Online source loading strategy:
+  - first attempt shared top-games contract feed
+  - fallback to direct scraping + Steam API fallback when needed
 
 ### 4. UI Parity Strategy
 

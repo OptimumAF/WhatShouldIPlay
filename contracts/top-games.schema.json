@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optimumaf.github.io/WhatShouldIPlay/contracts/top-games.schema.json",
+  "title": "TopGamesPayloadContract",
+  "type": "object",
+  "required": ["generatedAt", "sources"],
+  "properties": {
+    "generatedAt": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "object",
+      "required": ["steamcharts", "steamdb", "twitchmetrics", "itchio"],
+      "properties": {
+        "steamcharts": { "$ref": "#/$defs/sourcePayload" },
+        "steamdb": { "$ref": "#/$defs/sourcePayload" },
+        "twitchmetrics": { "$ref": "#/$defs/sourcePayload" },
+        "itchio": { "$ref": "#/$defs/sourcePayload" }
+      }
+    }
+  },
+  "$defs": {
+    "sourceId": {
+      "type": "string",
+      "enum": ["steamcharts", "steamdb", "twitchmetrics", "itchio"]
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["windows", "mac", "linux"]
+    },
+    "gameLength": {
+      "type": "string",
+      "enum": ["short", "medium", "long"]
+    },
+    "gamePayload": {
+      "type": "object",
+      "required": ["name", "source"],
+      "properties": {
+        "name": { "type": "string" },
+        "source": { "$ref": "#/$defs/sourceId" },
+        "rank": { "type": "number" },
+        "score": { "type": "number" },
+        "appId": { "type": "number" },
+        "url": { "type": "string" },
+        "platforms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/platform" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "releaseDate": { "type": "string" },
+        "priceUsd": { "type": "number" },
+        "isFree": { "type": "boolean" },
+        "estimatedLength": { "$ref": "#/$defs/gameLength" }
+      },
+      "additionalProperties": false
+    },
+    "sourcePayload": {
+      "type": "object",
+      "required": ["id", "label", "fetchedAt", "games"],
+      "properties": {
+        "id": { "$ref": "#/$defs/sourceId" },
+        "label": { "type": "string" },
+        "fetchedAt": { "type": "string" },
+        "note": { "type": "string" },
+        "games": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/gamePayload" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

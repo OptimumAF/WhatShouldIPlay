@@ -2,7 +2,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use dioxus::prelude::*;
-use rand::Rng;
+use rand::{Rng, RngExt};
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -60,6 +60,14 @@ fn tr(lang: UiLang, en: &'static str, es: &'static str) -> &'static str {
     match lang {
         UiLang::En => en,
         UiLang::Es => es,
+    }
+}
+
+fn on_off_label(lang: UiLang, enabled: bool) -> &'static str {
+    if enabled {
+        tr(lang, "ON", "ACT")
+    } else {
+        tr(lang, "OFF", "DES")
     }
 }
 
@@ -251,6 +259,26 @@ fn App() -> Element {
     );
     let platform_class = host_platform_class();
     let platform_label = host_platform_label();
+    let spin_duration_label = format!("{:.1}s", spin_duration_ms / 1000.0);
+    let spin_button_label = if spinning() {
+        tr(lang, "Spinning...", "Girando...")
+    } else {
+        tr(lang, "Spin Wheel", "Girar ruleta")
+    };
+    let weighted_mode_label = on_off_label(lang, weighted_mode());
+    let adaptive_recommendations_label = on_off_label(lang, adaptive_recommendations());
+    let reduced_spin_animation_label = on_off_label(lang, reduced_spin_animation());
+    let behavior_signal_status_label = if behavior_signal_count < 3 {
+        tr(lang, "Need 3+", "Necesita 3+")
+    } else {
+        tr(lang, "Ready", "Listo")
+    };
+    let you_should_play_label = tr(lang, "You should play:", "Deberias jugar:");
+    let sidebar_toggle_label = if show_sidebar() {
+        tr(lang, "Hide Settings", "Ocultar ajustes")
+    } else {
+        tr(lang, "Show Settings", "Mostrar ajustes")
+    };
 
     rsx! {
         style { "{DESKTOP_CSS}" }
@@ -271,11 +299,7 @@ fn App() -> Element {
                     button {
                         class: "ghost",
                         onclick: move |_| show_sidebar.set(!show_sidebar()),
-                        if show_sidebar() {
-                            tr(lang, "Hide Settings", "Ocultar ajustes")
-                        } else {
-                            tr(lang, "Show Settings", "Mostrar ajustes")
-                        }
+                        "{sidebar_toggle_label}"
                     }
                 }
             }
@@ -357,7 +381,7 @@ fn App() -> Element {
                         button {
                             class: "ghost",
                             onclick: move |_| weighted_mode.set(!weighted_mode()),
-                            {if weighted_mode() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
+                            "{weighted_mode_label}"
                         }
                     }
                     div { class: "control-row",
@@ -365,7 +389,7 @@ fn App() -> Element {
                         button {
                             class: "ghost",
                             onclick: move |_| adaptive_recommendations.set(!adaptive_recommendations()),
-                            {if adaptive_recommendations() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
+                            "{adaptive_recommendations_label}"
                         }
                         strong { "{behavior_signal_count} {tr(lang, \"signals\", \"senales\")}" }
                     }
@@ -400,9 +424,9 @@ fn App() -> Element {
                         button {
                             class: "ghost",
                             onclick: move |_| reduced_spin_animation.set(!reduced_spin_animation()),
-                            {if reduced_spin_animation() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }}
+                            "{reduced_spin_animation_label}"
                         }
-                        strong { "{format!(\"{:.1}s\", spin_duration_ms / 1000.0)}" }
+                        strong { "{spin_duration_label}" }
                     }
                     label { class: "control-row",
                         span { "{tr(lang, \"SteamCharts weight\", \"Peso SteamCharts\")}" }
@@ -516,7 +540,7 @@ fn App() -> Element {
                             },
                             {tr(lang, "Apply", "Aplicar")}
                         }
-                        strong { if behavior_signal_count < 3 { tr(lang, "Need 3+", "Necesita 3+") } else { tr(lang, "Ready", "Listo") } }
+                        strong { "{behavior_signal_status_label}" }
                     }
                     div { class: "control-row suggested-row",
                         span { "{tr(lang, \"SteamCharts suggested\", \"Sugerido SteamCharts\")}" }
@@ -589,7 +613,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "SteamCharts", "SteamCharts"),
-                            if include_steamcharts() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_steamcharts())
                         )}
                     }
                     button {
@@ -598,7 +622,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "SteamDB", "SteamDB"),
-                            if include_steamdb() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_steamdb())
                         )}
                     }
                     button {
@@ -607,7 +631,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "TwitchMetrics", "TwitchMetrics"),
-                            if include_twitch() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_twitch())
                         )}
                     }
                     button {
@@ -616,7 +640,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "Steam Import", "Importacion Steam"),
-                            if include_steam_import() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_steam_import())
                         )}
                     }
                 }
@@ -811,11 +835,7 @@ fn App() -> Element {
                             spinning.set(true);
                             wheel_rotation.set(next);
                         },
-                        if spinning() {
-                            tr(lang, "Spinning...", "Girando...")
-                        } else {
-                            tr(lang, "Spin Wheel", "Girar ruleta")
-                        }
+                        "{spin_button_label}"
                     }
                     button {
                         class: "ghost",
@@ -825,7 +845,7 @@ fn App() -> Element {
                 }
                 if !winner().is_empty() {
                     div { class: "winner",
-                        p { "{tr(lang, \"You should play:\", \"Deberias jugar:\")}" }
+                        p { "{you_should_play_label}" }
                         strong { "{winner}" }
                         p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, &winner_sources())}" }
                         p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
@@ -856,7 +876,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "Manual", "Manual"),
-                            if include_manual() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_manual())
                         )}
                     }
                     button {
@@ -873,7 +893,7 @@ fn App() -> Element {
                         {format!(
                             "{}: {}",
                             tr(lang, "Scanned", "Escaneado"),
-                            if include_scanned() { tr(lang, "ON", "ACT") } else { tr(lang, "OFF", "DES") }
+                            on_off_label(lang, include_scanned())
                         )}
                     }
                 }

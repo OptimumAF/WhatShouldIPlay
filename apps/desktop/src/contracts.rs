@@ -1,11 +1,14 @@
 use serde::Deserialize;
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TopGamesPayloadContract {
-    pub generatedAt: String,
+    #[serde(rename = "generatedAt")]
+    pub generated_at: String,
     pub sources: TopGamesSourcesContract,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TopGamesSourcesContract {
     pub steamcharts: SourcePayloadContract,
@@ -14,16 +17,19 @@ pub struct TopGamesSourcesContract {
     pub itchio: SourcePayloadContract,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SourcePayloadContract {
     pub id: String,
     pub label: String,
-    pub fetchedAt: String,
+    #[serde(rename = "fetchedAt")]
+    pub fetched_at: String,
     #[serde(default)]
     pub note: Option<String>,
     pub games: Vec<GameContract>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct GameContract {
     pub name: String,
@@ -34,7 +40,8 @@ pub struct GameContract {
     #[serde(default)]
     pub score: Option<u64>,
     #[serde(default)]
-    pub appId: Option<u64>,
+    #[serde(rename = "appId")]
+    pub app_id: Option<u64>,
     #[serde(default)]
     pub url: Option<String>,
     #[serde(default)]
@@ -42,11 +49,15 @@ pub struct GameContract {
     #[serde(default)]
     pub tags: Option<Vec<String>>,
     #[serde(default)]
-    pub releaseDate: Option<String>,
+    #[serde(rename = "releaseDate")]
+    pub release_date: Option<String>,
     #[serde(default)]
-    pub priceUsd: Option<f64>,
+    #[serde(rename = "priceUsd")]
+    pub price_usd: Option<f64>,
     #[serde(default)]
-    pub isFree: Option<bool>,
+    #[serde(rename = "isFree")]
+    pub is_free: Option<bool>,
     #[serde(default)]
-    pub estimatedLength: Option<String>,
+    #[serde(rename = "estimatedLength")]
+    pub estimated_length: Option<String>,
 }

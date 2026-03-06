@@ -15,7 +15,7 @@ interface SpinHistoryPanelProps {
 
 export function SpinHistoryPanel({ title, emptyLabel, items }: SpinHistoryPanelProps) {
   return (
-    <section className="panel" aria-labelledby="history-heading">
+    <section className="panel secondary-panel" aria-labelledby="history-heading">
       <h2 id="history-heading" className="section-heading">
         <span className="heading-label">
           <History className="ui-icon" aria-hidden="true" />

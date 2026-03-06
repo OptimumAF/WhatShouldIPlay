@@ -24,7 +24,7 @@ export function ManualGamesPanel({
   placeholder,
 }: ManualGamesPanelProps) {
   return (
-    <section className="panel" aria-labelledby="manual-heading">
+    <section className="panel secondary-panel" aria-labelledby="manual-heading">
       <h2 id="manual-heading" className="section-heading">
         <span className="heading-label">
           <List className="ui-icon" aria-hidden="true" />

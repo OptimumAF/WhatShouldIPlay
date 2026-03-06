@@ -63,7 +63,7 @@ export function PlayPanel({
   const { t } = useTranslation();
 
   return (
-    <section className="panel" aria-labelledby="wheel-heading">
+    <section className="panel play-stage" aria-labelledby="wheel-heading">
       <h2 id="wheel-heading" className="section-heading">
         <span className="heading-label">
           <Gamepad2 className="ui-icon" aria-hidden="true" />
@@ -105,7 +105,7 @@ export function PlayPanel({
         spinDurationMs={spinDurationMs}
         onSpinEnd={onSpinEnd}
       />
-      <div className="button-row">
+      <div className="button-row play-stage-actions">
         <button type="button" onClick={onSpin} disabled={spinning || activePoolCount === 0}>
           <span className="button-label">
             <RotateCw className="ui-icon" aria-hidden="true" />

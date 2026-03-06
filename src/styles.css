@@ -232,6 +232,13 @@ body {
   transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
+.hero-masthead {
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 36%),
+    radial-gradient(circle at 88% 28%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 40%),
+    var(--surface);
+}
+
 .hero h1 {
   font-family: var(--font-display);
   letter-spacing: 0.03em;
@@ -250,6 +257,43 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.hero-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.hero-main {
+  margin-top: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.9fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.hero-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.hero-copy p {
+  max-width: 58ch;
+}
+
+.hero-utility {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.hero-actions-primary {
+  margin-top: 0;
+  justify-content: flex-end;
+  align-content: start;
 }
 
 .task-nav {
@@ -733,6 +777,18 @@ button:active:not(:disabled),
   color: var(--status-error);
 }
 
+.play-stage {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 78%, var(--accent-2) 22%), var(--surface) 48%),
+    var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
+.secondary-panel {
+  background: color-mix(in srgb, var(--surface) 86%, var(--surface-elevated) 14%);
+  box-shadow: 0 4px 14px rgba(16, 36, 58, 0.05);
+}
+
 .setup-summary-strip {
   margin-top: var(--space-3);
   display: grid;
@@ -759,6 +815,14 @@ button:active:not(:disabled),
 .setup-summary-item strong {
   font-size: var(--text-sm);
   color: var(--ink-strong);
+}
+
+.play-stage-actions {
+  justify-content: center;
+}
+
+.play-stage-actions button:first-child {
+  min-width: min(100%, 240px);
 }
 
 .wheel-shell {
@@ -1358,6 +1422,14 @@ textarea:focus-visible,
     padding: var(--space-4) var(--space-3) var(--space-8);
   }
 
+  .hero-main {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-actions-primary {
+    justify-content: flex-start;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
   }
@@ -1434,6 +1506,15 @@ textarea:focus-visible,
 @media (max-width: 760px) {
   .layout {
     padding: var(--space-4) var(--space-3) var(--space-8);
+  }
+
+  .hero-topline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-utility {
+    justify-content: flex-start;
   }
 
   .workspace {

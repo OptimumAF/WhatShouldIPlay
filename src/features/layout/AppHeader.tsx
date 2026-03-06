@@ -34,58 +34,75 @@ export function AppHeader({
   const { t, i18n } = useTranslation();
 
   return (
-    <header className="hero">
-      <p className="kicker">{t("appName")}</p>
-      <h1>{t("heroTitle")}</h1>
-      <p>{t("heroDescription")}</p>
-      <div className="hero-actions">
-        <button type="button" className="ghost" aria-controls="settings-sidebar" aria-expanded={settingsSidebarVisible} onClick={onToggleSidebar}>
-          <span className="button-label">
-            <PanelLeft className="ui-icon" aria-hidden="true" />
-            {sidebarOpen ? t("hideSettings") : t("showSettings")}
-          </span>
-        </button>
-        <button type="button" className="ghost" onClick={onOpenQuickTour}>
-          <span className="button-label">
-            <WandSparkles className="ui-icon" aria-hidden="true" />
-            {t("quickTour")}
-          </span>
-        </button>
-        {installAvailable ? (
-          <button type="button" className="ghost" onClick={onInstall}>
+    <header className="hero hero-masthead">
+      <div className="hero-topline">
+        <p className="kicker">{t("appName")}</p>
+        <div className="hero-utility">
+          <label className="lang-picker">
+            <span className="sr-only">{t("language.label")}</span>
+            <select
+              value={i18n.resolvedLanguage?.startsWith("es") ? "es" : "en"}
+              onChange={(event) => {
+                void i18n.changeLanguage(event.target.value);
+              }}
+            >
+              <option value="en">{t("language.english")}</option>
+              <option value="es">{t("language.spanish")}</option>
+            </select>
+          </label>
+          <label className="theme-picker">
+            <span className="sr-only">{t("theme.label")}</span>
+            <select
+              value={themeMode}
+              onChange={(event) => {
+                onThemeModeChange(event.target.value as ThemeMode);
+              }}
+            >
+              <option value="system">{t("theme.system")}</option>
+              <option value="light">{t("theme.light")}</option>
+              <option value="dark">{t("theme.dark")}</option>
+              <option value="high-contrast">{t("theme.highContrast")}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="hero-main">
+        <div className="hero-copy">
+          <h1>{t("heroTitle")}</h1>
+          <p>{t("heroDescription")}</p>
+        </div>
+
+        <div className="hero-actions hero-actions-primary">
+          <button
+            type="button"
+            className="ghost"
+            aria-controls="settings-sidebar"
+            aria-expanded={settingsSidebarVisible}
+            onClick={onToggleSidebar}
+          >
             <span className="button-label">
-              <Download className="ui-icon" aria-hidden="true" />
-              {t("installApp")}
+              <PanelLeft className="ui-icon" aria-hidden="true" />
+              {sidebarOpen ? t("hideSettings") : t("showSettings")}
             </span>
           </button>
-        ) : null}
-        <label className="lang-picker">
-          <span className="sr-only">{t("language.label")}</span>
-          <select
-            value={i18n.resolvedLanguage?.startsWith("es") ? "es" : "en"}
-            onChange={(event) => {
-              void i18n.changeLanguage(event.target.value);
-            }}
-          >
-            <option value="en">{t("language.english")}</option>
-            <option value="es">{t("language.spanish")}</option>
-          </select>
-        </label>
-        <label className="theme-picker">
-          <span className="sr-only">{t("theme.label")}</span>
-          <select
-            value={themeMode}
-            onChange={(event) => {
-              onThemeModeChange(event.target.value as ThemeMode);
-            }}
-          >
-            <option value="system">{t("theme.system")}</option>
-            <option value="light">{t("theme.light")}</option>
-            <option value="dark">{t("theme.dark")}</option>
-            <option value="high-contrast">{t("theme.highContrast")}</option>
-          </select>
-        </label>
+          <button type="button" className="ghost" onClick={onOpenQuickTour}>
+            <span className="button-label">
+              <WandSparkles className="ui-icon" aria-hidden="true" />
+              {t("quickTour")}
+            </span>
+          </button>
+          {installAvailable ? (
+            <button type="button" onClick={onInstall}>
+              <span className="button-label">
+                <Download className="ui-icon" aria-hidden="true" />
+                {t("installApp")}
+              </span>
+            </button>
+          ) : null}
+        </div>
       </div>
+
       <nav className="task-nav" aria-label={t("workspaceSectionsAria")} role="tablist">
         <button
           type="button"

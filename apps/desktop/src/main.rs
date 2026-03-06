@@ -183,6 +183,7 @@ fn App() -> Element {
     let mut spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let mut show_winner_popup = use_signal(|| false);
     let mut show_sidebar = use_signal(|| false);
+    let mut active_settings_section = use_signal(|| "sources".to_string());
 
     use_future({
         let scanned_games = scanned_games;
@@ -345,6 +346,28 @@ fn App() -> Element {
             div { class: if show_sidebar() { "workspace" } else { "workspace sidebar-collapsed" },
                 if show_sidebar() {
                     aside { class: "sidebar",
+                        section { class: "panel",
+                            h2 { "{tr(lang, \"Settings Workspace\", \"Espacio de ajustes\")}" }
+                            p { class: "muted", "{tr(lang, \"Move between sources, rules, and library tools without scanning one long stack.\", \"Muevete entre fuentes, reglas y herramientas de biblioteca sin recorrer una pila larga.\")}" }
+                            div { class: "settings-section-switcher",
+                                button {
+                                    class: if active_settings_section() == "sources" { "ghost settings-section-trigger is-active" } else { "ghost settings-section-trigger" },
+                                    onclick: move |_| active_settings_section.set("sources".to_string()),
+                                    {tr(lang, "Sources", "Fuentes")}
+                                }
+                                button {
+                                    class: if active_settings_section() == "rules" { "ghost settings-section-trigger is-active" } else { "ghost settings-section-trigger" },
+                                    onclick: move |_| active_settings_section.set("rules".to_string()),
+                                    {tr(lang, "Rules", "Reglas")}
+                                }
+                                button {
+                                    class: if active_settings_section() == "library" { "ghost settings-section-trigger is-active" } else { "ghost settings-section-trigger" },
+                                    onclick: move |_| active_settings_section.set("library".to_string()),
+                                    {tr(lang, "Library", "Biblioteca")}
+                                }
+                            }
+                        }
+                        if active_settings_section() == "rules" {
                         section { class: "panel",
                 h2 { "{tr(lang, \"Mode Presets + Odds\", \"Modos predefinidos + probabilidades\")}" }
                 div { class: "button-row",
@@ -613,7 +636,9 @@ fn App() -> Element {
                 }
                 p { class: "muted", "{tr(lang, \"Adaptive mode uses recent spin history to bias sources you consistently land on. Apply suggested weights for a persistent baseline.\", \"El modo adaptativo usa historial reciente para sesgar fuentes en las que sueles caer. Aplica sugerencias para una base persistente.\")}" }
             }
+                        }
 
+                        if active_settings_section() == "sources" {
             section { class: "panel",
                 h2 { "{tr(lang, \"Online Sources\", \"Fuentes online\")}" }
                 div { class: "button-row",
@@ -763,6 +788,55 @@ fn App() -> Element {
                     p { class: "muted", "{steam_import_status}" }
                 }
             }
+                        }
+                        if active_settings_section() == "library" {
+                    section { class: "panel",
+                h2 { "{tr(lang, \"Manual + Scan\", \"Manual + Escaneo\")}" }
+                textarea {
+                    value: "{manual_text}",
+                    rows: "4",
+                    oninput: move |evt| manual_text.set(evt.value()),
+                    placeholder: "Hades II\nHelldivers 2\nMonster Hunter Wilds"
+                }
+                div { class: "button-row",
+                    button {
+                        onclick: move |_| {
+                            let merged = merge_lines(&manual_games(), &manual_text());
+                            manual_games.set(merged);
+                            manual_text.set(String::new());
+                        },
+                        {tr(lang, "Add Manual Games", "Agregar juegos manuales")}
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| include_manual.set(!include_manual()),
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "Manual", "Manual"),
+                            on_off_label(lang, include_manual())
+                        )}
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| {
+                            spawn(refresh_scanned_games(scanned_games, status, ui_lang));
+                        },
+                        {tr(lang, "Scan Game Libraries", "Escanear bibliotecas de juegos")}
+                    }
+                    button {
+                        class: "ghost",
+                        onclick: move |_| include_scanned.set(!include_scanned()),
+                        {format!(
+                            "{}: {}",
+                            tr(lang, "Scanned", "Escaneado"),
+                            on_off_label(lang, include_scanned())
+                        )}
+                    }
+                }
+                p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
+                p { class: "muted", "{tr(lang, \"Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default.\", \"El escaneo desktop revisa manifiestos de Steam, Epic y carpetas comunes de GOG/Ubisoft/Xbox. El rastreo de accesos directos esta desactivado por defecto.\")}" }
+            }
+                        }
                     }
                 }
 
@@ -889,53 +963,6 @@ fn App() -> Element {
                         p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
                     }
                 }
-            }
-
-                    section { class: "panel",
-                h2 { "{tr(lang, \"Manual + Scan\", \"Manual + Escaneo\")}" }
-                textarea {
-                    value: "{manual_text}",
-                    rows: "4",
-                    oninput: move |evt| manual_text.set(evt.value()),
-                    placeholder: "Hades II\nHelldivers 2\nMonster Hunter Wilds"
-                }
-                div { class: "button-row",
-                    button {
-                        onclick: move |_| {
-                            let merged = merge_lines(&manual_games(), &manual_text());
-                            manual_games.set(merged);
-                            manual_text.set(String::new());
-                        },
-                        {tr(lang, "Add Manual Games", "Agregar juegos manuales")}
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| include_manual.set(!include_manual()),
-                        {format!(
-                            "{}: {}",
-                            tr(lang, "Manual", "Manual"),
-                            on_off_label(lang, include_manual())
-                        )}
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| {
-                            spawn(refresh_scanned_games(scanned_games, status, ui_lang));
-                        },
-                        {tr(lang, "Scan Game Libraries", "Escanear bibliotecas de juegos")}
-                    }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| include_scanned.set(!include_scanned()),
-                        {format!(
-                            "{}: {}",
-                            tr(lang, "Scanned", "Escaneado"),
-                            on_off_label(lang, include_scanned())
-                        )}
-                    }
-                }
-                p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
-                p { class: "muted", "{tr(lang, \"Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default.\", \"El escaneo desktop revisa manifiestos de Steam, Epic y carpetas comunes de GOG/Ubisoft/Xbox. El rastreo de accesos directos esta desactivado por defecto.\")}" }
             }
 
                     section { class: "panel",
@@ -2092,6 +2119,29 @@ body {
   gap: var(--space-4);
 }
 
+.settings-section-switcher {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--space-2);
+  padding: var(--space-1);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.settings-section-trigger {
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--button-ghost-ink);
+}
+
+.settings-section-trigger.is-active {
+  background: var(--button-ghost-ink);
+  color: white;
+  box-shadow: var(--shadow-soft);
+}
+
 .hero,
 .panel {
   background: var(--panel-bg);
@@ -2441,6 +2491,10 @@ button:disabled {
 @media (max-width: 760px) {
   .layout {
     padding: var(--space-4) var(--space-3) var(--space-5);
+  }
+
+  .settings-section-switcher {
+    grid-template-columns: 1fr;
   }
 
   .control-row {

@@ -1,12 +1,15 @@
 import clsx from "clsx";
-import { SourcesPanel } from "./SourcesPanel";
+import { useState } from "react";
 import { AdvancedOptionsPanel } from "./AdvancedOptionsPanel";
 import { SteamImportPanel } from "./SteamImportPanel";
 import { FiltersPanel } from "./FiltersPanel";
 import { ExclusionsPanel } from "./ExclusionsPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { CloudSyncPanel } from "./CloudSyncPanel";
+import { SourceCatalogPanel } from "./SourceCatalogPanel";
+import { SelectionRulesPanel } from "./SelectionRulesPanel";
 import type { AdvancedFilters, SourceToggleKey, SpinSpeedProfile } from "../../lib/appConfig";
+import { useTranslation } from "react-i18next";
 
 interface PresetCard {
   id: string;
@@ -240,121 +243,154 @@ export function SettingsContent({
   onRestorePoint,
   onClearRestorePoints,
 }: SettingsContentProps) {
+  const { t } = useTranslation();
+  const [activeSection, setActiveSection] = useState<"sources" | "rules" | "advanced">("sources");
+
   return (
     <>
-      <SourcesPanel
-        presetCards={presetCards}
-        activePreset={activePreset}
-        onApplyPreset={onApplyPreset}
-        sourceCards={sourceCards}
-        onToggleSource={onToggleSource}
-        weightedMode={weightedMode}
-        onWeightedModeChange={onWeightedModeChange}
-        cooldownSpins={cooldownSpins}
-        onCooldownSpinsChange={onCooldownSpinsChange}
-        adaptiveRecommendations={adaptiveRecommendations}
-        onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
-        onApplySuggestedWeights={onApplySuggestedWeights}
-        behaviorSignalsCount={behaviorSignalsCount}
-        spinSpeedProfile={spinSpeedProfile}
-        spinSpeedOptions={spinSpeedOptions}
-        onSpinSpeedProfileChange={onSpinSpeedProfileChange}
-        effectiveSpinDurationMs={effectiveSpinDurationMs}
-        reducedSpinAnimation={reducedSpinAnimation}
-        onReducedSpinAnimationChange={onReducedSpinAnimationChange}
-        weightRows={sourceWeightRows}
-        onSourceWeightChange={onSourceWeightChange}
-        loadingData={loadingData}
-        loadingError={loadingError}
-      />
+      <section className="panel settings-section-shell" aria-labelledby="settings-section-heading">
+        <h2 id="settings-section-heading" className="section-heading">
+          <span className="heading-label">{t("settingsSection.title")}</span>
+        </h2>
+        <p className="muted">{t("settingsSection.description")}</p>
+        <div className="settings-section-switcher" role="tablist" aria-label={t("settingsSection.title")}>
+          {(["sources", "rules", "advanced"] as const).map((section) => (
+            <button
+              key={section}
+              type="button"
+              className={clsx("ghost settings-section-trigger", activeSection === section && "is-active")}
+              role="tab"
+              aria-selected={activeSection === section}
+              onClick={() => setActiveSection(section)}
+            >
+              {t(`settingsSection.${section}.title`)}
+            </button>
+          ))}
+        </div>
+      </section>
 
-      <AdvancedOptionsPanel
-        showAdvancedSettings={showAdvancedSettings}
-        onShowAdvancedSettingsChange={onShowAdvancedSettingsChange}
-      />
+      {activeSection === "sources" ? (
+        <>
+          <SourceCatalogPanel sourceCards={sourceCards} onToggleSource={onToggleSource} />
+          <SteamImportPanel
+            steamApiKey={steamApiKey}
+            steamId={steamId}
+            steamImportLoading={steamImportLoading}
+            steamImportStatus={steamImportStatus}
+            onSteamApiKeyChange={onSteamApiKeyChange}
+            onSteamIdChange={onSteamIdChange}
+            onImport={onImportSteamLibrary}
+            onClear={onClearSteamImport}
+          />
+        </>
+      ) : null}
 
-      <SteamImportPanel
-        steamApiKey={steamApiKey}
-        steamId={steamId}
-        steamImportLoading={steamImportLoading}
-        steamImportStatus={steamImportStatus}
-        onSteamApiKeyChange={onSteamApiKeyChange}
-        onSteamIdChange={onSteamIdChange}
-        onImport={onImportSteamLibrary}
-        onClear={onClearSteamImport}
-      />
-
-      <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
-        <FiltersPanel
-          filters={filters}
-          availableTags={availableTags}
-          onPlatformChange={onPlatformChange}
-          onTagChange={onTagChange}
-          onLengthChange={onLengthChange}
-          onReleaseFromChange={onReleaseFromChange}
-          onReleaseToChange={onReleaseToChange}
-          onMaxPriceChange={onMaxPriceChange}
-          onFreeOnlyChange={onFreeOnlyChange}
-          onReset={onResetFilters}
+      {activeSection === "rules" ? (
+        <SelectionRulesPanel
+          presetCards={presetCards}
+          activePreset={activePreset}
+          onApplyPreset={onApplyPreset}
+          weightedMode={weightedMode}
+          onWeightedModeChange={onWeightedModeChange}
+          cooldownSpins={cooldownSpins}
+          onCooldownSpinsChange={onCooldownSpinsChange}
+          adaptiveRecommendations={adaptiveRecommendations}
+          onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
+          onApplySuggestedWeights={onApplySuggestedWeights}
+          behaviorSignalsCount={behaviorSignalsCount}
+          spinSpeedProfile={spinSpeedProfile}
+          spinSpeedOptions={spinSpeedOptions}
+          onSpinSpeedProfileChange={onSpinSpeedProfileChange}
+          effectiveSpinDurationMs={effectiveSpinDurationMs}
+          reducedSpinAnimation={reducedSpinAnimation}
+          onReducedSpinAnimationChange={onReducedSpinAnimationChange}
+          weightRows={sourceWeightRows}
+          onSourceWeightChange={onSourceWeightChange}
+          loadingData={loadingData}
+          loadingError={loadingError}
         />
+      ) : null}
 
-        <ExclusionsPanel
-          excludePlayed={excludePlayed}
-          excludeCompleted={excludeCompleted}
-          exclusionInput={exclusionInput}
-          playedGames={playedGames}
-          completedGames={completedGames}
-          onExcludePlayedChange={onExcludePlayedChange}
-          onExcludeCompletedChange={onExcludeCompletedChange}
-          onExclusionInputChange={onExclusionInputChange}
-          onAddPlayed={onAddPlayed}
-          onAddCompleted={onAddCompleted}
-          onRemovePlayed={onRemovePlayed}
-          onRemoveCompleted={onRemoveCompleted}
-          onClearPlayed={onClearPlayed}
-          onClearCompleted={onClearCompleted}
-        />
+      {activeSection === "advanced" ? (
+        <>
+          <AdvancedOptionsPanel
+            showAdvancedSettings={showAdvancedSettings}
+            onShowAdvancedSettingsChange={onShowAdvancedSettingsChange}
+          />
 
-        <NotificationsPanel
-          notificationsEnabled={notificationsEnabled}
-          trendNotifications={trendNotifications}
-          reminderNotifications={reminderNotifications}
-          reminderIntervalMinutes={reminderIntervalMinutes}
-          notificationStatus={notificationStatus}
-          onNotificationsEnabledChange={onNotificationsEnabledChange}
-          onTrendNotificationsChange={onTrendNotificationsChange}
-          onReminderNotificationsChange={onReminderNotificationsChange}
-          onReminderIntervalChange={onReminderIntervalChange}
-        />
+          <div id="advanced-settings-stack" className={clsx("advanced-settings-stack", !showAdvancedSettings && "is-collapsed")}>
+            <FiltersPanel
+              filters={filters}
+              availableTags={availableTags}
+              onPlatformChange={onPlatformChange}
+              onTagChange={onTagChange}
+              onLengthChange={onLengthChange}
+              onReleaseFromChange={onReleaseFromChange}
+              onReleaseToChange={onReleaseToChange}
+              onMaxPriceChange={onMaxPriceChange}
+              onFreeOnlyChange={onFreeOnlyChange}
+              onReset={onResetFilters}
+            />
 
-        <CloudSyncPanel
-          gistToken={gistToken}
-          gistId={gistId}
-          cloudSyncLoading={cloudSyncLoading}
-          cloudSyncStatus={cloudSyncStatus}
-          onGistTokenChange={onGistTokenChange}
-          onGistIdChange={onGistIdChange}
-          onCreateGistPush={onCreateGistPush}
-          onPushSync={onPushSync}
-          onPullSync={onPullSync}
-          activeAccountProfileId={activeAccountProfileId}
-          accountProfiles={accountProfiles}
-          accountProfileDraftName={accountProfileDraftName}
-          onActiveAccountProfileChange={onActiveAccountProfileChange}
-          onAccountProfileDraftNameChange={onAccountProfileDraftNameChange}
-          onCreateProfile={onCreateProfile}
-          onSaveCurrentToActive={onSaveCurrentToActive}
-          onApplyActive={onApplyActive}
-          onDeleteActive={onDeleteActive}
-          cloudReferenceLabel={cloudReferenceLabel}
-          conflict={cloudConflict}
-          onKeepLocal={onKeepLocal}
-          onApplyRemote={onApplyRemote}
-          restorePoints={cloudRestorePointOptions}
-          onRestorePoint={onRestorePoint}
-          onClearRestorePoints={onClearRestorePoints}
-        />
-      </div>
+            <ExclusionsPanel
+              excludePlayed={excludePlayed}
+              excludeCompleted={excludeCompleted}
+              exclusionInput={exclusionInput}
+              playedGames={playedGames}
+              completedGames={completedGames}
+              onExcludePlayedChange={onExcludePlayedChange}
+              onExcludeCompletedChange={onExcludeCompletedChange}
+              onExclusionInputChange={onExclusionInputChange}
+              onAddPlayed={onAddPlayed}
+              onAddCompleted={onAddCompleted}
+              onRemovePlayed={onRemovePlayed}
+              onRemoveCompleted={onRemoveCompleted}
+              onClearPlayed={onClearPlayed}
+              onClearCompleted={onClearCompleted}
+            />
+
+            <NotificationsPanel
+              notificationsEnabled={notificationsEnabled}
+              trendNotifications={trendNotifications}
+              reminderNotifications={reminderNotifications}
+              reminderIntervalMinutes={reminderIntervalMinutes}
+              notificationStatus={notificationStatus}
+              onNotificationsEnabledChange={onNotificationsEnabledChange}
+              onTrendNotificationsChange={onTrendNotificationsChange}
+              onReminderNotificationsChange={onReminderNotificationsChange}
+              onReminderIntervalChange={onReminderIntervalChange}
+            />
+
+            <CloudSyncPanel
+              gistToken={gistToken}
+              gistId={gistId}
+              cloudSyncLoading={cloudSyncLoading}
+              cloudSyncStatus={cloudSyncStatus}
+              onGistTokenChange={onGistTokenChange}
+              onGistIdChange={onGistIdChange}
+              onCreateGistPush={onCreateGistPush}
+              onPushSync={onPushSync}
+              onPullSync={onPullSync}
+              activeAccountProfileId={activeAccountProfileId}
+              accountProfiles={accountProfiles}
+              accountProfileDraftName={accountProfileDraftName}
+              onActiveAccountProfileChange={onActiveAccountProfileChange}
+              onAccountProfileDraftNameChange={onAccountProfileDraftNameChange}
+              onCreateProfile={onCreateProfile}
+              onSaveCurrentToActive={onSaveCurrentToActive}
+              onApplyActive={onApplyActive}
+              onDeleteActive={onDeleteActive}
+              cloudReferenceLabel={cloudReferenceLabel}
+              conflict={cloudConflict}
+              onKeepLocal={onKeepLocal}
+              onApplyRemote={onApplyRemote}
+              restorePoints={cloudRestorePointOptions}
+              onRestorePoint={onRestorePoint}
+              onClearRestorePoints={onClearRestorePoints}
+            />
+          </div>
+        </>
+      ) : null}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { Database, SlidersHorizontal, WandSparkles } from "lucide-react";
+import { SlidersHorizontal, WandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HelpTip } from "../../components/HelpTip";
 
@@ -9,16 +9,6 @@ interface PresetCard {
   id: string;
   label: string;
   description: string;
-}
-
-interface SourceCard {
-  source: SourceToggleKey;
-  label: string;
-  enabled: boolean;
-  loadedCount: number;
-  loading: boolean;
-  fetchedAt: string | null;
-  note?: string;
 }
 
 interface WeightRow {
@@ -33,12 +23,10 @@ interface SpinSpeedOption {
   label: string;
 }
 
-interface SourcesPanelProps {
+interface SelectionRulesPanelProps {
   presetCards: PresetCard[];
   activePreset: string;
   onApplyPreset: (presetId: string) => void;
-  sourceCards: SourceCard[];
-  onToggleSource: (source: SourceToggleKey) => void;
   weightedMode: boolean;
   onWeightedModeChange: (value: boolean) => void;
   cooldownSpins: number;
@@ -59,12 +47,10 @@ interface SourcesPanelProps {
   loadingError: string | null;
 }
 
-export function SourcesPanel({
+export function SelectionRulesPanel({
   presetCards,
   activePreset,
   onApplyPreset,
-  sourceCards,
-  onToggleSource,
   weightedMode,
   onWeightedModeChange,
   cooldownSpins,
@@ -83,7 +69,7 @@ export function SourcesPanel({
   onSourceWeightChange,
   loadingData,
   loadingError,
-}: SourcesPanelProps) {
+}: SelectionRulesPanelProps) {
   const { t } = useTranslation();
 
   return (
@@ -92,9 +78,11 @@ export function SourcesPanel({
         <h2 id="mode-presets-heading" className="section-heading">
           <span className="heading-label">
             <SlidersHorizontal className="ui-icon" aria-hidden="true" />
-            {t("presets")}
+            {t("settingsSection.rules.title")}
           </span>
+          <HelpTip text={t("helpTips.weightedWheel")} />
         </h2>
+        <p className="muted">{t("settingsSection.rules.description")}</p>
         <div className="preset-grid">
           {presetCards.map((preset) => (
             <button
@@ -106,33 +94,6 @@ export function SourcesPanel({
               <strong>{preset.label}</strong>
               <span>{preset.description}</span>
             </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel" aria-labelledby="sources-heading">
-        <h2 id="sources-heading" className="section-heading">
-          <span className="heading-label">
-            <Database className="ui-icon" aria-hidden="true" />
-            {t("sources")}
-          </span>
-          <HelpTip text={t("helpTips.sources")} />
-        </h2>
-        <div className="grid-sources">
-          {sourceCards.map((source) => (
-            <label key={source.source} className={`source-card ${source.enabled ? "is-enabled" : ""}`}>
-              <input type="checkbox" checked={source.enabled} onChange={() => onToggleSource(source.source)} />
-              <div>
-                <strong>{source.label}</strong>
-                {source.loading ? (
-                  <span className="mini-skeleton" aria-hidden="true" />
-                ) : (
-                  <p>{t("gamesLoaded", { count: source.loadedCount })}</p>
-                )}
-                {source.fetchedAt ? <small>{t("updatedAt", { value: new Date(source.fetchedAt).toLocaleString() })}</small> : null}
-                {source.note ? <small>{source.note}</small> : null}
-              </div>
-            </label>
           ))}
         </div>
 
@@ -197,12 +158,19 @@ export function SourcesPanel({
             <HelpTip text={t("helpTips.reducedSpin")} />
           </label>
         </div>
+      </section>
+
+      <section className="panel" aria-labelledby="weights-heading">
+        <h2 id="weights-heading" className="section-heading">
+          <span className="heading-label">
+            <WandSparkles className="ui-icon" aria-hidden="true" />
+            {t("perSourceMultipliers")}
+          </span>
+          <HelpTip text={t("helpTips.perSourceMultipliers")} />
+        </h2>
+        <p className="muted">{t("settingsSection.rules.weightsDescription")}</p>
 
         <div className="weights-grid">
-          <p className="muted">
-            {t("perSourceMultipliers")}
-            <HelpTip text={t("helpTips.perSourceMultipliers")} />
-          </p>
           {weightRows.map((weight) => (
             <label key={weight.source} className="weight-row">
               <span>{weight.label}</span>

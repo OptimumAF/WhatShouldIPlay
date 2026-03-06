@@ -330,6 +330,27 @@ body {
   font-size: var(--text-2xl);
 }
 
+.settings-section-shell {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings-section-switcher {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-section-trigger {
+  min-height: 2.75rem;
+}
+
+.settings-section-trigger.is-active {
+  background: var(--ink-strong);
+  color: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
 .section-heading {
   display: flex;
   align-items: center;
@@ -1403,6 +1424,10 @@ textarea:focus-visible,
 
   .task-trigger {
     flex: 0 0 auto;
+  }
+
+  .settings-section-switcher {
+    grid-template-columns: 1fr;
   }
 }
 

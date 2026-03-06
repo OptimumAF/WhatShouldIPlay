@@ -216,6 +216,23 @@ const resources = {
       settingsGuidanceTitle: "Settings",
       settingsGuidanceDescription:
         "Configure sources, weights, imports, and advanced options from the left sidebar. Then return to Play to spin.",
+      settingsSection: {
+        title: "Settings Workspace",
+        description: "Move through sources, rules, and advanced controls without scanning one long sidebar.",
+        sources: {
+          title: "Sources",
+          description: "Choose where games come from and manage library imports.",
+        },
+        rules: {
+          title: "Rules",
+          description: "Tune presets, odds behavior, cooldowns, and spin motion.",
+          weightsDescription: "Adjust how strongly each source influences weighted spins.",
+        },
+        advanced: {
+          title: "Advanced",
+          description: "Filters, exclusions, notifications, and cloud sync live here.",
+        },
+      },
       sourceCustomListNote: "Your custom list",
       sourceSteamImportNote: "Imported from your Steam account",
       gamesLoaded: "{{count}} games loaded",
@@ -522,6 +539,23 @@ const resources = {
       settingsGuidanceTitle: "Ajustes",
       settingsGuidanceDescription:
         "Configura fuentes, pesos, importaciones y opciones avanzadas en la barra lateral izquierda. Luego vuelve a Jugar para girar.",
+      settingsSection: {
+        title: "Espacio de ajustes",
+        description: "Muevete entre fuentes, reglas y controles avanzados sin recorrer una barra lateral larga.",
+        sources: {
+          title: "Fuentes",
+          description: "Elige de donde salen los juegos y gestiona importaciones de biblioteca.",
+        },
+        rules: {
+          title: "Reglas",
+          description: "Ajusta modos, probabilidades, enfriamiento y movimiento del giro.",
+          weightsDescription: "Ajusta cuanto influye cada fuente en los giros ponderados.",
+        },
+        advanced: {
+          title: "Avanzado",
+          description: "Filtros, exclusiones, notificaciones y sync en nube viven aqui.",
+        },
+      },
       sourceCustomListNote: "Tu lista personalizada",
       sourceSteamImportNote: "Importado desde tu cuenta de Steam",
       gamesLoaded: "{{count}} juegos cargados",

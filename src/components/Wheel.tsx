@@ -26,6 +26,10 @@ export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpin
 
   return (
     <div className="wheel-shell">
+      <div className="wheel-stage" aria-hidden="true">
+        <div className="wheel-stage-glow" />
+        <div className="wheel-stage-ring" />
+      </div>
       <div className="wheel-pointer" aria-hidden="true" />
       <div
         className="wheel"
@@ -54,23 +58,26 @@ export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpin
             const angle = index * segment + segment / 2;
             const flip = angle > 90 && angle < 270 ? 180 : 0;
             return (
-            <div
-              key={`${game}-${index}`}
-              className="wheel-label"
-              style={
-                {
-                  "--label-angle": `${angle}deg`,
-                  "--label-flip": `${flip}deg`,
-                } as CSSProperties
-              }
-            >
-              <span>{game}</span>
-            </div>
+              <div
+                key={`${game}-${index}`}
+                className="wheel-label"
+                style={
+                  {
+                    "--label-angle": `${angle}deg`,
+                    "--label-flip": `${flip}deg`,
+                  } as CSSProperties
+                }
+              >
+                <span>{game}</span>
+              </div>
             );
           })
         ) : (
           <div className="wheel-empty">Add games to spin</div>
         )}
+      </div>
+      <div className="wheel-caption" aria-hidden="true">
+        <span>{games.length > 0 ? `${games.length} picks loaded` : "Waiting for games"}</span>
       </div>
     </div>
   );

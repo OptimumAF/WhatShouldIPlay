@@ -7,7 +7,7 @@ interface OnboardingStepItem {
   descriptionKey: string;
 }
 
-interface OnboardingModalProps {
+export interface OnboardingModalProps {
   show: boolean;
   onboardingCardRef: RefObject<HTMLDivElement | null>;
   steps: OnboardingStepItem[];

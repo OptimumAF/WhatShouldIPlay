@@ -9,7 +9,7 @@ interface WinnerMeta {
   url?: string;
 }
 
-interface WinnerModalProps {
+export interface WinnerModalProps {
   show: boolean;
   winner: string;
   winnerMeta: WinnerMeta | null;

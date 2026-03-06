@@ -1,12 +1,16 @@
-import type { ComponentProps } from "react";
+import { Suspense, lazy, type ComponentProps } from "react";
 import { AppHeader } from "./AppHeader";
 import { UpdateBanners } from "./UpdateBanners";
 import { WorkspaceShell } from "./WorkspaceShell";
-import { OnboardingModal } from "./OnboardingModal";
+import type { OnboardingModalProps } from "./OnboardingModal";
 import { ToastStack } from "./ToastStack";
-import { WinnerModal } from "../play/WinnerModal";
-import { SettingsContent, type SettingsContentProps } from "../settings/SettingsContent";
+import type { WinnerModalProps } from "../play/WinnerModal";
+import type { SettingsContentProps } from "../settings/SettingsContent";
 import { MainContentPanels, type MainContentPanelsProps } from "./MainContentPanels";
+
+const LazySettingsContent = lazy(async () => import("../settings/SettingsContent").then((module) => ({ default: module.SettingsContent })));
+const LazyOnboardingModal = lazy(async () => import("./OnboardingModal").then((module) => ({ default: module.OnboardingModal })));
+const LazyWinnerModal = lazy(async () => import("../play/WinnerModal").then((module) => ({ default: module.WinnerModal })));
 
 interface ScreenReaderAnnouncement {
   id: string | number;
@@ -17,12 +21,14 @@ export interface AppShellViewProps {
   skipToMainLabel: string;
   appHeaderProps: ComponentProps<typeof AppHeader>;
   updateBannerProps: ComponentProps<typeof UpdateBanners>;
-  workspaceShellProps: Omit<ComponentProps<typeof WorkspaceShell>, "settingsContent" | "mainContent">;
+  workspaceShellProps: Omit<ComponentProps<typeof WorkspaceShell>, "settingsContent" | "mainContent"> & {
+    showSettingsPane: boolean;
+  };
   settingsContentProps: SettingsContentProps;
   mainContentProps: MainContentPanelsProps;
-  onboardingModalProps: ComponentProps<typeof OnboardingModal>;
+  onboardingModalProps: OnboardingModalProps;
   toastStackProps: ComponentProps<typeof ToastStack>;
-  winnerModalProps: ComponentProps<typeof WinnerModal>;
+  winnerModalProps: WinnerModalProps;
   screenReaderPolite: ScreenReaderAnnouncement;
   screenReaderAssertive: ScreenReaderAnnouncement;
 }
@@ -55,12 +61,26 @@ export function AppShellView({
       <UpdateBanners {...updateBannerProps} />
       <WorkspaceShell
         {...workspaceShellProps}
-        settingsContent={<SettingsContent {...settingsContentProps} />}
+        settingsContent={
+          workspaceShellProps.showSettingsPane ? (
+            <Suspense fallback={<div className="panel secondary-panel settings-loading-shell" aria-hidden="true" />}>
+              <LazySettingsContent {...settingsContentProps} />
+            </Suspense>
+          ) : null
+        }
         mainContent={<MainContentPanels {...mainContentProps} />}
       />
-      <OnboardingModal {...onboardingModalProps} />
+      {onboardingModalProps.show ? (
+        <Suspense fallback={null}>
+          <LazyOnboardingModal {...onboardingModalProps} />
+        </Suspense>
+      ) : null}
       <ToastStack {...toastStackProps} />
-      <WinnerModal {...winnerModalProps} />
+      {winnerModalProps.show ? (
+        <Suspense fallback={null}>
+          <LazyWinnerModal {...winnerModalProps} />
+        </Suspense>
+      ) : null}
     </main>
   );
 }

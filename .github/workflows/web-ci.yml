@@ -55,6 +55,35 @@ jobs:
             sleep 1
           done
 
-          npx -y @axe-core/cli@4.10.2 http://127.0.0.1:4173 --exit
+          if ! curl -fsS http://127.0.0.1:4173 > /dev/null; then
+            cat preview.log
+            exit 1
+          fi
+
+          npx -y browser-driver-manager install chrome
+
+          if [ -f "$HOME/.browser-driver-manager/.env" ]; then
+            set -a
+            . "$HOME/.browser-driver-manager/.env"
+            set +a
+          fi
+
+          if [ -n "${CHROMEDRIVER_TEST_PATH:-}" ]; then
+            case "$CHROMEDRIVER_TEST_PATH" in
+              /*) ;;
+              *) CHROMEDRIVER_TEST_PATH="$HOME/$CHROMEDRIVER_TEST_PATH" ;;
+            esac
+            export PATH="$(dirname "$CHROMEDRIVER_TEST_PATH"):$PATH"
+          fi
+
+          if [ -n "${CHROME_TEST_PATH:-}" ]; then
+            case "$CHROME_TEST_PATH" in
+              /*) ;;
+              *) CHROME_TEST_PATH="$HOME/$CHROME_TEST_PATH" ;;
+            esac
+            export CHROME_BIN="$CHROME_TEST_PATH"
+          fi
+
+          npx -y @axe-core/cli@4.10.2 http://127.0.0.1:4173 --chromedriver-path "$CHROMEDRIVER_TEST_PATH" --exit
 
 

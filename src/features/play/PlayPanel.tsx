@@ -11,6 +11,10 @@ interface PlayWinnerMeta {
 
 interface PlayPanelProps {
   activePoolCount: number;
+  activePresetLabel: string;
+  enabledSourceLabels: string[];
+  weightedMode: boolean;
+  cooldownSpins: number;
   exclusionSummarySuffix: string;
   cooldownExcludedSuffix: string;
   advancedFilterExhausted: boolean;
@@ -33,6 +37,10 @@ interface PlayPanelProps {
 
 export function PlayPanel({
   activePoolCount,
+  activePresetLabel,
+  enabledSourceLabels,
+  weightedMode,
+  cooldownSpins,
   exclusionSummarySuffix,
   cooldownExcludedSuffix,
   advancedFilterExhausted,
@@ -69,6 +77,24 @@ export function PlayPanel({
           cooldownExcluded: cooldownExcludedSuffix,
         })}
       </p>
+      <div className="setup-summary-strip" aria-label={t("setupSummaryTitle")}>
+        <div className="setup-summary-item">
+          <span>{t("setupPreset")}</span>
+          <strong>{activePresetLabel}</strong>
+        </div>
+        <div className="setup-summary-item">
+          <span>{t("setupSources")}</span>
+          <strong>{enabledSourceLabels.join(" + ") || t("none")}</strong>
+        </div>
+        <div className="setup-summary-item">
+          <span>{t("setupOddsMode")}</span>
+          <strong>{weightedMode ? t("weightedWheel") : t("equalOdds")}</strong>
+        </div>
+        <div className="setup-summary-item">
+          <span>{t("setupCooldown")}</span>
+          <strong>{cooldownSpins}</strong>
+        </div>
+      </div>
       {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
       {statusExhausted ? <p className="status">{t("statusExhausted")}</p> : null}
       {cooldownSaturated ? <p className="status">{t("cooldownExhausted")}</p> : null}

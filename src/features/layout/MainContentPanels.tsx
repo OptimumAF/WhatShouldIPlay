@@ -20,6 +20,10 @@ interface HistoryDisplayItem {
 export interface MainContentPanelsProps {
   showPlayPane: boolean;
   activePoolCount: number;
+  activePresetLabel: string;
+  enabledSourceLabels: string[];
+  weightedMode: boolean;
+  cooldownSpins: number;
   exclusionSummarySuffix: string;
   cooldownExcludedSuffix: string;
   advancedFilterExhausted: boolean;
@@ -51,6 +55,10 @@ export interface MainContentPanelsProps {
 export function MainContentPanels({
   showPlayPane,
   activePoolCount,
+  activePresetLabel,
+  enabledSourceLabels,
+  weightedMode,
+  cooldownSpins,
   exclusionSummarySuffix,
   cooldownExcludedSuffix,
   advancedFilterExhausted,
@@ -85,6 +93,10 @@ export function MainContentPanels({
       {showPlayPane ? (
         <PlayPanel
           activePoolCount={activePoolCount}
+          activePresetLabel={activePresetLabel}
+          enabledSourceLabels={enabledSourceLabels}
+          weightedMode={weightedMode}
+          cooldownSpins={cooldownSpins}
           exclusionSummarySuffix={exclusionSummarySuffix}
           cooldownExcludedSuffix={cooldownExcludedSuffix}
           advancedFilterExhausted={advancedFilterExhausted}

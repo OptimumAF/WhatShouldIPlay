@@ -39,11 +39,11 @@ export const useWorkspaceLayout = <TSource extends string, TTab extends string>(
   sourceLabelList,
   formatOdds,
 }: UseWorkspaceLayoutInput<TSource, TTab>) => {
-  const showSettingsPane = isMobileLayout ? sidebarOpen : activeTab === playTabValue || activeTab === settingsTabValue;
+  const showSettingsPane = isMobileLayout ? sidebarOpen : sidebarOpen || activeTab === settingsTabValue;
   const showPlayPane = activeTab === playTabValue;
-  const showLibraryPane = isMobileLayout ? activeTab === libraryTabValue : activeTab === playTabValue || activeTab === libraryTabValue;
-  const showHistoryPane = isMobileLayout ? activeTab === historyTabValue : activeTab === playTabValue || activeTab === historyTabValue;
-  const settingsSidebarVisible = sidebarOpen && showSettingsPane;
+  const showLibraryPane = activeTab === libraryTabValue;
+  const showHistoryPane = activeTab === historyTabValue;
+  const settingsSidebarVisible = showSettingsPane;
   const settingsSheetMode = isMobileLayout && settingsSidebarVisible;
   const settingsTabActive = activeTab === settingsTabValue || settingsSheetMode;
 

@@ -712,6 +712,34 @@ button:active:not(:disabled),
   color: var(--status-error);
 }
 
+.setup-summary-strip {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.setup-summary-item {
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-elevated) 82%, var(--accent-2) 18%);
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.setup-summary-item span {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.setup-summary-item strong {
+  font-size: var(--text-sm);
+  color: var(--ink-strong);
+}
+
 .wheel-shell {
   margin: var(--space-4) auto 0;
   width: min(78vw, 520px);

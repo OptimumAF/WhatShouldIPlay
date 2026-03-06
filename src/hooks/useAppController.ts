@@ -12,6 +12,8 @@ import {
   sanitizeNotificationSettings,
   sanitizeSettings,
   sanitizeSteamImport,
+  sourceKeys,
+  sourceLabels,
   sourceLabelList,
   type AdvancedFilters,
   type EnabledSources,
@@ -592,6 +594,14 @@ export const useAppController = (): AppShellViewProps => {
   const mainContentProps: MainContentPanelsProps = {
     showPlayPane,
     activePoolCount: activePool.length,
+    activePresetLabel:
+      presetCards.find((preset) => preset.id === activePreset)?.label ??
+      t("modePreset.balanced.label"),
+    enabledSourceLabels: sourceKeys
+      .filter((source) => enabledSources[source])
+      .map((source) => sourceLabels[source]),
+    weightedMode,
+    cooldownSpins,
     exclusionSummarySuffix,
     cooldownExcludedSuffix,
     advancedFilterExhausted,

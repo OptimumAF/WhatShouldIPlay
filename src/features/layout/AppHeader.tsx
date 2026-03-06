@@ -1,4 +1,3 @@
-import * as Tabs from "@radix-ui/react-tabs";
 import { Download, History, Library, PanelLeft, Play, Settings2, WandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -87,41 +86,60 @@ export function AppHeader({
           </select>
         </label>
       </div>
-      <Tabs.Root
-        value={settingsTabActive ? "settings" : activeTab}
-        onValueChange={(value) => {
-          if (value === "settings" || value === "play" || value === "library" || value === "history") {
-            onTabChange(value);
-          }
-        }}
-      >
-        <Tabs.List className="task-nav" aria-label={t("workspaceSectionsAria")}>
-          <Tabs.Trigger value="play" className="ghost task-trigger">
-            <span className="button-label">
-              <Play className="ui-icon" aria-hidden="true" />
-              {t("tabs.play")}
-            </span>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="library" className="ghost task-trigger">
-            <span className="button-label">
-              <Library className="ui-icon" aria-hidden="true" />
-              {t("tabs.library")}
-            </span>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="history" className="ghost task-trigger">
-            <span className="button-label">
-              <History className="ui-icon" aria-hidden="true" />
-              {t("tabs.history")}
-            </span>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="settings" className="ghost task-trigger">
-            <span className="button-label">
-              <Settings2 className="ui-icon" aria-hidden="true" />
-              {t("tabs.settings")}
-            </span>
-          </Tabs.Trigger>
-        </Tabs.List>
-      </Tabs.Root>
+      <nav className="task-nav" aria-label={t("workspaceSectionsAria")} role="tablist">
+        <button
+          type="button"
+          className={`ghost task-trigger ${activeTab === "play" && !settingsTabActive ? "is-active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "play" && !settingsTabActive}
+          aria-current={activeTab === "play" && !settingsTabActive ? "page" : undefined}
+          onClick={() => onTabChange("play")}
+        >
+          <span className="button-label">
+            <Play className="ui-icon" aria-hidden="true" />
+            {t("tabs.play")}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`ghost task-trigger ${activeTab === "library" && !settingsTabActive ? "is-active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "library" && !settingsTabActive}
+          aria-current={activeTab === "library" && !settingsTabActive ? "page" : undefined}
+          onClick={() => onTabChange("library")}
+        >
+          <span className="button-label">
+            <Library className="ui-icon" aria-hidden="true" />
+            {t("tabs.library")}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`ghost task-trigger ${activeTab === "history" && !settingsTabActive ? "is-active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "history" && !settingsTabActive}
+          aria-current={activeTab === "history" && !settingsTabActive ? "page" : undefined}
+          onClick={() => onTabChange("history")}
+        >
+          <span className="button-label">
+            <History className="ui-icon" aria-hidden="true" />
+            {t("tabs.history")}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`ghost task-trigger ${settingsTabActive ? "is-active" : ""}`}
+          role="tab"
+          aria-selected={settingsTabActive}
+          aria-current={settingsTabActive ? "page" : undefined}
+          onClick={() => onTabChange("settings")}
+        >
+          <span className="button-label">
+            <Settings2 className="ui-icon" aria-hidden="true" />
+            {t("tabs.settings")}
+          </span>
+        </button>
+      </nav>
     </header>
   );
 }

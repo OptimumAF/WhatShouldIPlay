@@ -30,7 +30,7 @@
   --surface-elevated: #f8fbfe;
   --panel-border: rgba(14, 27, 44, 0.15);
   --accent: #f25f5c;
-  --accent-ink: #ffffff;
+  --accent-ink: #10263a;
   --accent-2: #247ba0;
   --ghost-bg: #dae7f0;
   --ghost-ink: #15304c;
@@ -68,7 +68,7 @@
   --surface-elevated: #1b2c42;
   --panel-border: rgba(148, 172, 204, 0.26);
   --accent: #ff7267;
-  --accent-ink: #ffffff;
+  --accent-ink: #10263a;
   --accent-2: #5aa2c8;
   --ghost-bg: #24384e;
   --ghost-ink: #deebfa;
@@ -263,7 +263,8 @@ body {
   min-width: 90px;
 }
 
-.task-nav [data-state="active"] {
+.task-nav [data-state="active"],
+.task-nav .task-trigger.is-active {
   background: var(--ink-strong);
   color: var(--surface);
   box-shadow: var(--shadow-pop);

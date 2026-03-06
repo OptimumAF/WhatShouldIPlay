@@ -107,6 +107,37 @@ fn host_platform_label() -> &'static str {
     }
 }
 
+async fn refresh_scanned_games(
+    mut scanned_games: Signal<Vec<String>>,
+    mut status: Signal<String>,
+    ui_lang: Signal<UiLang>,
+) {
+    let current_lang = ui_lang();
+    status.set(
+        tr(
+            current_lang,
+            "Scanning local game libraries...",
+            "Escaneando bibliotecas locales de juegos...",
+        )
+        .to_string(),
+    );
+
+    let games = scan_installed_games();
+    let scan_count = games.len();
+    scanned_games.set(games);
+
+    let current_lang = ui_lang();
+    status.set(format!(
+        "{} {}",
+        tr(
+            current_lang,
+            "Local game libraries scanned:",
+            "Bibliotecas locales escaneadas:",
+        ),
+        scan_count
+    ));
+}
+
 #[component]
 fn App() -> Element {
     let mut ui_lang = use_signal(|| UiLang::En);
@@ -152,6 +183,13 @@ fn App() -> Element {
     let mut spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let mut show_winner_popup = use_signal(|| false);
     let mut show_sidebar = use_signal(|| false);
+
+    use_future({
+        let scanned_games = scanned_games;
+        let status = status;
+        let ui_lang = ui_lang;
+        move || refresh_scanned_games(scanned_games, status, ui_lang)
+    });
 
     let full_pool = build_weighted_pool(
         include_steamcharts(),
@@ -882,8 +920,7 @@ fn App() -> Element {
                     button {
                         class: "ghost",
                         onclick: move |_| {
-                            let games = scan_installed_games();
-                            scanned_games.set(games);
+                            spawn(refresh_scanned_games(scanned_games, status, ui_lang));
                         },
                         {tr(lang, "Scan Game Libraries", "Escanear bibliotecas de juegos")}
                     }

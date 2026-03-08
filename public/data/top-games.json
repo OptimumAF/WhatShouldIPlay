@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-28T06:49:15.178Z",
+  "generatedAt": "2026-03-08T06:25:38.584Z",
   "sources": {
     "steamcharts": {
       "id": "steamcharts",
@@ -302,7 +302,7 @@
             "Includes level editor"
           ],
           "releaseDate": "2018-11-16",
-          "priceUsd": 4.99,
+          "priceUsd": 3.99,
           "isFree": false,
           "estimatedLength": "medium"
         },
@@ -545,7 +545,7 @@
             "Family Sharing"
           ],
           "releaseDate": "2014-12-22",
-          "priceUsd": 4.99,
+          "priceUsd": 2.49,
           "isFree": false,
           "estimatedLength": "medium"
         },
@@ -698,7 +698,7 @@
             "Family Sharing"
           ],
           "releaseDate": "2023-08-03",
-          "priceUsd": 44.99,
+          "priceUsd": 59.99,
           "isFree": false,
           "estimatedLength": "long"
         },
@@ -764,19 +764,20 @@
           "isFree": false,
           "estimatedLength": "medium"
         }
-      ]
+      ],
+      "note": "Using cached data from 2026-02-28T06:49:15.178Z because refresh failed: Request failed (522) for https://steamcharts.com/top"
     },
     "steamdb": {
       "id": "steamdb",
       "label": "SteamDB",
-      "fetchedAt": "2026-02-28T06:49:15.178Z",
+      "fetchedAt": "2026-03-08T06:25:38.584Z",
       "note": "SteamDB blocked scraping; used Steam charts API fallback. (Request failed (403) for https://steamdb.info/charts/)",
       "games": [
         {
           "name": "Counter-Strike 2",
           "source": "steamdb",
           "rank": 1,
-          "score": 1509130,
+          "score": 1622269,
           "appId": 730,
           "url": "https://steamdb.info/app/730/",
           "tags": [
@@ -807,10 +808,34 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Dota 2",
+          "name": "PUBG: BATTLEGROUNDS",
           "source": "steamdb",
           "rank": 2,
-          "score": 774924,
+          "score": 732163,
+          "appId": 578080,
+          "url": "https://steamdb.info/app/578080/",
+          "tags": [
+            "Action",
+            "Adventure",
+            "Massively Multiplayer",
+            "Free To Play",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Stats",
+            "Remote Play on Phone",
+            "Remote Play on Tablet"
+          ],
+          "releaseDate": "2017-12-21",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Dota 2",
+          "source": "steamdb",
+          "rank": 3,
+          "score": 818947,
           "appId": 570,
           "url": "https://steamdb.info/app/570/",
           "tags": [
@@ -835,34 +860,10 @@
           "estimatedLength": "long"
         },
         {
-          "name": "PUBG: BATTLEGROUNDS",
-          "source": "steamdb",
-          "rank": 3,
-          "score": 655945,
-          "appId": 578080,
-          "url": "https://steamdb.info/app/578080/",
-          "tags": [
-            "Action",
-            "Adventure",
-            "Massively Multiplayer",
-            "Free To Play",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Stats",
-            "Remote Play on Phone",
-            "Remote Play on Tablet"
-          ],
-          "releaseDate": "2017-12-21",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
           "name": "Wallpaper Engine",
           "source": "steamdb",
           "rank": 4,
-          "score": 125775,
+          "score": 135593,
           "appId": 431960,
           "url": "https://steamdb.info/app/431960/",
           "tags": [
@@ -878,65 +879,45 @@
             "Includes level editor"
           ],
           "releaseDate": "2018-11-16",
-          "priceUsd": 4.99,
+          "priceUsd": 3.99,
           "isFree": false,
           "estimatedLength": "medium"
         },
         {
-          "name": "Resident Evil Requiem",
+          "name": "Slay the Spire 2",
           "source": "steamdb",
           "rank": 5,
-          "score": 320056,
-          "appId": 3764200,
-          "url": "https://steamdb.info/app/3764200/",
+          "score": 526793,
+          "appId": 2868840,
+          "url": "https://steamdb.info/app/2868840/",
           "tags": [
-            "Action",
-            "Adventure",
+            "Indie",
+            "Strategy",
+            "Early Access",
             "Single-player",
-            "Steam Achievements",
-            "Full controller support",
-            "Steam Trading Cards",
-            "Captions available",
-            "Steam Cloud",
-            "HDR available",
-            "Family Sharing"
-          ],
-          "releaseDate": "2026-02-26",
-          "priceUsd": 69.99,
-          "isFree": false,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "ARC Raiders",
-          "source": "steamdb",
-          "rank": 6,
-          "score": 179182,
-          "appId": 1808500,
-          "url": "https://steamdb.info/app/1808500/",
-          "tags": [
-            "Action",
             "Multi-player",
-            "PvP",
-            "Online PvP",
             "Co-op",
             "Online Co-op",
-            "Cross-Platform Multiplayer",
-            "Steam Achievements",
             "Full controller support",
-            "In-App Purchases",
+            "Custom Volume Controls",
+            "Mouse Only Option",
+            "Playable without Timed Input",
+            "Save Anytime",
+            "Steam Cloud",
             "Stats",
+            "Steam Leaderboards",
             "Family Sharing"
           ],
-          "releaseDate": "2025-10-30",
-          "priceUsd": 39.99,
+          "releaseDate": "2026-03-05",
+          "priceUsd": 24.99,
           "isFree": false,
-          "estimatedLength": "medium"
+          "estimatedLength": "long"
         },
         {
           "name": "Apex Legends™",
           "source": "steamdb",
-          "rank": 7,
-          "score": 183590,
+          "rank": 6,
+          "score": 224298,
           "appId": 1172470,
           "url": "https://steamdb.info/app/1172470/",
           "tags": [
@@ -961,10 +942,60 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Geometry Dash",
+          "name": "ARC Raiders",
+          "source": "steamdb",
+          "rank": 7,
+          "score": 226755,
+          "appId": 1808500,
+          "url": "https://steamdb.info/app/1808500/",
+          "tags": [
+            "Action",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Co-op",
+            "Online Co-op",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Full controller support",
+            "In-App Purchases",
+            "Stats",
+            "Family Sharing"
+          ],
+          "releaseDate": "2025-10-30",
+          "priceUsd": 39.99,
+          "isFree": false,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Resident Evil Requiem",
           "source": "steamdb",
           "rank": 8,
-          "score": 89414,
+          "score": 155399,
+          "appId": 3764200,
+          "url": "https://steamdb.info/app/3764200/",
+          "tags": [
+            "Action",
+            "Adventure",
+            "Single-player",
+            "Steam Achievements",
+            "Full controller support",
+            "Steam Trading Cards",
+            "Captions available",
+            "Steam Cloud",
+            "HDR available",
+            "Family Sharing"
+          ],
+          "releaseDate": "2026-02-26",
+          "priceUsd": 69.99,
+          "isFree": false,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Geometry Dash",
+          "source": "steamdb",
+          "rank": 9,
+          "score": 109993,
           "appId": 322170,
           "url": "https://steamdb.info/app/322170/",
           "tags": [
@@ -980,15 +1011,15 @@
             "Family Sharing"
           ],
           "releaseDate": "2014-12-22",
-          "priceUsd": 4.99,
+          "priceUsd": 2.49,
           "isFree": false,
           "estimatedLength": "medium"
         },
         {
           "name": "Grand Theft Auto V Legacy",
           "source": "steamdb",
-          "rank": 9,
-          "score": 104755,
+          "rank": 10,
+          "score": 103834,
           "appId": 271590,
           "url": "https://steamdb.info/app/271590/",
           "tags": [
@@ -1011,10 +1042,37 @@
           "estimatedLength": "medium"
         },
         {
+          "name": "Tom Clancy's Rainbow Six Siege",
+          "source": "steamdb",
+          "rank": 11,
+          "score": 130558,
+          "appId": 359550,
+          "url": "https://steamdb.info/app/359550/",
+          "tags": [
+            "Action",
+            "Free To Play",
+            "Single-player",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Co-op",
+            "Online Co-op",
+            "Full controller support",
+            "Steam Trading Cards",
+            "In-App Purchases",
+            "Remote Play on Phone",
+            "Remote Play on Tablet"
+          ],
+          "releaseDate": "2015-12-01",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
           "name": "Overwatch®",
           "source": "steamdb",
-          "rank": 10,
-          "score": 94081,
+          "rank": 12,
+          "score": 99817,
           "appId": 2357570,
           "url": "https://steamdb.info/app/2357570/",
           "tags": [
@@ -1046,10 +1104,19 @@
           "estimatedLength": "medium"
         },
         {
+          "name": "FiveM",
+          "source": "steamdb",
+          "rank": 13,
+          "score": 184701,
+          "appId": 2676230,
+          "url": "https://steamdb.info/app/2676230/",
+          "isFree": false
+        },
+        {
           "name": "Terraria",
           "source": "steamdb",
-          "rank": 11,
-          "score": 80305,
+          "rank": 14,
+          "score": 80574,
           "appId": 105600,
           "url": "https://steamdb.info/app/105600/",
           "tags": [
@@ -1078,39 +1145,10 @@
           "estimatedLength": "long"
         },
         {
-          "name": "Marathon Server Slam",
-          "source": "steamdb",
-          "rank": 12,
-          "score": 123864,
-          "appId": 4254230,
-          "url": "https://steamdb.info/app/4254230/",
-          "tags": [
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Cross-Platform Multiplayer",
-            "Game demo",
-            "Partial Controller Support"
-          ],
-          "releaseDate": "2026-02-26",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "FiveM",
-          "source": "steamdb",
-          "rank": 13,
-          "score": 169162,
-          "appId": 2676230,
-          "url": "https://steamdb.info/app/2676230/",
-          "isFree": false
-        },
-        {
           "name": "War Thunder",
           "source": "steamdb",
-          "rank": 14,
-          "score": 87219,
+          "rank": 15,
+          "score": 101236,
           "appId": 236390,
           "url": "https://steamdb.info/app/236390/",
           "tags": [
@@ -1147,10 +1185,67 @@
           "estimatedLength": "long"
         },
         {
+          "name": "Counter-Strike:Global Offensive",
+          "source": "steamdb",
+          "rank": 16,
+          "score": 53476,
+          "appId": 4465480,
+          "url": "https://steamdb.info/app/4465480/",
+          "tags": [
+            "Action",
+            "Free To Play",
+            "Multi-player",
+            "Cross-Platform Multiplayer"
+          ],
+          "releaseDate": "2012-08-21",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Deadlock",
+          "source": "steamdb",
+          "rank": 17,
+          "score": 116102,
+          "appId": 1422450,
+          "url": "https://steamdb.info/app/1422450/",
+          "tags": [
+            "Action",
+            "Multi-player"
+          ],
+          "isFree": false,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Marvel Rivals",
+          "source": "steamdb",
+          "rank": 18,
+          "score": 97268,
+          "appId": 2767030,
+          "url": "https://steamdb.info/app/2767030/",
+          "tags": [
+            "Action",
+            "Free To Play",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Co-op",
+            "Online Co-op",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Full controller support",
+            "In-App Purchases"
+          ],
+          "releaseDate": "2024-12-05",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
           "name": "HELLDIVERS™ 2",
           "source": "steamdb",
-          "rank": 15,
-          "score": 67460,
+          "rank": 19,
+          "score": 69429,
           "appId": 553850,
           "url": "https://steamdb.info/app/553850/",
           "tags": [
@@ -1181,76 +1276,10 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Marvel Rivals",
-          "source": "steamdb",
-          "rank": 16,
-          "score": 100635,
-          "appId": 2767030,
-          "url": "https://steamdb.info/app/2767030/",
-          "tags": [
-            "Action",
-            "Free To Play",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Co-op",
-            "Online Co-op",
-            "Cross-Platform Multiplayer",
-            "Steam Achievements",
-            "Full controller support",
-            "In-App Purchases"
-          ],
-          "releaseDate": "2024-12-05",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "Tom Clancy's Rainbow Six® Siege X",
-          "source": "steamdb",
-          "rank": 17,
-          "score": 81341,
-          "appId": 359550,
-          "url": "https://steamdb.info/app/359550/",
-          "tags": [
-            "Action",
-            "Free To Play",
-            "Single-player",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Co-op",
-            "Online Co-op",
-            "Full controller support",
-            "Steam Trading Cards",
-            "In-App Purchases",
-            "Remote Play on Phone",
-            "Remote Play on Tablet"
-          ],
-          "releaseDate": "2015-12-01",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "Deadlock",
-          "source": "steamdb",
-          "rank": 18,
-          "score": 91796,
-          "appId": 1422450,
-          "url": "https://steamdb.info/app/1422450/",
-          "tags": [
-            "Action",
-            "Multi-player"
-          ],
-          "isFree": false,
-          "estimatedLength": "medium"
-        },
-        {
           "name": "Stardew Valley",
           "source": "steamdb",
-          "rank": 19,
-          "score": 87808,
+          "rank": 20,
+          "score": 104598,
           "appId": 413150,
           "url": "https://steamdb.info/app/413150/",
           "tags": [
@@ -1279,62 +1308,10 @@
           "estimatedLength": "long"
         },
         {
-          "name": "Battlefield™ 6",
-          "source": "steamdb",
-          "rank": 20,
-          "score": 61971,
-          "appId": 2807960,
-          "url": "https://steamdb.info/app/2807960/",
-          "tags": [
-            "Action",
-            "Single-player",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Cross-Platform Multiplayer",
-            "Steam Achievements",
-            "Full controller support",
-            "In-App Purchases",
-            "Camera Comfort",
-            "Chat Speech-to-text",
-            "Chat Text-to-speech",
-            "Color Alternatives",
-            "Custom Volume Controls",
-            "Adjustable Difficulty",
-            "Keyboard Only Option",
-            "Playable without Timed Input",
-            "Stereo Sound",
-            "Subtitle Options",
-            "Surround Sound",
-            "Steam Cloud",
-            "HDR available"
-          ],
-          "releaseDate": "2025-10-10",
-          "priceUsd": 69.99,
-          "isFree": false,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "Limbus Company",
-          "source": "steamdb",
-          "rank": 21,
-          "score": 51295,
-          "appId": 1973530,
-          "url": "https://steamdb.info/app/1973530/",
-          "tags": [
-            "Single-player",
-            "In-App Purchases"
-          ],
-          "releaseDate": "2023-02-26",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
           "name": "Rust",
           "source": "steamdb",
-          "rank": 22,
-          "score": 171378,
+          "rank": 21,
+          "score": 201102,
           "appId": 252490,
           "url": "https://steamdb.info/app/252490/",
           "tags": [
@@ -1372,10 +1349,146 @@
           "estimatedLength": "long"
         },
         {
-          "name": "Dead by Daylight",
+          "name": "Limbus Company",
+          "source": "steamdb",
+          "rank": 22,
+          "score": 64084,
+          "appId": 1973530,
+          "url": "https://steamdb.info/app/1973530/",
+          "tags": [
+            "Single-player",
+            "In-App Purchases"
+          ],
+          "releaseDate": "2023-02-26",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Battlefield™ 6",
           "source": "steamdb",
           "rank": 23,
-          "score": 59039,
+          "score": 64123,
+          "appId": 2807960,
+          "url": "https://steamdb.info/app/2807960/",
+          "tags": [
+            "Action",
+            "Single-player",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Full controller support",
+            "In-App Purchases",
+            "Camera Comfort",
+            "Chat Speech-to-text",
+            "Chat Text-to-speech",
+            "Color Alternatives",
+            "Custom Volume Controls",
+            "Adjustable Difficulty",
+            "Keyboard Only Option",
+            "Playable without Timed Input",
+            "Stereo Sound",
+            "Subtitle Options",
+            "Surround Sound",
+            "Steam Cloud",
+            "HDR available"
+          ],
+          "releaseDate": "2025-10-10",
+          "priceUsd": 69.99,
+          "isFree": false,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "R.E.P.O.",
+          "source": "steamdb",
+          "rank": 24,
+          "score": 59826,
+          "appId": 3241660,
+          "url": "https://steamdb.info/app/3241660/",
+          "tags": [
+            "Action",
+            "Early Access",
+            "Single-player",
+            "Multi-player",
+            "Co-op",
+            "Online Co-op",
+            "Camera Comfort",
+            "Custom Volume Controls",
+            "Playable without Timed Input",
+            "Stereo Sound",
+            "Steam Cloud",
+            "Family Sharing"
+          ],
+          "releaseDate": "2025-02-26",
+          "priceUsd": 6.99,
+          "isFree": false,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "Delta Force",
+          "source": "steamdb",
+          "rank": 25,
+          "score": 165430,
+          "appId": 2507950,
+          "url": "https://steamdb.info/app/2507950/",
+          "tags": [
+            "Action",
+            "Adventure",
+            "Massively Multiplayer",
+            "Free To Play",
+            "Single-player",
+            "Multi-player",
+            "MMO",
+            "PvP",
+            "Online PvP",
+            "Co-op",
+            "Online Co-op",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Full controller support",
+            "Steam Trading Cards",
+            "In-App Purchases"
+          ],
+          "releaseDate": "2024-12-04",
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "long"
+        },
+        {
+          "name": "Grand Theft Auto V Enhanced",
+          "source": "steamdb",
+          "rank": 26,
+          "score": 78291,
+          "appId": 3240220,
+          "url": "https://steamdb.info/app/3240220/",
+          "tags": [
+            "Action",
+            "Adventure",
+            "Racing",
+            "Single-player",
+            "Multi-player",
+            "PvP",
+            "Online PvP",
+            "Co-op",
+            "Online Co-op",
+            "Steam Achievements",
+            "In-App Purchases",
+            "Partial Controller Support",
+            "Remote Play on Phone",
+            "Remote Play on Tablet"
+          ],
+          "releaseDate": "2025-03-04",
+          "priceUsd": 19.79,
+          "isFree": false,
+          "estimatedLength": "short"
+        },
+        {
+          "name": "Dead by Daylight",
+          "source": "steamdb",
+          "rank": 27,
+          "score": 58070,
           "appId": 381210,
           "url": "https://steamdb.info/app/381210/",
           "tags": [
@@ -1406,138 +1519,10 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Mewgenics",
-          "source": "steamdb",
-          "rank": 24,
-          "score": 70831,
-          "appId": 686060,
-          "url": "https://steamdb.info/app/686060/",
-          "tags": [
-            "Adventure",
-            "Indie",
-            "RPG",
-            "Simulation",
-            "Strategy",
-            "Single-player",
-            "Steam Achievements",
-            "Full controller support",
-            "Adjustable Text Size",
-            "Camera Comfort",
-            "Color Alternatives",
-            "Custom Volume Controls",
-            "Mouse Only Option",
-            "Playable without Timed Input",
-            "Save Anytime",
-            "Stereo Sound",
-            "Steam Cloud",
-            "Family Sharing"
-          ],
-          "releaseDate": "2026-02-10",
-          "priceUsd": 29.99,
-          "isFree": false,
-          "estimatedLength": "long"
-        },
-        {
-          "name": "Grand Theft Auto V Enhanced",
-          "source": "steamdb",
-          "rank": 25,
-          "score": 69329,
-          "appId": 3240220,
-          "url": "https://steamdb.info/app/3240220/",
-          "tags": [
-            "Action",
-            "Adventure",
-            "Racing",
-            "Single-player",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Co-op",
-            "Online Co-op",
-            "Steam Achievements",
-            "In-App Purchases",
-            "Partial Controller Support",
-            "Remote Play on Phone",
-            "Remote Play on Tablet"
-          ],
-          "releaseDate": "2025-03-04",
-          "priceUsd": 29.99,
-          "isFree": false,
-          "estimatedLength": "short"
-        },
-        {
-          "name": "Delta Force",
-          "source": "steamdb",
-          "rank": 26,
-          "score": 152510,
-          "appId": 2507950,
-          "url": "https://steamdb.info/app/2507950/",
-          "tags": [
-            "Action",
-            "Adventure",
-            "Massively Multiplayer",
-            "Free To Play",
-            "Single-player",
-            "Multi-player",
-            "MMO",
-            "PvP",
-            "Online PvP",
-            "Co-op",
-            "Online Co-op",
-            "Cross-Platform Multiplayer",
-            "Steam Achievements",
-            "Full controller support",
-            "Steam Trading Cards",
-            "In-App Purchases"
-          ],
-          "releaseDate": "2024-12-04",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "long"
-        },
-        {
-          "name": "Euro Truck Simulator 2",
-          "source": "steamdb",
-          "rank": 27,
-          "score": 57202,
-          "appId": 227300,
-          "url": "https://steamdb.info/app/227300/",
-          "tags": [
-            "Indie",
-            "Simulation",
-            "Single-player",
-            "Multi-player",
-            "Co-op",
-            "Online Co-op",
-            "Steam Achievements",
-            "Steam Trading Cards",
-            "Steam Workshop",
-            "Camera Comfort",
-            "Custom Volume Controls",
-            "Adjustable Difficulty",
-            "Keyboard Only Option",
-            "Playable without Timed Input",
-            "Save Anytime",
-            "Stereo Sound",
-            "Surround Sound",
-            "Partial Controller Support",
-            "Steam Cloud",
-            "Includes level editor",
-            "Remote Play on Phone",
-            "Remote Play on Tablet",
-            "Remote Play Together",
-            "Family Sharing"
-          ],
-          "releaseDate": "2012-10-12",
-          "priceUsd": 19.99,
-          "isFree": false,
-          "estimatedLength": "long"
-        },
-        {
           "name": "Warframe",
           "source": "steamdb",
           "rank": 28,
-          "score": 59454,
+          "score": 70896,
           "appId": 230410,
           "url": "https://steamdb.info/app/230410/",
           "tags": [
@@ -1571,288 +1556,323 @@
           "estimatedLength": "long"
         },
         {
-          "name": "NARAKA: BLADEPOINT",
+          "name": "EA SPORTS FC™ 26",
           "source": "steamdb",
           "rank": 29,
-          "score": 80237,
-          "appId": 1203220,
-          "url": "https://steamdb.info/app/1203220/",
+          "score": 66947,
+          "appId": 3405690,
+          "url": "https://steamdb.info/app/3405690/",
           "tags": [
-            "Action",
-            "Adventure",
-            "Massively Multiplayer",
-            "Free To Play",
-            "Multi-player",
-            "PvP",
-            "Online PvP",
-            "Steam Achievements",
-            "Steam Trading Cards",
-            "In-App Purchases",
-            "Partial Controller Support",
-            "HDR available"
-          ],
-          "releaseDate": "2021-08-11",
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "tModLoader",
-          "source": "steamdb",
-          "rank": 30,
-          "score": 55667,
-          "appId": 1281930,
-          "url": "https://steamdb.info/app/1281930/",
-          "tags": [
-            "Action",
-            "Adventure",
-            "Indie",
-            "RPG",
-            "Free To Play",
+            "Simulation",
+            "Sports",
             "Single-player",
             "Multi-player",
             "PvP",
             "Online PvP",
+            "Shared/Split Screen PvP",
             "Co-op",
             "Online Co-op",
-            "Steam Workshop",
-            "Steam Cloud"
+            "Shared/Split Screen Co-op",
+            "Shared/Split Screen",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Full controller support",
+            "In-App Purchases",
+            "Chat Speech-to-text",
+            "Adjustable Difficulty",
+            "Keyboard Only Option",
+            "Stereo Sound",
+            "Subtitle Options",
+            "HDR available"
           ],
-          "releaseDate": "2020-05-16",
+          "releaseDate": "2025-09-25",
+          "priceUsd": 20.99,
+          "isFree": false,
+          "estimatedLength": "long"
+        },
+        {
+          "name": "Team Fortress 2",
+          "source": "steamdb",
+          "rank": 30,
+          "score": 61493,
+          "appId": 440,
+          "url": "https://steamdb.info/app/440/",
+          "tags": [
+            "Action",
+            "Free To Play",
+            "Multi-player",
+            "Cross-Platform Multiplayer",
+            "Steam Achievements",
+            "Steam Trading Cards",
+            "Captions available",
+            "Steam Workshop",
+            "In-App Purchases",
+            "Camera Comfort",
+            "Color Alternatives",
+            "Custom Volume Controls",
+            "Stereo Sound",
+            "Surround Sound",
+            "Partial Controller Support",
+            "Valve Anti-Cheat enabled",
+            "Stats",
+            "Includes level editor",
+            "Commentary available",
+            "Remote Play on Phone",
+            "Remote Play on Tablet"
+          ],
+          "releaseDate": "2007-10-10",
           "priceUsd": 0,
           "isFree": true,
-          "estimatedLength": "long"
+          "estimatedLength": "medium"
         }
       ]
     },
     "twitchmetrics": {
       "id": "twitchmetrics",
       "label": "TwitchMetrics",
-      "fetchedAt": "2026-02-28T06:49:15.178Z",
+      "fetchedAt": "2026-03-08T06:25:38.584Z",
       "games": [
         {
           "name": "League of Legends",
           "source": "twitchmetrics",
           "rank": 2,
-          "score": 118018,
+          "score": 112540,
           "url": "https://www.twitchmetrics.net/g/21779-league-of-legends"
-        },
-        {
-          "name": "Counter-Strike",
-          "source": "twitchmetrics",
-          "rank": 3,
-          "score": 103555,
-          "url": "https://www.twitchmetrics.net/g/32399-counter-strike"
         },
         {
           "name": "Grand Theft Auto V",
           "source": "twitchmetrics",
-          "rank": 4,
-          "score": 92172,
+          "rank": 3,
+          "score": 94445,
           "url": "https://www.twitchmetrics.net/g/32982-grand-theft-auto-v"
+        },
+        {
+          "name": "Counter-Strike",
+          "source": "twitchmetrics",
+          "rank": 4,
+          "score": 92089,
+          "url": "https://www.twitchmetrics.net/g/32399-counter-strike"
+        },
+        {
+          "name": "RESIDENT EVIL: requiem",
+          "source": "twitchmetrics",
+          "rank": 5,
+          "score": 67009,
+          "url": "https://www.twitchmetrics.net/g/1597660489-resident-evil-requiem"
         },
         {
           "name": "VALORANT",
           "source": "twitchmetrics",
-          "rank": 5,
-          "score": 61402,
-          "url": "https://www.twitchmetrics.net/g/516575-valorant"
-        },
-        {
-          "name": "ARC Raiders",
-          "source": "twitchmetrics",
           "rank": 6,
-          "score": 57488,
-          "url": "https://www.twitchmetrics.net/g/464339927-arc-raiders"
+          "score": 59947,
+          "url": "https://www.twitchmetrics.net/g/516575-valorant"
         },
         {
           "name": "World of Warcraft",
           "source": "twitchmetrics",
           "rank": 7,
-          "score": 56803,
+          "score": 59550,
           "url": "https://www.twitchmetrics.net/g/18122-world-of-warcraft"
         },
         {
           "name": "Dota 2",
           "source": "twitchmetrics",
           "rank": 8,
-          "score": 53046,
+          "score": 51034,
           "url": "https://www.twitchmetrics.net/g/29595-dota-2"
+        },
+        {
+          "name": "ARC Raiders",
+          "source": "twitchmetrics",
+          "rank": 9,
+          "score": 50760,
+          "url": "https://www.twitchmetrics.net/g/464339927-arc-raiders"
+        },
+        {
+          "name": "The Tall Man Tapes",
+          "source": "twitchmetrics",
+          "rank": 10,
+          "score": 50426,
+          "url": "https://www.twitchmetrics.net/g/1981025963-the-tall-man-tapes"
         },
         {
           "name": "Overwatch",
           "source": "twitchmetrics",
-          "rank": 9,
-          "score": 45636,
+          "rank": 11,
+          "score": 48122,
           "url": "https://www.twitchmetrics.net/g/515025-overwatch"
         },
         {
           "name": "Minecraft",
           "source": "twitchmetrics",
-          "rank": 10,
-          "score": 43134,
-          "url": "https://www.twitchmetrics.net/g/27471-minecraft"
-        },
-        {
-          "name": "Rocket League",
-          "source": "twitchmetrics",
           "rank": 12,
-          "score": 31575,
-          "url": "https://www.twitchmetrics.net/g/30921-rocket-league"
+          "score": 36921,
+          "url": "https://www.twitchmetrics.net/g/27471-minecraft"
         },
         {
           "name": "Fortnite",
           "source": "twitchmetrics",
-          "rank": 13,
-          "score": 30490,
+          "rank": 14,
+          "score": 30644,
           "url": "https://www.twitchmetrics.net/g/33214-fortnite"
         },
         {
           "name": "Spinshot Party",
           "source": "twitchmetrics",
-          "rank": 14,
+          "rank": 15,
           "score": 29701,
           "url": "https://www.twitchmetrics.net/g/33482702-spinshot-party"
         },
         {
+          "name": "Rocket League",
+          "source": "twitchmetrics",
+          "rank": 16,
+          "score": 29302,
+          "url": "https://www.twitchmetrics.net/g/30921-rocket-league"
+        },
+        {
+          "name": "Safari Cannon",
+          "source": "twitchmetrics",
+          "rank": 17,
+          "score": 27201,
+          "url": "https://www.twitchmetrics.net/g/1816222682-safari-cannon"
+        },
+        {
           "name": "Circle of Sumo: Online Rumble!",
           "source": "twitchmetrics",
-          "rank": 15,
+          "rank": 18,
           "score": 27141,
           "url": "https://www.twitchmetrics.net/g/515804-circle-of-sumo-online-rumble"
         },
         {
           "name": "Alpaca Ball: Allstars",
           "source": "twitchmetrics",
-          "rank": 16,
+          "rank": 19,
           "score": 24423,
           "url": "https://www.twitchmetrics.net/g/1026866954-alpaca-ball-allstars"
         },
         {
-          "name": "Dead by Daylight",
-          "source": "twitchmetrics",
-          "rank": 17,
-          "score": 22399,
-          "url": "https://www.twitchmetrics.net/g/491487-dead-by-daylight"
-        },
-        {
-          "name": "Mewgenics",
-          "source": "twitchmetrics",
-          "rank": 18,
-          "score": 20412,
-          "url": "https://www.twitchmetrics.net/g/75115-mewgenics"
-        },
-        {
           "name": "Verdun",
           "source": "twitchmetrics",
-          "rank": 19,
-          "score": 19951,
+          "rank": 20,
+          "score": 23939,
           "url": "https://www.twitchmetrics.net/g/313162-verdun"
         },
         {
-          "name": "Marvel Rivals",
-          "source": "twitchmetrics",
-          "rank": 20,
-          "score": 18466,
-          "url": "https://www.twitchmetrics.net/g/1264310518-marvel-rivals"
-        },
-        {
-          "name": "Teamfight Tactics",
+          "name": "Pokémon Pokopia",
           "source": "twitchmetrics",
           "rank": 21,
-          "score": 18320,
-          "url": "https://www.twitchmetrics.net/g/513143-teamfight-tactics"
+          "score": 22453,
+          "url": "https://www.twitchmetrics.net/g/1329153872-pokemon-pokopia"
         },
         {
-          "name": "Delivery Driver: The Simulation",
+          "name": "Dead by Daylight",
           "source": "twitchmetrics",
           "rank": 22,
-          "score": 16208,
-          "url": "https://www.twitchmetrics.net/g/1417826640-delivery-driver-the-simulation"
+          "score": 18656,
+          "url": "https://www.twitchmetrics.net/g/491487-dead-by-daylight"
+        },
+        {
+          "name": "FLASH AND DIE",
+          "source": "twitchmetrics",
+          "rank": 23,
+          "score": 18243,
+          "url": "https://www.twitchmetrics.net/g/105096305-flash-and-die"
         },
         {
           "name": "Rainbow Six Siege",
           "source": "twitchmetrics",
-          "rank": 23,
-          "score": 15662,
+          "rank": 24,
+          "score": 17809,
           "url": "https://www.twitchmetrics.net/g/460630-rainbow-six-siege"
+        },
+        {
+          "name": "Marvel Rivals",
+          "source": "twitchmetrics",
+          "rank": 25,
+          "score": 16112,
+          "url": "https://www.twitchmetrics.net/g/1264310518-marvel-rivals"
+        },
+        {
+          "name": "Mewgenics",
+          "source": "twitchmetrics",
+          "rank": 26,
+          "score": 15675,
+          "url": "https://www.twitchmetrics.net/g/75115-mewgenics"
         },
         {
           "name": "Call of Duty: Warzone",
           "source": "twitchmetrics",
-          "rank": 24,
-          "score": 15554,
+          "rank": 27,
+          "score": 15401,
           "url": "https://www.twitchmetrics.net/g/512710-call-of-duty-warzone"
         },
         {
-          "name": "EA Sports FC 26",
+          "name": "Teamfight Tactics",
           "source": "twitchmetrics",
-          "rank": 25,
-          "score": 15155,
-          "url": "https://www.twitchmetrics.net/g/624536948-ea-sports-fc-26"
+          "rank": 28,
+          "score": 14997,
+          "url": "https://www.twitchmetrics.net/g/513143-teamfight-tactics"
         },
         {
           "name": "Rust",
           "source": "twitchmetrics",
-          "rank": 26,
-          "score": 14845,
+          "rank": 29,
+          "score": 14709,
           "url": "https://www.twitchmetrics.net/g/263490-rust"
+        },
+        {
+          "name": "Marathon",
+          "source": "twitchmetrics",
+          "rank": 30,
+          "score": 14658,
+          "url": "https://www.twitchmetrics.net/g/407314011-marathon"
         },
         {
           "name": "Peggle 2",
           "source": "twitchmetrics",
-          "rank": 27,
+          "rank": 31,
           "score": 14330,
           "url": "https://www.twitchmetrics.net/g/369573-peggle-2"
         },
         {
-          "name": "Call of Duty: Black Ops 7",
-          "source": "twitchmetrics",
-          "rank": 28,
-          "score": 14102,
-          "url": "https://www.twitchmetrics.net/g/2012789438-call-of-duty-black-ops-7"
-        },
-        {
-          "name": "Deadlock",
-          "source": "twitchmetrics",
-          "rank": 29,
-          "score": 13906,
-          "url": "https://www.twitchmetrics.net/g/2132205352-deadlock"
-        },
-        {
-          "name": "Redast",
-          "source": "twitchmetrics",
-          "rank": 30,
-          "score": 13819,
-          "url": "https://www.twitchmetrics.net/g/55625609-redast"
-        },
-        {
           "name": "Slots",
           "source": "twitchmetrics",
-          "rank": 31,
-          "score": 13673,
-          "url": "https://www.twitchmetrics.net/g/498566-slots"
-        },
-        {
-          "name": "Virtual Casino",
-          "source": "twitchmetrics",
           "rank": 32,
-          "score": 13112,
-          "url": "https://www.twitchmetrics.net/g/29452-virtual-casino"
+          "score": 13554,
+          "url": "https://www.twitchmetrics.net/g/498566-slots"
         }
       ]
     },
     "itchio": {
       "id": "itchio",
       "label": "itch.io",
-      "fetchedAt": "2026-02-28T06:49:15.178Z",
+      "fetchedAt": "2026-03-08T06:25:38.584Z",
       "games": [
         {
           "name": "​Our Life: Beginnings & Always",
           "source": "itchio",
           "rank": 1,
-          "score": 7020,
+          "score": 7047,
           "url": "https://gbpatch.itch.io/our-life",
+          "platforms": [
+            "windows",
+            "mac",
+            "linux"
+          ],
+          "tags": [
+            "Visual Novel"
+          ],
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
+          "name": "The Freak Circus",
+          "source": "itchio",
+          "rank": 2,
+          "score": 5881,
+          "url": "https://garula.itch.io/the-freak-circus",
           "platforms": [
             "windows",
             "mac",
@@ -1868,27 +1888,9 @@
         {
           "name": "Adventures With Anxiety!",
           "source": "itchio",
-          "rank": 2,
-          "score": 6954,
-          "url": "https://ncase.itch.io/anxiety",
-          "tags": [
-            "Visual Novel"
-          ],
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "The Freak Circus",
-          "source": "itchio",
           "rank": 3,
-          "score": 5632,
-          "url": "https://garula.itch.io/the-freak-circus",
-          "platforms": [
-            "windows",
-            "mac",
-            "linux"
-          ],
+          "score": 6972,
+          "url": "https://ncase.itch.io/anxiety",
           "tags": [
             "Visual Novel"
           ],
@@ -1900,7 +1902,7 @@
           "name": "HoloCure",
           "source": "itchio",
           "rank": 4,
-          "score": 5160,
+          "score": 5161,
           "url": "https://kay-yu.itch.io/holocure",
           "platforms": [
             "windows"
@@ -1916,7 +1918,7 @@
           "name": "Blooming Panic",
           "source": "itchio",
           "rank": 5,
-          "score": 5763,
+          "score": 5782,
           "url": "https://robobarbie.itch.io/blooming-panic",
           "platforms": [
             "windows",
@@ -1933,7 +1935,7 @@
           "name": "\"Voices Of The Void\" Pre-Alpha",
           "source": "itchio",
           "rank": 6,
-          "score": 5075,
+          "score": 5092,
           "url": "https://mrdrnose.itch.io/votv",
           "platforms": [
             "windows"
@@ -1949,7 +1951,7 @@
           "name": "A Date with Death",
           "source": "itchio",
           "rank": 7,
-          "score": 4736,
+          "score": 4777,
           "url": "https://twoandahalfstudios.itch.io/a-date-with-death",
           "platforms": [
             "windows",
@@ -1967,7 +1969,7 @@
           "name": "Our Life: Now & Forever",
           "source": "itchio",
           "rank": 8,
-          "score": 3164,
+          "score": 3184,
           "url": "https://gbpatch.itch.io/our-life-nf",
           "platforms": [
             "windows",
@@ -1985,7 +1987,7 @@
           "name": "14 Days With You [DEMO]",
           "source": "itchio",
           "rank": 9,
-          "score": 4524,
+          "score": 4573,
           "url": "https://cutiesai.itch.io/14dayswithyou",
           "platforms": [
             "windows",
@@ -2003,7 +2005,7 @@
           "name": "A Short Hike",
           "source": "itchio",
           "rank": 10,
-          "score": 4295,
+          "score": 4300,
           "url": "https://adamgryu.itch.io/a-short-hike",
           "platforms": [
             "windows",
@@ -2021,7 +2023,7 @@
           "name": "Friday Night Funkin'",
           "source": "itchio",
           "rank": 11,
-          "score": 12006,
+          "score": 12021,
           "url": "https://ninja-muffin24.itch.io/funkin",
           "platforms": [
             "windows",
@@ -2036,11 +2038,11 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Killer Chat! Original Edition",
+          "name": "Butterfly Soup",
           "source": "itchio",
           "rank": 12,
-          "score": 4626,
-          "url": "https://rosesrot.itch.io/killer-chat",
+          "score": 4197,
+          "url": "https://brianna-lei.itch.io/butterfly-soup",
           "platforms": [
             "windows",
             "mac",
@@ -2054,11 +2056,11 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Butterfly Soup",
+          "name": "Killer Chat! Original Edition",
           "source": "itchio",
           "rank": 13,
-          "score": 4192,
-          "url": "https://brianna-lei.itch.io/butterfly-soup",
+          "score": 4652,
+          "url": "https://rosesrot.itch.io/killer-chat",
           "platforms": [
             "windows",
             "mac",
@@ -2075,7 +2077,7 @@
           "name": "We Become What We Behold",
           "source": "itchio",
           "rank": 14,
-          "score": 8097,
+          "score": 8119,
           "url": "https://ncase.itch.io/wbwwb",
           "priceUsd": 0,
           "isFree": true
@@ -2084,7 +2086,7 @@
           "name": "Doki Doki Literature Club!",
           "source": "itchio",
           "rank": 15,
-          "score": 5877,
+          "score": 5905,
           "url": "https://teamsalvato.itch.io/ddlc",
           "platforms": [
             "windows",
@@ -2102,26 +2104,8 @@
           "name": "goodbye, doggy",
           "source": "itchio",
           "rank": 16,
-          "score": 4872,
+          "score": 4890,
           "url": "https://picogram.itch.io/goodbye-doggy",
-          "tags": [
-            "Puzzle"
-          ],
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
-          "name": "Six Cats Under",
-          "source": "itchio",
-          "rank": 17,
-          "score": 6882,
-          "url": "https://teambeanloop.itch.io/six-cats-under",
-          "platforms": [
-            "windows",
-            "mac",
-            "linux"
-          ],
           "tags": [
             "Puzzle"
           ],
@@ -2132,8 +2116,8 @@
         {
           "name": "Don't eat the cashier!",
           "source": "itchio",
-          "rank": 18,
-          "score": 2374,
+          "rank": 17,
+          "score": 2518,
           "url": "https://miloff.itch.io/dont-eat-the-cashier",
           "platforms": [
             "windows",
@@ -2148,10 +2132,28 @@
           "estimatedLength": "medium"
         },
         {
+          "name": "Six Cats Under",
+          "source": "itchio",
+          "rank": 18,
+          "score": 6919,
+          "url": "https://teambeanloop.itch.io/six-cats-under",
+          "platforms": [
+            "windows",
+            "mac",
+            "linux"
+          ],
+          "tags": [
+            "Puzzle"
+          ],
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
           "name": "Mushroom Oasis",
           "source": "itchio",
           "rank": 19,
-          "score": 2894,
+          "score": 2935,
           "url": "https://deerspherestudios.itch.io/mushroom-oasis",
           "platforms": [
             "windows",
@@ -2169,7 +2171,7 @@
           "name": "Sort the Court!",
           "source": "itchio",
           "rank": 20,
-          "score": 10281,
+          "score": 10325,
           "url": "https://graebor.itch.io/sort-the-court",
           "platforms": [
             "windows",
@@ -2186,7 +2188,7 @@
           "name": "TOUCHSTARVED: A Dark Romance Visual Novel",
           "source": "itchio",
           "rank": 21,
-          "score": 3067,
+          "score": 3083,
           "url": "https://redspringstudio.itch.io/touchstarved",
           "platforms": [
             "windows",
@@ -2200,28 +2202,10 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Project Kat",
-          "source": "itchio",
-          "rank": 22,
-          "score": 4537,
-          "url": "https://leef6010.itch.io/projectkat",
-          "platforms": [
-            "windows",
-            "mac",
-            "linux"
-          ],
-          "tags": [
-            "Role Playing"
-          ],
-          "priceUsd": 0,
-          "isFree": true,
-          "estimatedLength": "medium"
-        },
-        {
           "name": "Andromeda Six",
           "source": "itchio",
-          "rank": 23,
-          "score": 3800,
+          "rank": 22,
+          "score": 3806,
           "url": "https://wanderlust-games.itch.io/andromeda-six",
           "platforms": [
             "windows",
@@ -2236,11 +2220,16 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "DELTARUNE",
+          "name": "Project Kat",
           "source": "itchio",
-          "rank": 24,
-          "score": 2264,
-          "url": "https://tobyfox.itch.io/deltarune",
+          "rank": 23,
+          "score": 4540,
+          "url": "https://leef6010.itch.io/projectkat",
+          "platforms": [
+            "windows",
+            "mac",
+            "linux"
+          ],
           "tags": [
             "Role Playing"
           ],
@@ -2251,8 +2240,8 @@
         {
           "name": "Serenitrove",
           "source": "itchio",
-          "rank": 25,
-          "score": 2261,
+          "rank": 24,
+          "score": 2325,
           "url": "https://alfredncy.itch.io/serenitrove",
           "platforms": [
             "windows",
@@ -2267,10 +2256,23 @@
           "estimatedLength": "medium"
         },
         {
+          "name": "DELTARUNE",
+          "source": "itchio",
+          "rank": 25,
+          "score": 2265,
+          "url": "https://tobyfox.itch.io/deltarune",
+          "tags": [
+            "Role Playing"
+          ],
+          "priceUsd": 0,
+          "isFree": true,
+          "estimatedLength": "medium"
+        },
+        {
           "name": "last seen online",
           "source": "itchio",
           "rank": 26,
-          "score": 3577,
+          "score": 3597,
           "url": "https://qwook.itch.io/last-seen-online",
           "tags": [
             "Puzzle"
@@ -2283,7 +2285,7 @@
           "name": "Celeste",
           "source": "itchio",
           "rank": 27,
-          "score": 2614,
+          "score": 2620,
           "url": "https://maddymakesgamesinc.itch.io/celeste",
           "platforms": [
             "windows",
@@ -2298,11 +2300,11 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Online Obsession",
+          "name": "Prescription:LOVE",
           "source": "itchio",
           "rank": 28,
-          "score": 2818,
-          "url": "https://sourmiiiilk.itch.io/online-obsession",
+          "score": 2707,
+          "url": "https://livingslime.itch.io/prescriptionlove",
           "platforms": [
             "windows",
             "mac",
@@ -2316,11 +2318,11 @@
           "estimatedLength": "medium"
         },
         {
-          "name": "Prescription:LOVE",
+          "name": "Online Obsession",
           "source": "itchio",
           "rank": 29,
-          "score": 2667,
-          "url": "https://livingslime.itch.io/prescriptionlove",
+          "score": 2860,
+          "url": "https://sourmiiiilk.itch.io/online-obsession",
           "platforms": [
             "windows",
             "mac",
@@ -2337,7 +2339,7 @@
           "name": "A Tale of Crowns",
           "source": "itchio",
           "rank": 30,
-          "score": 2740,
+          "score": 2752,
           "url": "https://qeresi.itch.io/a-tale-of-crowns",
           "tags": [
             "Interactive Fiction"

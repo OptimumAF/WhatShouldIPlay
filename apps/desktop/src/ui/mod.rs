@@ -2,6 +2,8 @@ use dioxus::prelude::*;
 use rand::RngExt;
 use tokio::time::{sleep, Duration};
 
+pub(crate) mod settings;
+
 use crate::{
     format_odds, localize_source_chain, pick_weighted_index, tr, SpinHistoryItem, UiLang,
     WeightedPoolGame,

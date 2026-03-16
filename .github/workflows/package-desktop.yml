@@ -7,7 +7,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   attestations: write
   id-token: write
 
@@ -124,6 +124,22 @@ jobs:
         with:
           name: pick-a-game-desktop-package-${{ matrix.platform }}-${{ github.run_number }}
           path: |
+            apps/desktop/target/release/bundle/osx/*.app.zip
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+
+      - name: Publish packaged release assets (Windows/Linux)
+        if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.platform != 'macos' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ matrix.artifact_glob }}
+            apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
+
+      - name: Publish packaged release assets (macOS)
+        if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.platform == 'macos' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
             apps/desktop/target/release/bundle/osx/*.app.zip
             apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
 

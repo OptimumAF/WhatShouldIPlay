@@ -118,7 +118,7 @@ cargo build --release
 - `refresh-data.yml`: Scheduled source data refresh every 6 hours
 - `deploy-pages.yml`: Web build and Pages deploy on `master`
 - `build-desktop.yml`: Windows/macOS/Linux desktop artifact builds on push/PR to `master`
-- `package-desktop.yml`: Native desktop package build on version tags (`v*`) and manual runs
+- `package-desktop.yml`: Native desktop package build on version tags (`v*`) and manual runs, with packaged artifacts published to GitHub Releases on tags
 - `release-desktop-signed.yml`: Enforced Windows signed release pipeline on version tags (`v*`)
 - `web-ci.yml`: Web quality checks on push/PR
 

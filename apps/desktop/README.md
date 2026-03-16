@@ -37,7 +37,7 @@ cargo build --release
 Version tags (`v*`) and manual workflow runs execute `.github/workflows/package-desktop.yml`
 to produce native desktop packages:
 
-- Windows `.msi`
+- Windows portable `.exe`
 - Linux `.deb`
 - macOS `.app.zip`
 

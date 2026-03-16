@@ -17,9 +17,12 @@ Each push to `master` also generates:
 Native installer packaging is produced by `package-desktop.yml` on version tags
 (`v*`) and manual runs:
 
-- Windows: `.msi`
+- Windows: portable `.exe`
 - Linux: `.deb`
 - macOS: `.app.zip` (app bundle zipped for transport)
+
+On version tags, `package-desktop.yml` now also publishes those packaged artifacts
+directly to the corresponding GitHub Release.
 
 Signed Windows release publishing is handled by `release-desktop-signed.yml`
 on version tags (`v*`). It requires:
@@ -40,7 +43,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-3. Create a GitHub Release and attach workflow artifacts if needed.
+3. Wait for the release workflows to publish the packaged desktop assets.
 
 4. Verify artifact integrity and provenance before distribution:
 

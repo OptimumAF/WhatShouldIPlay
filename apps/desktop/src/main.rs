@@ -53,6 +53,39 @@ struct SpinHistoryItem {
     odds: f64,
 }
 
+#[derive(Clone, Debug)]
+struct WeightLabels {
+    steamcharts: String,
+    steamdb: String,
+    twitch: String,
+    steam_import: String,
+    manual: String,
+    scanned: String,
+}
+
+#[derive(Clone, Debug)]
+struct SuggestedWeights {
+    steamcharts: f64,
+    steamdb: f64,
+    twitch: f64,
+    steam_import: f64,
+    manual: f64,
+    scanned: f64,
+}
+
+#[derive(Clone, Debug)]
+struct UiCopy {
+    profile_label: &'static str,
+    spin_button_label: &'static str,
+    weighted_mode_label: &'static str,
+    adaptive_recommendations_label: &'static str,
+    reduced_spin_animation_label: &'static str,
+    behavior_signal_status_label: &'static str,
+    you_should_play_label: &'static str,
+    sidebar_toggle_label: &'static str,
+    spin_duration_label: String,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum UiLang {
     En,
@@ -252,26 +285,25 @@ fn App() -> Element {
             (angle, flip, pool_game.name.clone())
         })
         .collect::<Vec<_>>();
-    let steamcharts_weight_label = format!("{:.1}x", steamcharts_weight());
-    let steamdb_weight_label = format!("{:.1}x", steamdb_weight());
-    let twitch_weight_label = format!("{:.1}x", twitch_weight());
-    let steam_import_weight_label = format!("{:.1}x", steam_import_weight());
-    let manual_weight_label = format!("{:.1}x", manual_weight());
-    let scanned_weight_label = format!("{:.1}x", scanned_weight());
+    let weight_labels = make_weight_labels(
+        steamcharts_weight(),
+        steamdb_weight(),
+        twitch_weight(),
+        steam_import_weight(),
+        manual_weight(),
+        scanned_weight(),
+    );
     let behavior_signal_count = spin_history().len().min(20);
     let behavior_multipliers = compute_behavior_multipliers(&spin_history());
-    let suggested_steamcharts_weight = suggested_source_weight(1.2, behavior_multipliers[0]);
-    let suggested_steamdb_weight = suggested_source_weight(1.15, behavior_multipliers[1]);
-    let suggested_twitch_weight = suggested_source_weight(1.0, behavior_multipliers[2]);
-    let suggested_steam_import_weight = suggested_source_weight(1.35, behavior_multipliers[3]);
-    let suggested_manual_weight = suggested_source_weight(0.9, behavior_multipliers[4]);
-    let suggested_scanned_weight = suggested_source_weight(1.0, behavior_multipliers[5]);
-    let suggested_steamcharts_weight_label = format!("{:.1}x", suggested_steamcharts_weight);
-    let suggested_steamdb_weight_label = format!("{:.1}x", suggested_steamdb_weight);
-    let suggested_twitch_weight_label = format!("{:.1}x", suggested_twitch_weight);
-    let suggested_steam_import_weight_label = format!("{:.1}x", suggested_steam_import_weight);
-    let suggested_manual_weight_label = format!("{:.1}x", suggested_manual_weight);
-    let suggested_scanned_weight_label = format!("{:.1}x", suggested_scanned_weight);
+    let suggested_weights = make_suggested_weights(&behavior_multipliers);
+    let suggested_weight_labels = make_weight_labels(
+        suggested_weights.steamcharts,
+        suggested_weights.steamdb,
+        suggested_weights.twitch,
+        suggested_weights.steam_import,
+        suggested_weights.manual,
+        suggested_weights.scanned,
+    );
     let adaptive_spin_weights = spin_pool
         .iter()
         .map(|entry| {
@@ -301,31 +333,22 @@ fn App() -> Element {
     );
     let platform_class = host_platform_class();
     let platform_label = host_platform_label();
-    let spin_duration_label = format!("{:.1}s", spin_duration_ms / 1000.0);
-    let spin_button_label = if spinning() {
-        tr(lang, "Spinning...", "Girando...")
-    } else {
-        tr(lang, "Spin Wheel", "Girar ruleta")
-    };
-    let weighted_mode_label = on_off_label(lang, weighted_mode());
-    let adaptive_recommendations_label = on_off_label(lang, adaptive_recommendations());
-    let reduced_spin_animation_label = on_off_label(lang, reduced_spin_animation());
-    let behavior_signal_status_label = if behavior_signal_count < 3 {
-        tr(lang, "Need 3+", "Necesita 3+")
-    } else {
-        tr(lang, "Ready", "Listo")
-    };
-    let you_should_play_label = tr(lang, "You should play:", "Deberias jugar:");
-    let sidebar_toggle_label = if show_sidebar() {
-        tr(lang, "Hide Settings", "Ocultar ajustes")
-    } else {
-        tr(lang, "Show Settings", "Mostrar ajustes")
-    };
+    let ui_copy = make_ui_copy(
+        lang,
+        spinning(),
+        weighted_mode(),
+        adaptive_recommendations(),
+        reduced_spin_animation(),
+        behavior_signal_count,
+        show_sidebar(),
+        profile_label,
+        spin_duration_ms,
+    );
 
     rsx! {
         style { "{DESKTOP_CSS}" }
         main { class: format!("layout {}", platform_class),
-            {render_hero_masthead(lang, platform_label, &status(), ui_lang, show_sidebar, sidebar_toggle_label)}
+            {render_hero_masthead(lang, platform_label, &status(), ui_lang, show_sidebar, ui_copy.sidebar_toggle_label)}
 
             div { class: if show_sidebar() { "workspace" } else { "workspace sidebar-collapsed" },
                 if show_sidebar() {
@@ -362,31 +385,31 @@ fn App() -> Element {
                         status,
                         steamdb_note,
                         ui_lang,
-                        weighted_mode_label,
-                        adaptive_recommendations_label,
-                        reduced_spin_animation_label,
-                        profile_label,
+                        ui_copy.weighted_mode_label,
+                        ui_copy.adaptive_recommendations_label,
+                        ui_copy.reduced_spin_animation_label,
+                        ui_copy.profile_label,
                         behavior_signal_count,
-                        behavior_signal_status_label,
-                        spin_duration_label.clone(),
-                        steamcharts_weight_label.clone(),
-                        steamdb_weight_label.clone(),
-                        twitch_weight_label.clone(),
-                        steam_import_weight_label.clone(),
-                        manual_weight_label.clone(),
-                        scanned_weight_label.clone(),
-                        suggested_steamcharts_weight,
-                        suggested_steamdb_weight,
-                        suggested_twitch_weight,
-                        suggested_steam_import_weight,
-                        suggested_manual_weight,
-                        suggested_scanned_weight,
-                        suggested_steamcharts_weight_label.clone(),
-                        suggested_steamdb_weight_label.clone(),
-                        suggested_twitch_weight_label.clone(),
-                        suggested_steam_import_weight_label.clone(),
-                        suggested_manual_weight_label.clone(),
-                        suggested_scanned_weight_label.clone(),
+                        ui_copy.behavior_signal_status_label,
+                        ui_copy.spin_duration_label.clone(),
+                        weight_labels.steamcharts.clone(),
+                        weight_labels.steamdb.clone(),
+                        weight_labels.twitch.clone(),
+                        weight_labels.steam_import.clone(),
+                        weight_labels.manual.clone(),
+                        weight_labels.scanned.clone(),
+                        suggested_weights.steamcharts,
+                        suggested_weights.steamdb,
+                        suggested_weights.twitch,
+                        suggested_weights.steam_import,
+                        suggested_weights.manual,
+                        suggested_weights.scanned,
+                        suggested_weight_labels.steamcharts.clone(),
+                        suggested_weight_labels.steamdb.clone(),
+                        suggested_weight_labels.twitch.clone(),
+                        suggested_weight_labels.steam_import.clone(),
+                        suggested_weight_labels.manual.clone(),
+                        suggested_weight_labels.scanned.clone(),
                     )}
                 }
 
@@ -414,8 +437,8 @@ fn App() -> Element {
                         winner_odds,
                         spin_history,
                         show_winner_popup,
-                        spin_button_label,
-                        you_should_play_label,
+                        ui_copy.spin_button_label,
+                        ui_copy.you_should_play_label,
                     )}
 
                     {render_spin_history_panel(lang, &spin_history())}
@@ -423,6 +446,71 @@ fn App() -> Element {
             }
         }
         {render_winner_overlay(lang, show_winner_popup, &winner(), &winner_sources(), winner_odds())}
+    }
+}
+
+fn make_weight_labels(
+    steamcharts_weight: f64,
+    steamdb_weight: f64,
+    twitch_weight: f64,
+    steam_import_weight: f64,
+    manual_weight: f64,
+    scanned_weight: f64,
+) -> WeightLabels {
+    WeightLabels {
+        steamcharts: format!("{steamcharts_weight:.1}x"),
+        steamdb: format!("{steamdb_weight:.1}x"),
+        twitch: format!("{twitch_weight:.1}x"),
+        steam_import: format!("{steam_import_weight:.1}x"),
+        manual: format!("{manual_weight:.1}x"),
+        scanned: format!("{scanned_weight:.1}x"),
+    }
+}
+
+fn make_suggested_weights(behavior_multipliers: &[f64; 6]) -> SuggestedWeights {
+    SuggestedWeights {
+        steamcharts: suggested_source_weight(1.2, behavior_multipliers[0]),
+        steamdb: suggested_source_weight(1.15, behavior_multipliers[1]),
+        twitch: suggested_source_weight(1.0, behavior_multipliers[2]),
+        steam_import: suggested_source_weight(1.35, behavior_multipliers[3]),
+        manual: suggested_source_weight(0.9, behavior_multipliers[4]),
+        scanned: suggested_source_weight(1.0, behavior_multipliers[5]),
+    }
+}
+
+fn make_ui_copy(
+    lang: UiLang,
+    spinning: bool,
+    weighted_mode: bool,
+    adaptive_recommendations: bool,
+    reduced_spin_animation: bool,
+    behavior_signal_count: usize,
+    show_sidebar: bool,
+    profile_label: &'static str,
+    spin_duration_ms: f64,
+) -> UiCopy {
+    UiCopy {
+        profile_label,
+        spin_button_label: if spinning {
+            tr(lang, "Spinning...", "Girando...")
+        } else {
+            tr(lang, "Spin Wheel", "Girar ruleta")
+        },
+        weighted_mode_label: on_off_label(lang, weighted_mode),
+        adaptive_recommendations_label: on_off_label(lang, adaptive_recommendations),
+        reduced_spin_animation_label: on_off_label(lang, reduced_spin_animation),
+        behavior_signal_status_label: if behavior_signal_count < 3 {
+            tr(lang, "Need 3+", "Necesita 3+")
+        } else {
+            tr(lang, "Ready", "Listo")
+        },
+        you_should_play_label: tr(lang, "You should play:", "Deberias jugar:"),
+        sidebar_toggle_label: if show_sidebar {
+            tr(lang, "Hide Settings", "Ocultar ajustes")
+        } else {
+            tr(lang, "Show Settings", "Mostrar ajustes")
+        },
+        spin_duration_label: format!("{:.1}s", spin_duration_ms / 1000.0),
     }
 }
 

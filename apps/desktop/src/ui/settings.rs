@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::{
-    fetch_online_sources, fetch_steam_owned_games, merge_lines, on_off_label, refresh_scanned_games,
-    tr, GameItem, UiLang,
+    data::{fetch_online_sources, fetch_steam_owned_games, refresh_scanned_games},
+    merge_lines, on_off_label, tr, GameItem, UiLang,
 };
 
 #[allow(clippy::too_many_arguments)]

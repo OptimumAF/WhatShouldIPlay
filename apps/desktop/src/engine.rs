@@ -156,7 +156,7 @@ pub(crate) fn derive_wheel_data(
     let wheel_background = if spin_pool.is_empty() {
         "#f4f0e6".to_string()
     } else {
-        crate::wheel_gradient(spin_pool.len())
+        wheel_gradient(spin_pool.len())
     };
     let wheel_labels = spin_pool
         .iter()
@@ -275,4 +275,30 @@ fn average_source_multiplier(sources: &[String], multipliers: &[f64; 6]) -> f64 
 
 fn suggested_source_weight(base_weight: f64, multiplier: f64) -> f64 {
     ((base_weight * multiplier).clamp(0.1, 3.0) * 10.0).round() / 10.0
+}
+
+fn segment_color(index: usize) -> &'static str {
+    const COLORS: [&str; 10] = [
+        "#f25f5c",
+        "#247ba0",
+        "#70c1b3",
+        "#ffe066",
+        "#ff9f1c",
+        "#2ec4b6",
+        "#e76f51",
+        "#118ab2",
+        "#8ac926",
+        "#ef476f",
+    ];
+    COLORS[index % COLORS.len()]
+}
+
+fn wheel_gradient(count: usize) -> String {
+    let mut stops = Vec::new();
+    for index in 0..count {
+        let start = index as f64 * (360.0 / count as f64);
+        let end = (index + 1) as f64 * (360.0 / count as f64);
+        stops.push(format!("{} {:.4}deg {:.4}deg", segment_color(index), start, end));
+    }
+    format!("conic-gradient({})", stops.join(", "))
 }

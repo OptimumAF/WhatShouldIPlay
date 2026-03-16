@@ -321,6 +321,57 @@ select {
     var(--panel-bg);
 }
 
+.import-empty-state {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid rgba(16, 38, 58, 0.12);
+  border-radius: calc(var(--radius-xl) + 4px);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84) 0%, rgba(231, 240, 248, 0.76) 100%);
+}
+
+.import-empty-state h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+
+.import-empty-state-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.import-empty-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.import-empty-card {
+  min-height: 8.5rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.import-empty-card strong {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.import-empty-card span {
+  color: var(--subtle-ink);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
 button {
   border: 0;
   border-radius: 999px;

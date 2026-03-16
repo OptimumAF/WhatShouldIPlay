@@ -416,6 +416,11 @@ fn App() -> Element {
                         spin.winner_odds,
                         spin.spin_history,
                         spin.show_winner_popup,
+                        layout.show_sidebar,
+                        layout.active_settings_section,
+                        data.scanned_games,
+                        data.status,
+                        data.ui_lang,
                         ui_copy.spin_button_label,
                         ui_copy.you_should_play_label,
                     )}

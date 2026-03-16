@@ -5,6 +5,7 @@ use tokio::time::{sleep, Duration};
 pub(crate) mod settings;
 
 use crate::{
+    data::refresh_scanned_games,
     engine::pick_weighted_index, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
     UiLang, WeightedPoolGame,
 };
@@ -72,6 +73,11 @@ pub(crate) fn render_wheel_panel(
     winner_odds: Signal<f64>,
     mut spin_history: Signal<Vec<SpinHistoryItem>>,
     show_winner_popup: Signal<bool>,
+    mut show_sidebar: Signal<bool>,
+    mut active_settings_section: Signal<String>,
+    scanned_games: Signal<Vec<String>>,
+    status: Signal<String>,
+    ui_lang: Signal<UiLang>,
     spin_button_label: &'static str,
     you_should_play_label: &'static str,
 ) -> Element {
@@ -81,6 +87,45 @@ pub(crate) fn render_wheel_panel(
             p { class: "muted", "{tr(lang, \"Current pool\", \"Pool actual\")}: {spin_pool.len()} {tr(lang, \"unique games\", \"juegos unicos\")}" }
             if cooldown_exhausted {
                 p { class: "muted", "{tr(lang, \"Cooldown saturated the pool, so all entries were temporarily re-enabled.\", \"El enfriamiento agoto el pool, asi que todas las entradas se reactivaron temporalmente.\")}" }
+            }
+            if spin_pool.is_empty() {
+                section { class: "import-empty-state",
+                    div { class: "import-empty-state-copy",
+                        p { class: "kicker", "{tr(lang, \"Quick Start\", \"Inicio rapido\")}" }
+                        h3 { "{tr(lang, \"Start by building a pool\", \"Empieza creando un pool\")}" }
+                        p { class: "muted", "{tr(lang, \"No games are ready to spin yet. Add manual picks, import Steam ownership, or scan local libraries from here.\", \"Todavia no hay juegos listos para girar. Agrega picks manuales, importa tu biblioteca de Steam o escanea bibliotecas locales desde aqui.\")}" }
+                    }
+                    div { class: "import-empty-grid",
+                        button {
+                            class: "ghost import-empty-card",
+                            onclick: move |_| {
+                                show_sidebar.set(true);
+                                active_settings_section.set("library".to_string());
+                            },
+                            strong { "{tr(lang, \"Add manual games\", \"Agregar juegos manuales\")}" }
+                            span { "{tr(lang, \"Open Library tools and paste your shortlist.\", \"Abre las herramientas de Biblioteca y pega tu lista corta.\")}" }
+                        }
+                        button {
+                            class: "ghost import-empty-card",
+                            onclick: move |_| {
+                                show_sidebar.set(true);
+                                active_settings_section.set("sources".to_string());
+                            },
+                            strong { "{tr(lang, \"Import Steam account\", \"Importar cuenta de Steam\")}" }
+                            span { "{tr(lang, \"Open Sources and pull owned games with your Steam Web API credentials.\", \"Abre Fuentes y trae juegos propios con tus credenciales de Steam Web API.\")}" }
+                        }
+                        button {
+                            class: "ghost import-empty-card",
+                            onclick: move |_| {
+                                show_sidebar.set(true);
+                                active_settings_section.set("library".to_string());
+                                spawn(refresh_scanned_games(scanned_games, status, ui_lang));
+                            },
+                            strong { "{tr(lang, \"Scan local libraries\", \"Escanear bibliotecas locales\")}" }
+                            span { "{tr(lang, \"Run another local scan now for Steam, Epic, GOG, Ubisoft, and Xbox paths.\", \"Ejecuta otro escaneo local ahora para rutas de Steam, Epic, GOG, Ubisoft y Xbox.\")}" }
+                        }
+                    }
+                }
             }
             div { class: "wheel-stage",
                 div { class: "wheel-stage-glow" }

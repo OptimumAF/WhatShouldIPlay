@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdvancedOptionsPanel } from "./AdvancedOptionsPanel";
 import { SteamImportPanel } from "./SteamImportPanel";
 import { FiltersPanel } from "./FiltersPanel";
@@ -245,6 +245,14 @@ export function SettingsContent({
 }: SettingsContentProps) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<"sources" | "rules" | "advanced">("sources");
+  const sectionOrder = useMemo(() => ["sources", "rules", "advanced"] as const, []);
+  const previousSectionRef = useRef<typeof activeSection>(activeSection);
+  const sectionDirection =
+    sectionOrder.indexOf(activeSection) >= sectionOrder.indexOf(previousSectionRef.current) ? "is-forward" : "is-backward";
+
+  useEffect(() => {
+    previousSectionRef.current = activeSection;
+  }, [activeSection]);
 
   return (
     <>
@@ -270,7 +278,7 @@ export function SettingsContent({
       </section>
 
       {activeSection === "sources" ? (
-        <>
+        <div className={clsx("section-transition", sectionDirection)} key="sources">
           <SourceCatalogPanel sourceCards={sourceCards} onToggleSource={onToggleSource} />
           <SteamImportPanel
             steamApiKey={steamApiKey}
@@ -282,37 +290,39 @@ export function SettingsContent({
             onImport={onImportSteamLibrary}
             onClear={onClearSteamImport}
           />
-        </>
+        </div>
       ) : null}
 
       {activeSection === "rules" ? (
-        <SelectionRulesPanel
-          presetCards={presetCards}
-          activePreset={activePreset}
-          onApplyPreset={onApplyPreset}
-          weightedMode={weightedMode}
-          onWeightedModeChange={onWeightedModeChange}
-          cooldownSpins={cooldownSpins}
-          onCooldownSpinsChange={onCooldownSpinsChange}
-          adaptiveRecommendations={adaptiveRecommendations}
-          onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
-          onApplySuggestedWeights={onApplySuggestedWeights}
-          behaviorSignalsCount={behaviorSignalsCount}
-          spinSpeedProfile={spinSpeedProfile}
-          spinSpeedOptions={spinSpeedOptions}
-          onSpinSpeedProfileChange={onSpinSpeedProfileChange}
-          effectiveSpinDurationMs={effectiveSpinDurationMs}
-          reducedSpinAnimation={reducedSpinAnimation}
-          onReducedSpinAnimationChange={onReducedSpinAnimationChange}
-          weightRows={sourceWeightRows}
-          onSourceWeightChange={onSourceWeightChange}
-          loadingData={loadingData}
-          loadingError={loadingError}
-        />
+        <div className={clsx("section-transition", sectionDirection)} key="rules">
+          <SelectionRulesPanel
+            presetCards={presetCards}
+            activePreset={activePreset}
+            onApplyPreset={onApplyPreset}
+            weightedMode={weightedMode}
+            onWeightedModeChange={onWeightedModeChange}
+            cooldownSpins={cooldownSpins}
+            onCooldownSpinsChange={onCooldownSpinsChange}
+            adaptiveRecommendations={adaptiveRecommendations}
+            onAdaptiveRecommendationsChange={onAdaptiveRecommendationsChange}
+            onApplySuggestedWeights={onApplySuggestedWeights}
+            behaviorSignalsCount={behaviorSignalsCount}
+            spinSpeedProfile={spinSpeedProfile}
+            spinSpeedOptions={spinSpeedOptions}
+            onSpinSpeedProfileChange={onSpinSpeedProfileChange}
+            effectiveSpinDurationMs={effectiveSpinDurationMs}
+            reducedSpinAnimation={reducedSpinAnimation}
+            onReducedSpinAnimationChange={onReducedSpinAnimationChange}
+            weightRows={sourceWeightRows}
+            onSourceWeightChange={onSourceWeightChange}
+            loadingData={loadingData}
+            loadingError={loadingError}
+          />
+        </div>
       ) : null}
 
       {activeSection === "advanced" ? (
-        <>
+        <div className={clsx("section-transition", sectionDirection)} key="advanced">
           <AdvancedOptionsPanel
             showAdvancedSettings={showAdvancedSettings}
             onShowAdvancedSettingsChange={onShowAdvancedSettingsChange}
@@ -389,7 +399,7 @@ export function SettingsContent({
               onClearRestorePoints={onClearRestorePoints}
             />
           </div>
-        </>
+        </div>
       ) : null}
     </>
   );

@@ -863,6 +863,24 @@ button:active:not(:disabled),
   text-decoration: none;
 }
 
+.pane-transition,
+.section-transition {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(.18,.82,.24,1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+.pane-transition.is-forward,
+.section-transition.is-forward {
+  animation-name: pane-enter-forward;
+}
+
+.pane-transition.is-backward,
+.section-transition.is-backward {
+  animation-name: pane-enter-backward;
+}
+
 .secondary-panel {
   background: color-mix(in srgb, var(--surface) 86%, var(--surface-elevated) 14%);
   box-shadow: 0 4px 14px rgba(16, 36, 58, 0.05);
@@ -1533,6 +1551,28 @@ textarea:focus-visible,
   100% {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes pane-enter-forward {
+  0% {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes pane-enter-backward {
+  0% {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 

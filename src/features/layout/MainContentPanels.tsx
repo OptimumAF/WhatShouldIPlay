@@ -1,3 +1,5 @@
+import clsx from "clsx";
+import { useEffect, useMemo, useRef } from "react";
 import { ManualGamesPanel } from "../../components/ManualGamesPanel";
 import { SpinHistoryPanel } from "../../components/SpinHistoryPanel";
 import { useTranslation } from "react-i18next";
@@ -91,56 +93,77 @@ export function MainContentPanels({
   showSettingsGuidance,
 }: MainContentPanelsProps) {
   const { t } = useTranslation();
+  const paneOrder = useMemo(() => ["play", "library", "history", "settings"] as const, []);
+  const activePane = showPlayPane ? "play" : showLibraryPane ? "library" : showHistoryPane ? "history" : "settings";
+  const previousPaneRef = useRef<typeof activePane>(activePane);
+  const paneDirection =
+    paneOrder.indexOf(activePane) >= paneOrder.indexOf(previousPaneRef.current) ? "is-forward" : "is-backward";
+
+  useEffect(() => {
+    previousPaneRef.current = activePane;
+  }, [activePane]);
 
   return (
     <>
       {showPlayPane ? (
-        <PlayPanel
-          activePoolCount={activePoolCount}
-          activePresetLabel={activePresetLabel}
-          enabledSourceLabels={enabledSourceLabels}
-          weightedMode={weightedMode}
-          cooldownSpins={cooldownSpins}
-          exclusionSummarySuffix={exclusionSummarySuffix}
-          cooldownExcludedSuffix={cooldownExcludedSuffix}
-          advancedFilterExhausted={advancedFilterExhausted}
-          statusExhausted={statusExhausted}
-          cooldownSaturated={cooldownSaturated}
-          games={games}
-          rotation={rotation}
-          spinning={spinning}
-          spinDurationMs={spinDurationMs}
-          onSpinEnd={onSpinEnd}
-          onSpin={onSpin}
-          onClearHistory={onClearHistory}
-          winner={winner}
-          winnerMeta={winnerMeta}
-          formatSourceList={formatSourceList}
-          formatOdds={formatOdds}
-          onMarkPlayed={onMarkPlayed}
-          onMarkCompleted={onMarkCompleted}
-          onOpenLibrary={onOpenLibrary}
-          onOpenSettings={onOpenSettings}
-        />
+        <div className={clsx("pane-transition", paneDirection)} key="play">
+          <PlayPanel
+            activePoolCount={activePoolCount}
+            activePresetLabel={activePresetLabel}
+            enabledSourceLabels={enabledSourceLabels}
+            weightedMode={weightedMode}
+            cooldownSpins={cooldownSpins}
+            exclusionSummarySuffix={exclusionSummarySuffix}
+            cooldownExcludedSuffix={cooldownExcludedSuffix}
+            advancedFilterExhausted={advancedFilterExhausted}
+            statusExhausted={statusExhausted}
+            cooldownSaturated={cooldownSaturated}
+            games={games}
+            rotation={rotation}
+            spinning={spinning}
+            spinDurationMs={spinDurationMs}
+            onSpinEnd={onSpinEnd}
+            onSpin={onSpin}
+            onClearHistory={onClearHistory}
+            winner={winner}
+            winnerMeta={winnerMeta}
+            formatSourceList={formatSourceList}
+            formatOdds={formatOdds}
+            onMarkPlayed={onMarkPlayed}
+            onMarkCompleted={onMarkCompleted}
+            onOpenLibrary={onOpenLibrary}
+            onOpenSettings={onOpenSettings}
+          />
+        </div>
       ) : null}
 
       {showLibraryPane ? (
-        <ManualGamesPanel
-          title={t("manualListTitle")}
-          description={t("manualListDescription")}
-          inputValue={manualInput}
-          onInputChange={onManualInputChange}
-          onAdd={onAddManual}
-          onClear={onClearManual}
-          addLabel={t("addGames")}
-          clearLabel={t("clearManual")}
-          placeholder={t("manualListPlaceholder")}
-        />
+        <div className={clsx("pane-transition", paneDirection)} key="library">
+          <ManualGamesPanel
+            title={t("manualListTitle")}
+            description={t("manualListDescription")}
+            inputValue={manualInput}
+            onInputChange={onManualInputChange}
+            onAdd={onAddManual}
+            onClear={onClearManual}
+            addLabel={t("addGames")}
+            clearLabel={t("clearManual")}
+            placeholder={t("manualListPlaceholder")}
+          />
+        </div>
       ) : null}
 
-      {showHistoryPane ? <SpinHistoryPanel title={t("spinHistoryTitle")} emptyLabel={t("noSpins")} items={historyDisplayItems} /> : null}
+      {showHistoryPane ? (
+        <div className={clsx("pane-transition", paneDirection)} key="history">
+          <SpinHistoryPanel title={t("spinHistoryTitle")} emptyLabel={t("noSpins")} items={historyDisplayItems} />
+        </div>
+      ) : null}
 
-      {showSettingsGuidance ? <SettingsGuidancePanel /> : null}
+      {showSettingsGuidance ? (
+        <div className={clsx("pane-transition", paneDirection)} key="settings">
+          <SettingsGuidancePanel />
+        </div>
+      ) : null}
     </>
   );
 }

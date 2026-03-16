@@ -86,6 +86,64 @@ struct UiCopy {
     spin_duration_label: String,
 }
 
+#[derive(Clone, Copy)]
+struct DesktopDataState {
+    ui_lang: Signal<UiLang>,
+    steamcharts_games: Signal<Vec<GameItem>>,
+    steamdb_games: Signal<Vec<GameItem>>,
+    twitch_games: Signal<Vec<GameItem>>,
+    steam_import_games: Signal<Vec<GameItem>>,
+    scanned_games: Signal<Vec<String>>,
+    manual_games: Signal<Vec<String>>,
+    manual_text: Signal<String>,
+    steam_api_key: Signal<String>,
+    steam_id: Signal<String>,
+    steam_import_status: Signal<String>,
+    status: Signal<String>,
+    steamdb_note: Signal<String>,
+}
+
+#[derive(Clone, Copy)]
+struct DesktopSettingsState {
+    include_steamcharts: Signal<bool>,
+    include_steamdb: Signal<bool>,
+    include_twitch: Signal<bool>,
+    include_steam_import: Signal<bool>,
+    include_manual: Signal<bool>,
+    include_scanned: Signal<bool>,
+    weighted_mode: Signal<bool>,
+    adaptive_recommendations: Signal<bool>,
+    cooldown_spins: Signal<usize>,
+    steamcharts_weight: Signal<f64>,
+    steamdb_weight: Signal<f64>,
+    twitch_weight: Signal<f64>,
+    steam_import_weight: Signal<f64>,
+    manual_weight: Signal<f64>,
+    scanned_weight: Signal<f64>,
+    spin_speed_profile: Signal<String>,
+    reduced_spin_animation: Signal<bool>,
+}
+
+#[derive(Clone, Copy)]
+struct DesktopSpinState {
+    spinning: Signal<bool>,
+    wheel_rotation: Signal<f64>,
+    winner: Signal<String>,
+    winner_sources: Signal<String>,
+    winner_odds: Signal<f64>,
+    pending_winner: Signal<String>,
+    pending_winner_sources: Signal<String>,
+    pending_winner_odds: Signal<f64>,
+    spin_history: Signal<Vec<SpinHistoryItem>>,
+    show_winner_popup: Signal<bool>,
+}
+
+#[derive(Clone, Copy)]
+struct DesktopLayoutState {
+    show_sidebar: Signal<bool>,
+    active_settings_section: Signal<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum UiLang {
     En,
@@ -176,83 +234,92 @@ async fn refresh_scanned_games(
 
 #[component]
 fn App() -> Element {
-    let ui_lang = use_signal(|| UiLang::En);
-    let steamcharts_games = use_signal(Vec::<GameItem>::new);
-    let steamdb_games = use_signal(Vec::<GameItem>::new);
-    let twitch_games = use_signal(Vec::<GameItem>::new);
-    let steam_import_games = use_signal(Vec::<GameItem>::new);
-    let scanned_games = use_signal(Vec::<String>::new);
-    let manual_games = use_signal(Vec::<String>::new);
-    let manual_text = use_signal(String::new);
-    let steam_api_key = use_signal(String::new);
-    let steam_id = use_signal(String::new);
-    let steam_import_status = use_signal(String::new);
-    let status = use_signal(|| tr(UiLang::En, "Idle", "En espera").to_string());
-    let steamdb_note = use_signal(String::new);
+    let data = DesktopDataState {
+        ui_lang: use_signal(|| UiLang::En),
+        steamcharts_games: use_signal(Vec::<GameItem>::new),
+        steamdb_games: use_signal(Vec::<GameItem>::new),
+        twitch_games: use_signal(Vec::<GameItem>::new),
+        steam_import_games: use_signal(Vec::<GameItem>::new),
+        scanned_games: use_signal(Vec::<String>::new),
+        manual_games: use_signal(Vec::<String>::new),
+        manual_text: use_signal(String::new),
+        steam_api_key: use_signal(String::new),
+        steam_id: use_signal(String::new),
+        steam_import_status: use_signal(String::new),
+        status: use_signal(|| tr(UiLang::En, "Idle", "En espera").to_string()),
+        steamdb_note: use_signal(String::new),
+    };
 
-    let include_steamcharts = use_signal(|| true);
-    let include_steamdb = use_signal(|| true);
-    let include_twitch = use_signal(|| true);
-    let include_steam_import = use_signal(|| true);
-    let include_manual = use_signal(|| true);
-    let include_scanned = use_signal(|| true);
-    let weighted_mode = use_signal(|| true);
-    let adaptive_recommendations = use_signal(|| false);
-    let cooldown_spins = use_signal(|| 2_usize);
-    let steamcharts_weight = use_signal(|| 1.2_f64);
-    let steamdb_weight = use_signal(|| 1.15_f64);
-    let twitch_weight = use_signal(|| 1.0_f64);
-    let steam_import_weight = use_signal(|| 1.35_f64);
-    let manual_weight = use_signal(|| 0.9_f64);
-    let scanned_weight = use_signal(|| 1.0_f64);
-    let spin_speed_profile = use_signal(|| "balanced".to_string());
-    let reduced_spin_animation = use_signal(|| false);
+    let settings = DesktopSettingsState {
+        include_steamcharts: use_signal(|| true),
+        include_steamdb: use_signal(|| true),
+        include_twitch: use_signal(|| true),
+        include_steam_import: use_signal(|| true),
+        include_manual: use_signal(|| true),
+        include_scanned: use_signal(|| true),
+        weighted_mode: use_signal(|| true),
+        adaptive_recommendations: use_signal(|| false),
+        cooldown_spins: use_signal(|| 2_usize),
+        steamcharts_weight: use_signal(|| 1.2_f64),
+        steamdb_weight: use_signal(|| 1.15_f64),
+        twitch_weight: use_signal(|| 1.0_f64),
+        steam_import_weight: use_signal(|| 1.35_f64),
+        manual_weight: use_signal(|| 0.9_f64),
+        scanned_weight: use_signal(|| 1.0_f64),
+        spin_speed_profile: use_signal(|| "balanced".to_string()),
+        reduced_spin_animation: use_signal(|| false),
+    };
 
-    let spinning = use_signal(|| false);
-    let wheel_rotation = use_signal(|| 0.0_f64);
-    let winner = use_signal(String::new);
-    let winner_sources = use_signal(String::new);
-    let winner_odds = use_signal(|| 0.0_f64);
-    let pending_winner = use_signal(String::new);
-    let pending_winner_sources = use_signal(String::new);
-    let pending_winner_odds = use_signal(|| 0.0_f64);
-    let spin_history = use_signal(Vec::<SpinHistoryItem>::new);
-    let show_winner_popup = use_signal(|| false);
-    let show_sidebar = use_signal(|| false);
-    let active_settings_section = use_signal(|| "sources".to_string());
+    let spin = DesktopSpinState {
+        spinning: use_signal(|| false),
+        wheel_rotation: use_signal(|| 0.0_f64),
+        winner: use_signal(String::new),
+        winner_sources: use_signal(String::new),
+        winner_odds: use_signal(|| 0.0_f64),
+        pending_winner: use_signal(String::new),
+        pending_winner_sources: use_signal(String::new),
+        pending_winner_odds: use_signal(|| 0.0_f64),
+        spin_history: use_signal(Vec::<SpinHistoryItem>::new),
+        show_winner_popup: use_signal(|| false),
+    };
+
+    let layout = DesktopLayoutState {
+        show_sidebar: use_signal(|| false),
+        active_settings_section: use_signal(|| "sources".to_string()),
+    };
 
     use_future({
-        let scanned_games = scanned_games;
-        let status = status;
-        let ui_lang = ui_lang;
+        let scanned_games = data.scanned_games;
+        let status = data.status;
+        let ui_lang = data.ui_lang;
         move || refresh_scanned_games(scanned_games, status, ui_lang)
     });
 
     let full_pool = build_weighted_pool(
-        include_steamcharts(),
-        include_steamdb(),
-        include_twitch(),
-        include_steam_import(),
-        include_manual(),
-        include_scanned(),
-        weighted_mode(),
-        steamcharts_weight(),
-        steamdb_weight(),
-        twitch_weight(),
-        steam_import_weight(),
-        manual_weight(),
-        scanned_weight(),
-        &steamcharts_games(),
-        &steamdb_games(),
-        &twitch_games(),
-        &steam_import_games(),
-        &manual_games(),
-        &scanned_games(),
+        (settings.include_steamcharts)(),
+        (settings.include_steamdb)(),
+        (settings.include_twitch)(),
+        (settings.include_steam_import)(),
+        (settings.include_manual)(),
+        (settings.include_scanned)(),
+        (settings.weighted_mode)(),
+        (settings.steamcharts_weight)(),
+        (settings.steamdb_weight)(),
+        (settings.twitch_weight)(),
+        (settings.steam_import_weight)(),
+        (settings.manual_weight)(),
+        (settings.scanned_weight)(),
+        &(data.steamcharts_games)(),
+        &(data.steamdb_games)(),
+        &(data.twitch_games)(),
+        &(data.steam_import_games)(),
+        &(data.manual_games)(),
+        &(data.scanned_games)(),
     );
 
-    let blocked = spin_history()
+    let blocked = (spin.spin_history)()
         .iter()
-        .take(cooldown_spins())
+        .take((settings.cooldown_spins)())
         .map(|entry| entry.name.to_lowercase())
         .collect::<HashSet<_>>();
     let mut spin_pool = full_pool
@@ -260,7 +327,8 @@ fn App() -> Element {
         .filter(|entry| !blocked.contains(&entry.name.to_lowercase()))
         .cloned()
         .collect::<Vec<_>>();
-    let cooldown_exhausted = cooldown_spins() > 0 && !full_pool.is_empty() && spin_pool.is_empty();
+    let cooldown_exhausted =
+        (settings.cooldown_spins)() > 0 && !full_pool.is_empty() && spin_pool.is_empty();
     if cooldown_exhausted {
         spin_pool = full_pool.clone();
     }
@@ -286,15 +354,15 @@ fn App() -> Element {
         })
         .collect::<Vec<_>>();
     let weight_labels = make_weight_labels(
-        steamcharts_weight(),
-        steamdb_weight(),
-        twitch_weight(),
-        steam_import_weight(),
-        manual_weight(),
-        scanned_weight(),
+        (settings.steamcharts_weight)(),
+        (settings.steamdb_weight)(),
+        (settings.twitch_weight)(),
+        (settings.steam_import_weight)(),
+        (settings.manual_weight)(),
+        (settings.scanned_weight)(),
     );
-    let behavior_signal_count = spin_history().len().min(20);
-    let behavior_multipliers = compute_behavior_multipliers(&spin_history());
+    let behavior_signal_count = (spin.spin_history)().len().min(20);
+    let behavior_multipliers = compute_behavior_multipliers(&(spin.spin_history)());
     let suggested_weights = make_suggested_weights(&behavior_multipliers);
     let suggested_weight_labels = make_weight_labels(
         suggested_weights.steamcharts,
@@ -307,7 +375,7 @@ fn App() -> Element {
     let adaptive_spin_weights = spin_pool
         .iter()
         .map(|entry| {
-            let source_multiplier = if adaptive_recommendations() {
+            let source_multiplier = if (settings.adaptive_recommendations)() {
                 average_source_multiplier(&entry.sources, &behavior_multipliers)
             } else {
                 1.0
@@ -315,14 +383,14 @@ fn App() -> Element {
             (entry.weight * source_multiplier).max(0.05)
         })
         .collect::<Vec<_>>();
-    let lang = ui_lang();
+    let lang = (data.ui_lang)();
     let (profile_label, profile_duration_ms, profile_revolutions, profile_jitter_ratio) =
-        match spin_speed_profile().as_str() {
+        match (settings.spin_speed_profile)().as_str() {
             "cinematic" => (tr(lang, "Cinematic", "Cinematico"), 6200.0, 10.5, 0.28),
             "rapid" => (tr(lang, "Rapid", "Rapido"), 3200.0, 6.4, 0.20),
             _ => (tr(lang, "Balanced", "Equilibrado"), 4800.0, 8.0, 0.24),
         };
-    let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) = if reduced_spin_animation() {
+    let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) = if (settings.reduced_spin_animation)() {
         (760.0, 2.2, 0.10)
     } else {
         (profile_duration_ms, profile_revolutions, profile_jitter_ratio)
@@ -335,12 +403,12 @@ fn App() -> Element {
     let platform_label = host_platform_label();
     let ui_copy = make_ui_copy(
         lang,
-        spinning(),
-        weighted_mode(),
-        adaptive_recommendations(),
-        reduced_spin_animation(),
+        (spin.spinning)(),
+        (settings.weighted_mode)(),
+        (settings.adaptive_recommendations)(),
+        (settings.reduced_spin_animation)(),
         behavior_signal_count,
-        show_sidebar(),
+        (layout.show_sidebar)(),
         profile_label,
         spin_duration_ms,
     );
@@ -348,43 +416,43 @@ fn App() -> Element {
     rsx! {
         style { "{DESKTOP_CSS}" }
         main { class: format!("layout {}", platform_class),
-            {render_hero_masthead(lang, platform_label, &status(), ui_lang, show_sidebar, ui_copy.sidebar_toggle_label)}
+            {render_hero_masthead(lang, platform_label, &(data.status)(), data.ui_lang, layout.show_sidebar, ui_copy.sidebar_toggle_label)}
 
-            div { class: if show_sidebar() { "workspace" } else { "workspace sidebar-collapsed" },
-                if show_sidebar() {
+            div { class: if (layout.show_sidebar)() { "workspace" } else { "workspace sidebar-collapsed" },
+                if (layout.show_sidebar)() {
                     {render_settings_sidebar(
                         lang,
-                        active_settings_section,
-                        include_steamcharts,
-                        include_steamdb,
-                        include_twitch,
-                        include_steam_import,
-                        include_manual,
-                        include_scanned,
-                        weighted_mode,
-                        adaptive_recommendations,
-                        reduced_spin_animation,
-                        cooldown_spins,
-                        spin_speed_profile,
-                        steamcharts_weight,
-                        steamdb_weight,
-                        twitch_weight,
-                        steam_import_weight,
-                        manual_weight,
-                        scanned_weight,
-                        steamcharts_games,
-                        steamdb_games,
-                        twitch_games,
-                        steam_import_games,
-                        scanned_games,
-                        manual_games,
-                        manual_text,
-                        steam_api_key,
-                        steam_id,
-                        steam_import_status,
-                        status,
-                        steamdb_note,
-                        ui_lang,
+                        layout.active_settings_section,
+                        settings.include_steamcharts,
+                        settings.include_steamdb,
+                        settings.include_twitch,
+                        settings.include_steam_import,
+                        settings.include_manual,
+                        settings.include_scanned,
+                        settings.weighted_mode,
+                        settings.adaptive_recommendations,
+                        settings.reduced_spin_animation,
+                        settings.cooldown_spins,
+                        settings.spin_speed_profile,
+                        settings.steamcharts_weight,
+                        settings.steamdb_weight,
+                        settings.twitch_weight,
+                        settings.steam_import_weight,
+                        settings.manual_weight,
+                        settings.scanned_weight,
+                        data.steamcharts_games,
+                        data.steamdb_games,
+                        data.twitch_games,
+                        data.steam_import_games,
+                        data.scanned_games,
+                        data.manual_games,
+                        data.manual_text,
+                        data.steam_api_key,
+                        data.steam_id,
+                        data.steam_import_status,
+                        data.status,
+                        data.steamdb_note,
+                        data.ui_lang,
                         ui_copy.weighted_mode_label,
                         ui_copy.adaptive_recommendations_label,
                         ui_copy.reduced_spin_animation_label,
@@ -419,33 +487,33 @@ fn App() -> Element {
                         spin_pool.clone(),
                         cooldown_exhausted,
                         wheel_labels.clone(),
-                        wheel_rotation,
-                        spinning,
+                        spin.wheel_rotation,
+                        spin.spinning,
                         &spin_transition,
                         &wheel_background,
-                        weighted_mode,
-                        adaptive_recommendations,
+                        settings.weighted_mode,
+                        settings.adaptive_recommendations,
                         adaptive_spin_weights.clone(),
                         segment_angle,
                         spin_jitter_ratio,
                         spin_revolutions,
-                        pending_winner,
-                        pending_winner_sources,
-                        pending_winner_odds,
-                        winner,
-                        winner_sources,
-                        winner_odds,
-                        spin_history,
-                        show_winner_popup,
+                        spin.pending_winner,
+                        spin.pending_winner_sources,
+                        spin.pending_winner_odds,
+                        spin.winner,
+                        spin.winner_sources,
+                        spin.winner_odds,
+                        spin.spin_history,
+                        spin.show_winner_popup,
                         ui_copy.spin_button_label,
                         ui_copy.you_should_play_label,
                     )}
 
-                    {render_spin_history_panel(lang, &spin_history())}
+                    {render_spin_history_panel(lang, &(spin.spin_history)())}
                 }
             }
         }
-        {render_winner_overlay(lang, show_winner_popup, &winner(), &winner_sources(), winner_odds())}
+        {render_winner_overlay(lang, spin.show_winner_popup, &(spin.winner)(), &(spin.winner_sources)(), (spin.winner_odds)())}
     }
 }
 

@@ -620,6 +620,8 @@ export const useAppController = (): AppShellViewProps => {
     formatOdds,
     onMarkPlayed: () => markGamesPlayed([winner]),
     onMarkCompleted: () => markGamesCompleted([winner]),
+    onOpenLibrary: () => handleHeaderTabChange("library"),
+    onOpenSettings: () => handleHeaderTabChange("settings"),
     showLibraryPane,
     manualInput,
     onManualInputChange: setManualInput,

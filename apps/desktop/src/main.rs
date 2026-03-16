@@ -173,15 +173,15 @@ fn host_platform_class() -> &'static str {
     }
 }
 
-fn host_platform_label() -> &'static str {
+fn host_platform_label(lang: UiLang) -> &'static str {
     if cfg!(target_os = "windows") {
-        "Windows"
+        tr(lang, "Windows", "Windows")
     } else if cfg!(target_os = "macos") {
-        "macOS"
+        tr(lang, "macOS", "macOS")
     } else if cfg!(target_os = "linux") {
-        "Linux"
+        tr(lang, "Linux", "Linux")
     } else {
-        "Desktop"
+        tr(lang, "Desktop", "Desktop")
     }
 }
 
@@ -311,7 +311,7 @@ fn App() -> Element {
         spin_duration_ms
     );
     let platform_class = host_platform_class();
-    let platform_label = host_platform_label();
+    let platform_label = host_platform_label(lang);
     let ui_copy = make_ui_copy(
         lang,
         (spin.spinning)(),

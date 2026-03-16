@@ -803,6 +803,66 @@ button:active:not(:disabled),
   box-shadow: var(--shadow-pop);
 }
 
+.import-empty-state {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 68%, var(--accent-2) 32%);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--accent-2) 14%), color-mix(in srgb, var(--surface) 90%, var(--accent-1) 10%));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 52%, transparent);
+}
+
+.import-empty-state h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  letter-spacing: 0.04em;
+}
+
+.import-empty-state-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.import-empty-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.import-empty-card {
+  min-height: 10rem;
+  padding: var(--space-3);
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 74%, var(--accent-2) 26%);
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-2);
+  text-align: left;
+  color: var(--ink);
+}
+
+.import-empty-card strong {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.import-empty-card span {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.import-empty-link {
+  text-decoration: none;
+}
+
 .secondary-panel {
   background: color-mix(in srgb, var(--surface) 86%, var(--surface-elevated) 14%);
   box-shadow: 0 4px 14px rgba(16, 36, 58, 0.05);

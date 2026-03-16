@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { COLOR_PALETTE } from "../lib/wheel";
 
 interface WheelProps {
@@ -10,6 +11,7 @@ interface WheelProps {
 }
 
 export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpinEnd }: WheelProps) {
+  const { t } = useTranslation();
   const count = Math.max(games.length, 1);
   const segment = 360 / count;
   const background =
@@ -36,8 +38,8 @@ export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpin
         role="img"
         aria-label={
           games.length > 0
-            ? `Selection wheel containing ${games.length} games`
-            : "Selection wheel with no games loaded"
+            ? t("wheelAriaLoaded", { count: games.length })
+            : t("wheelAriaEmpty")
         }
         style={
           {
@@ -73,11 +75,13 @@ export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpin
             );
           })
         ) : (
-          <div className="wheel-empty">Add games to spin</div>
+          <div className="wheel-empty">{t("wheelEmpty")}</div>
         )}
       </div>
       <div className="wheel-caption" aria-hidden="true">
-        <span>{games.length > 0 ? `${games.length} picks loaded` : "Waiting for games"}</span>
+        <span>
+          {games.length > 0 ? t("wheelCaptionLoaded", { count: games.length }) : t("wheelCaptionEmpty")}
+        </span>
       </div>
     </div>
   );

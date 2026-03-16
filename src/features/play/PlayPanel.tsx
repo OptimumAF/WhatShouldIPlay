@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Eraser, Gamepad2, RotateCw } from "lucide-react";
+import { Download, Eraser, Gamepad2, RotateCw, Settings2, SquareLibrary } from "lucide-react";
 import { Wheel } from "../../components/Wheel";
 import { WinnerSummaryCard } from "../../components/WinnerSummaryCard";
 import type { SourceId } from "../../types";
+
+const DESKTOP_RELEASES_URL = "https://github.com/OptimumAF/WhatShouldIPlay/releases/latest";
 
 interface PlayWinnerMeta {
   sources: SourceId[];
@@ -33,6 +35,8 @@ interface PlayPanelProps {
   formatOdds: (odds: number) => string;
   onMarkPlayed: () => void;
   onMarkCompleted: () => void;
+  onOpenLibrary: () => void;
+  onOpenSettings: () => void;
 }
 
 export function PlayPanel({
@@ -59,6 +63,8 @@ export function PlayPanel({
   formatOdds,
   onMarkPlayed,
   onMarkCompleted,
+  onOpenLibrary,
+  onOpenSettings,
 }: PlayPanelProps) {
   const { t } = useTranslation();
 
@@ -98,6 +104,32 @@ export function PlayPanel({
       {advancedFilterExhausted ? <p className="status">{t("advancedFilterExhausted")}</p> : null}
       {statusExhausted ? <p className="status">{t("statusExhausted")}</p> : null}
       {cooldownSaturated ? <p className="status">{t("cooldownExhausted")}</p> : null}
+      {activePoolCount === 0 ? (
+        <section className="import-empty-state" aria-label={t("importFirst.title")}>
+          <div className="import-empty-state-copy">
+            <p className="kicker">{t("quickStart")}</p>
+            <h3>{t("importFirst.title")}</h3>
+            <p className="muted">{t("importFirst.description")}</p>
+          </div>
+          <div className="import-empty-grid">
+            <button type="button" className="ghost import-empty-card" onClick={onOpenLibrary}>
+              <SquareLibrary className="ui-icon" aria-hidden="true" />
+              <strong>{t("importFirst.manualTitle")}</strong>
+              <span>{t("importFirst.manualDescription")}</span>
+            </button>
+            <button type="button" className="ghost import-empty-card" onClick={onOpenSettings}>
+              <Settings2 className="ui-icon" aria-hidden="true" />
+              <strong>{t("importFirst.steamTitle")}</strong>
+              <span>{t("importFirst.steamDescription")}</span>
+            </button>
+            <a className="ghost import-empty-card import-empty-link" href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
+              <Download className="ui-icon" aria-hidden="true" />
+              <strong>{t("importFirst.desktopTitle")}</strong>
+              <span>{t("importFirst.desktopDescription")}</span>
+            </a>
+          </div>
+        </section>
+      ) : null}
       <Wheel
         games={games}
         rotation={rotation}

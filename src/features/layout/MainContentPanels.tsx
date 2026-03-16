@@ -42,6 +42,8 @@ export interface MainContentPanelsProps {
   formatOdds: (odds: number) => string;
   onMarkPlayed: () => void;
   onMarkCompleted: () => void;
+  onOpenLibrary: () => void;
+  onOpenSettings: () => void;
   showLibraryPane: boolean;
   manualInput: string;
   onManualInputChange: (value: string) => void;
@@ -77,6 +79,8 @@ export function MainContentPanels({
   formatOdds,
   onMarkPlayed,
   onMarkCompleted,
+  onOpenLibrary,
+  onOpenSettings,
   showLibraryPane,
   manualInput,
   onManualInputChange,
@@ -115,6 +119,8 @@ export function MainContentPanels({
           formatOdds={formatOdds}
           onMarkPlayed={onMarkPlayed}
           onMarkCompleted={onMarkCompleted}
+          onOpenLibrary={onOpenLibrary}
+          onOpenSettings={onOpenSettings}
         />
       ) : null}
 
@@ -128,7 +134,7 @@ export function MainContentPanels({
           onClear={onClearManual}
           addLabel={t("addGames")}
           clearLabel={t("clearManual")}
-          placeholder={"Helldivers 2\nHades II\nMonster Hunter Wilds"}
+          placeholder={t("manualListPlaceholder")}
         />
       ) : null}
 

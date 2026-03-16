@@ -1,4 +1,5 @@
 import { History } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface SpinHistoryDisplayItem {
   key: string;
@@ -14,6 +15,8 @@ interface SpinHistoryPanelProps {
 }
 
 export function SpinHistoryPanel({ title, emptyLabel, items }: SpinHistoryPanelProps) {
+  const { t } = useTranslation();
+
   return (
     <section className="panel secondary-panel" aria-labelledby="history-heading">
       <h2 id="history-heading" className="section-heading">
@@ -25,7 +28,7 @@ export function SpinHistoryPanel({ title, emptyLabel, items }: SpinHistoryPanelP
       {items.length === 0 ? (
         <p className="muted">{emptyLabel}</p>
       ) : (
-        <ul className="history-list" aria-label="Recent spin results">
+        <ul className="history-list" aria-label={t("recentSpinResults")}>
           {items.map((item) => (
             <li key={item.key}>
               <div>

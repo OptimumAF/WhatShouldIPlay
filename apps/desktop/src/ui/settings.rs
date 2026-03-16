@@ -500,7 +500,7 @@ pub(crate) fn render_settings_sidebar(
                         value: "{manual_text}",
                         rows: "4",
                         oninput: move |evt| manual_text.set(evt.value()),
-                        placeholder: "Hades II\nHelldivers 2\nMonster Hunter Wilds"
+                        placeholder: "{tr(lang, \"Hades II\\nHelldivers 2\\nMonster Hunter Wilds\", \"Hades II\\nHelldivers 2\\nMonster Hunter Wilds\")}"
                     }
                     div { class: "button-row",
                         button {

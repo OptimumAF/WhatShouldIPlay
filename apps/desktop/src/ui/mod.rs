@@ -5,7 +5,7 @@ use tokio::time::{sleep, Duration};
 pub(crate) mod settings;
 
 use crate::{
-    format_odds, localize_source_chain, parse_ui_lang, pick_weighted_index, tr, SpinHistoryItem,
+    engine::pick_weighted_index, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
     UiLang, WeightedPoolGame,
 };
 

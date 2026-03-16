@@ -1,10 +1,13 @@
 import { Trophy } from "lucide-react";
+import type { SourceId } from "../types";
+import { SourceAccentChips } from "./SourceAccentChips";
 
 interface WinnerSummaryCardProps {
   prompt: string;
   winner: string;
   sourceLabel: string;
-  sourceValue: string;
+  sources: SourceId[];
+  formatSourceLabel: (sources: SourceId[]) => string;
   oddsLabel: string;
   oddsValue: string;
   playedLabel: string;
@@ -17,7 +20,8 @@ export function WinnerSummaryCard({
   prompt,
   winner,
   sourceLabel,
-  sourceValue,
+  sources,
+  formatSourceLabel,
   oddsLabel,
   oddsValue,
   playedLabel,
@@ -33,9 +37,8 @@ export function WinnerSummaryCard({
       </p>
       <strong>{winner}</strong>
       <div className="winner-stats">
-        <span>
-          {sourceLabel}: {sourceValue}
-        </span>
+        <span>{sourceLabel}</span>
+        <SourceAccentChips sources={sources} formatSourceLabel={formatSourceLabel} />
         <span>
           {oddsLabel}: {oddsValue}
         </span>

@@ -206,10 +206,19 @@ pub(crate) fn render_wheel_panel(
                 }
             }
             if !winner().is_empty() {
-                div { class: "winner",
+                div { class: "winner winner-rich",
                     p { "{you_should_play_label}" }
                     strong { "{winner}" }
-                    p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, &winner_sources())}" }
+                    p { "{tr(lang, \"Sources\", \"Fuentes\")}" }
+                    div { class: "source-chip-row",
+                        for source in winner_sources().split('+') {
+                            span {
+                                class: "source-chip",
+                                "data-source": source_chip_attr(source),
+                                "{source_label_for_display(lang, source)}"
+                            }
+                        }
+                    }
                     p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
                 }
             }
@@ -256,8 +265,19 @@ pub(crate) fn render_winner_overlay(
                     class: "winner-popup",
                     onclick: move |event| event.stop_propagation(),
                     div { class: "winner-glow" }
+                    div { class: "winner-burst winner-burst-a" }
+                    div { class: "winner-burst winner-burst-b" }
                     p { class: "winner-tag", "{tr(lang, \"Winner\", \"Ganador\")}" }
                     h3 { "{winner}" }
+                    div { class: "source-chip-row",
+                        for source in winner_sources.split('+') {
+                            span {
+                                class: "source-chip",
+                                "data-source": source_chip_attr(source),
+                                "{source_label_for_display(lang, source)}"
+                            }
+                        }
+                    }
                     p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, winner_sources)}" }
                     p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds)}" }
                     p { "{tr(lang, \"Launch it. No second guessing.\", \"Abre el juego. Sin dudar.\")}" }
@@ -268,6 +288,30 @@ pub(crate) fn render_winner_overlay(
                 }
             }
         }
+    }
+}
+
+fn source_chip_attr(source: &str) -> &'static str {
+    match source.trim() {
+        "SteamCharts" => "steamcharts",
+        "SteamDB" => "steamdb",
+        "TwitchMetrics" => "twitchmetrics",
+        "Steam Import" => "steamImport",
+        "Manual" => "manual",
+        "Scanned" => "scan",
+        _ => "unknown",
+    }
+}
+
+fn source_label_for_display(lang: UiLang, source: &str) -> &'static str {
+    match source.trim() {
+        "SteamCharts" => tr(lang, "SteamCharts", "SteamCharts"),
+        "SteamDB" => tr(lang, "SteamDB", "SteamDB"),
+        "TwitchMetrics" => tr(lang, "TwitchMetrics", "TwitchMetrics"),
+        "Steam Import" => tr(lang, "Steam Import", "Importacion Steam"),
+        "Manual" => tr(lang, "Manual", "Manual"),
+        "Scanned" => tr(lang, "Scanned", "Escaneado"),
+        _ => tr(lang, "Unknown", "Desconocido"),
     }
 }
 

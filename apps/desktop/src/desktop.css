@@ -519,6 +519,15 @@ button:disabled {
   padding: var(--space-3);
 }
 
+.winner-rich {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 224, 102, 0.28) 0%, transparent 28%),
+    radial-gradient(circle at 88% 22%, rgba(36, 123, 160, 0.16) 0%, transparent 30%),
+    #f9f3df;
+}
+
 .winner p {
   margin: 0;
   color: #39526f;
@@ -529,6 +538,35 @@ button:disabled {
   display: inline-block;
   font-size: var(--text-xl);
 }
+
+.source-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: var(--space-2);
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 38, 58, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: #102d47;
+}
+
+.source-chip[data-source="steamcharts"] { background: rgba(31, 157, 115, 0.16); }
+.source-chip[data-source="steamdb"] { background: rgba(26, 117, 207, 0.16); }
+.source-chip[data-source="twitchmetrics"] { background: rgba(217, 108, 240, 0.16); }
+.source-chip[data-source="steamImport"] { background: rgba(75, 107, 251, 0.16); }
+.source-chip[data-source="manual"] { background: rgba(245, 158, 11, 0.18); }
+.source-chip[data-source="scan"] { background: rgba(36, 123, 160, 0.16); }
 
 .history-list {
   margin: var(--space-2) 0 0;
@@ -579,6 +617,7 @@ button:disabled {
     radial-gradient(circle at 88% 20%, rgba(112, 193, 179, 0.44) 0%, transparent 45%),
     linear-gradient(145deg, #fdf7e8 0%, #e7f0f8 100%);
   padding: var(--space-5);
+  overflow: hidden;
   animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
 }
 
@@ -589,6 +628,28 @@ button:disabled {
   border: 2px solid rgba(255, 255, 255, 0.8);
   animation: winner-ring 1.8s ease-out infinite;
   pointer-events: none;
+}
+
+.winner-burst {
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  filter: blur(20px);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.winner-burst-a {
+  top: -3rem;
+  right: -2rem;
+  background: rgba(255, 224, 102, 0.42);
+}
+
+.winner-burst-b {
+  left: -2.5rem;
+  bottom: -3rem;
+  background: rgba(36, 123, 160, 0.28);
 }
 
 .winner-tag {

@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { SourceAccentChips } from "../../components/SourceAccentChips";
 import type { SourceId } from "../../types";
 
 interface WinnerMeta {
@@ -56,8 +57,11 @@ export function WinnerModal({
         tabIndex={-1}
       >
         <div className="winner-glow" />
+        <div className="winner-burst winner-burst-a" aria-hidden="true" />
+        <div className="winner-burst winner-burst-b" aria-hidden="true" />
         <p className="winner-tag">{t("winner")}</p>
         <h3 id="winner-title">{winner}</h3>
+        <SourceAccentChips sources={winnerMeta.sources} formatSourceLabel={formatSourceList} />
         <div className="winner-moment-grid">
           <div>
             <span>{t("spinOdds")}</span>

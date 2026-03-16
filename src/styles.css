@@ -1084,8 +1084,14 @@ button:active:not(:disabled),
 }
 
 .winner-rich {
+  position: relative;
   display: grid;
   gap: 0.35rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 28%),
+    radial-gradient(circle at 88% 22%, color-mix(in srgb, var(--accent-2) 18%, transparent) 0%, transparent 30%),
+    #f9f3df;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 60%, transparent);
 }
 
@@ -1094,6 +1100,55 @@ button:active:not(:disabled),
   gap: var(--space-1);
   color: var(--muted);
   font-size: var(--text-sm);
+}
+
+.source-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+
+.source-chip[data-source="steamcharts"] {
+  background: color-mix(in srgb, #1f9d73 18%, var(--surface));
+}
+
+.source-chip[data-source="steamdb"] {
+  background: color-mix(in srgb, #1a75cf 18%, var(--surface));
+}
+
+.source-chip[data-source="twitchmetrics"] {
+  background: color-mix(in srgb, #d96cf0 18%, var(--surface));
+}
+
+.source-chip[data-source="itchio"] {
+  background: color-mix(in srgb, #ff5d5d 16%, var(--surface));
+}
+
+.source-chip[data-source="manual"] {
+  background: color-mix(in srgb, #f59e0b 18%, var(--surface));
+}
+
+.source-chip[data-source="steamImport"] {
+  background: color-mix(in srgb, #4b6bfb 18%, var(--surface));
+}
+
+.source-chip[data-source="scan"] {
+  background: color-mix(in srgb, #247ba0 18%, var(--surface));
 }
 
 .history-list {
@@ -1358,6 +1413,7 @@ button:active:not(:disabled),
   border: 1px solid var(--panel-border);
   background: var(--winner-popup-bg);
   padding: var(--space-5);
+  overflow: hidden;
   animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
 }
 
@@ -1368,6 +1424,28 @@ button:active:not(:disabled),
   border: 2px solid var(--focus-ring);
   animation: winner-ring 1.8s ease-out infinite;
   pointer-events: none;
+}
+
+.winner-burst {
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  filter: blur(20px);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.winner-burst-a {
+  top: -3rem;
+  right: -2rem;
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.winner-burst-b {
+  left: -2.5rem;
+  bottom: -3rem;
+  background: color-mix(in srgb, var(--accent-2) 34%, transparent);
 }
 
 .winner-tag {

@@ -156,7 +156,8 @@ export function PlayPanel({
           prompt={t("youShouldPlay")}
           winner={winner}
           sourceLabel={t("sourceLabel")}
-          sourceValue={formatSourceList(winnerMeta.sources)}
+          sources={winnerMeta.sources}
+          formatSourceLabel={formatSourceList}
           oddsLabel={t("spinOdds")}
           oddsValue={formatOdds(winnerMeta.odds)}
           playedLabel={t("winnerActions.played")}

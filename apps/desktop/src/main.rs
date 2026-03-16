@@ -17,7 +17,7 @@ mod contracts;
 mod ui;
 use contracts::TopGamesPayloadContract;
 use ui::settings::render_settings_sidebar;
-use ui::{render_spin_history_panel, render_wheel_panel, render_winner_overlay};
+use ui::{render_hero_masthead, render_spin_history_panel, render_wheel_panel, render_winner_overlay};
 
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
@@ -143,7 +143,7 @@ async fn refresh_scanned_games(
 
 #[component]
 fn App() -> Element {
-    let mut ui_lang = use_signal(|| UiLang::En);
+    let ui_lang = use_signal(|| UiLang::En);
     let steamcharts_games = use_signal(Vec::<GameItem>::new);
     let steamdb_games = use_signal(Vec::<GameItem>::new);
     let twitch_games = use_signal(Vec::<GameItem>::new);
@@ -185,7 +185,7 @@ fn App() -> Element {
     let pending_winner_odds = use_signal(|| 0.0_f64);
     let spin_history = use_signal(Vec::<SpinHistoryItem>::new);
     let show_winner_popup = use_signal(|| false);
-    let mut show_sidebar = use_signal(|| false);
+    let show_sidebar = use_signal(|| false);
     let active_settings_section = use_signal(|| "sources".to_string());
 
     use_future({
@@ -325,34 +325,7 @@ fn App() -> Element {
     rsx! {
         style { "{DESKTOP_CSS}" }
         main { class: format!("layout {}", platform_class),
-            section { class: "hero hero-masthead",
-                div { class: "hero-topline",
-                    p { class: "kicker", "{tr(lang, \"PickAGame Desktop\", \"PickAGame Desktop\")}" }
-                    p { class: "hero-meta", "{tr(lang, \"Platform style\", \"Estilo de plataforma\")}: {platform_label}" }
-                }
-                div { class: "hero-main",
-                    div { class: "hero-copy",
-                        h1 { "{tr(lang, \"Spin For Your Next Game\", \"Gira para tu proximo juego\")}" }
-                        p { "{tr(lang, \"Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner.\", \"Modos predefinidos, probabilidades ponderadas, historial de enfriamiento, importacion de Steam y escaneo local en una sola ruleta desktop.\")}" }
-                        p { class: "status", "{tr(lang, \"Status\", \"Estado\")}: {status}" }
-                    }
-                    div { class: "hero-utility",
-                        select {
-                            value: if matches!(lang, UiLang::Es) { "es" } else { "en" },
-                            oninput: move |evt| ui_lang.set(parse_ui_lang(&evt.value())),
-                            option { value: "en", "{tr(lang, \"English\", \"Ingles\")}" }
-                            option { value: "es", "{tr(lang, \"Spanish\", \"Espanol\")}" }
-                        }
-                        div { class: "hero-actions-primary",
-                            button {
-                                class: "ghost",
-                                onclick: move |_| show_sidebar.set(!show_sidebar()),
-                                "{sidebar_toggle_label}"
-                            }
-                        }
-                    }
-                }
-            }
+            {render_hero_masthead(lang, platform_label, &status(), ui_lang, show_sidebar, sidebar_toggle_label)}
 
             div { class: if show_sidebar() { "workspace" } else { "workspace sidebar-collapsed" },
                 if show_sidebar() {

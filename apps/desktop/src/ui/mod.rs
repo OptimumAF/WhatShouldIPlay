@@ -5,9 +5,49 @@ use tokio::time::{sleep, Duration};
 pub(crate) mod settings;
 
 use crate::{
-    format_odds, localize_source_chain, pick_weighted_index, tr, SpinHistoryItem, UiLang,
-    WeightedPoolGame,
+    format_odds, localize_source_chain, parse_ui_lang, pick_weighted_index, tr, SpinHistoryItem,
+    UiLang, WeightedPoolGame,
 };
+
+pub(crate) fn render_hero_masthead(
+    lang: UiLang,
+    platform_label: &'static str,
+    status: &str,
+    mut ui_lang: Signal<UiLang>,
+    mut show_sidebar: Signal<bool>,
+    sidebar_toggle_label: &'static str,
+) -> Element {
+    rsx! {
+        section { class: "hero hero-masthead",
+            div { class: "hero-topline",
+                p { class: "kicker", "{tr(lang, \"PickAGame Desktop\", \"PickAGame Desktop\")}" }
+                p { class: "hero-meta", "{tr(lang, \"Platform style\", \"Estilo de plataforma\")}: {platform_label}" }
+            }
+            div { class: "hero-main",
+                div { class: "hero-copy",
+                    h1 { "{tr(lang, \"Spin For Your Next Game\", \"Gira para tu proximo juego\")}" }
+                    p { "{tr(lang, \"Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner.\", \"Modos predefinidos, probabilidades ponderadas, historial de enfriamiento, importacion de Steam y escaneo local en una sola ruleta desktop.\")}" }
+                    p { class: "status", "{tr(lang, \"Status\", \"Estado\")}: {status}" }
+                }
+                div { class: "hero-utility",
+                    select {
+                        value: if matches!(lang, UiLang::Es) { "es" } else { "en" },
+                        oninput: move |evt| ui_lang.set(parse_ui_lang(&evt.value())),
+                        option { value: "en", "{tr(lang, \"English\", \"Ingles\")}" }
+                        option { value: "es", "{tr(lang, \"Spanish\", \"Espanol\")}" }
+                    }
+                    div { class: "hero-actions-primary",
+                        button {
+                            class: "ghost",
+                            onclick: move |_| show_sidebar.set(!show_sidebar()),
+                            "{sidebar_toggle_label}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 pub(crate) fn render_wheel_panel(
     lang: UiLang,

@@ -322,23 +322,31 @@ fn App() -> Element {
     rsx! {
         style { "{DESKTOP_CSS}" }
         main { class: format!("layout {}", platform_class),
-            section { class: "hero",
-                p { class: "kicker", "{tr(lang, \"PickAGame Desktop\", \"PickAGame Desktop\")}" }
-                h1 { "{tr(lang, \"Spin For Your Next Game\", \"Gira para tu proximo juego\")}" }
-                p { "{tr(lang, \"Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner.\", \"Modos predefinidos, probabilidades ponderadas, historial de enfriamiento, importacion de Steam y escaneo local en una sola ruleta desktop.\")}" }
-                p { class: "muted", "{tr(lang, \"Platform style\", \"Estilo de plataforma\")}: {platform_label}" }
-                p { class: "status", "{tr(lang, \"Status\", \"Estado\")}: {status}" }
-                div { class: "button-row",
-                    select {
-                        value: if matches!(lang, UiLang::Es) { "es" } else { "en" },
-                        oninput: move |evt| ui_lang.set(parse_ui_lang(&evt.value())),
-                        option { value: "en", "{tr(lang, \"English\", \"Ingles\")}" }
-                        option { value: "es", "{tr(lang, \"Spanish\", \"Espanol\")}" }
+            section { class: "hero hero-masthead",
+                div { class: "hero-topline",
+                    p { class: "kicker", "{tr(lang, \"PickAGame Desktop\", \"PickAGame Desktop\")}" }
+                    p { class: "hero-meta", "{tr(lang, \"Platform style\", \"Estilo de plataforma\")}: {platform_label}" }
+                }
+                div { class: "hero-main",
+                    div { class: "hero-copy",
+                        h1 { "{tr(lang, \"Spin For Your Next Game\", \"Gira para tu proximo juego\")}" }
+                        p { "{tr(lang, \"Mode presets, weighted odds, cooldown history, Steam account import, and local scan in one desktop spinner.\", \"Modos predefinidos, probabilidades ponderadas, historial de enfriamiento, importacion de Steam y escaneo local en una sola ruleta desktop.\")}" }
+                        p { class: "status", "{tr(lang, \"Status\", \"Estado\")}: {status}" }
                     }
-                    button {
-                        class: "ghost",
-                        onclick: move |_| show_sidebar.set(!show_sidebar()),
-                        "{sidebar_toggle_label}"
+                    div { class: "hero-utility",
+                        select {
+                            value: if matches!(lang, UiLang::Es) { "es" } else { "en" },
+                            oninput: move |evt| ui_lang.set(parse_ui_lang(&evt.value())),
+                            option { value: "en", "{tr(lang, \"English\", \"Ingles\")}" }
+                            option { value: "es", "{tr(lang, \"Spanish\", \"Espanol\")}" }
+                        }
+                        div { class: "hero-actions-primary",
+                            button {
+                                class: "ghost",
+                                onclick: move |_| show_sidebar.set(!show_sidebar()),
+                                "{sidebar_toggle_label}"
+                            }
+                        }
                     }
                 }
             }
@@ -841,68 +849,73 @@ fn App() -> Element {
                 }
 
                 div { class: "content-stack",
-                    section { class: "panel",
+                    section { class: "panel panel-primary",
                 h2 { "{tr(lang, \"Wheel\", \"Ruleta\")}" }
                 p { class: "muted", "{tr(lang, \"Current pool\", \"Pool actual\")}: {spin_pool.len()} {tr(lang, \"unique games\", \"juegos unicos\")}" }
                 if cooldown_exhausted {
                     p { class: "muted", "{tr(lang, \"Cooldown saturated the pool, so all entries were temporarily re-enabled.\", \"El enfriamiento agoto el pool, asi que todas las entradas se reactivaron temporalmente.\")}" }
                 }
-                div { class: "wheel-shell",
-                    div { class: "wheel-pointer" }
-                    div {
-                        class: "wheel",
-                        style: format!(
-                            "--rotation:{}deg;--transition:{};--wheel-bg:{};",
-                            wheel_rotation(),
-                            if spinning() { &spin_transition } else { "none" },
-                            wheel_background
-                        ),
-                        ontransitionend: move |_| {
-                            if spinning() {
-                                let selected_name = pending_winner();
-                                let selected_sources = pending_winner_sources();
-                                let selected_odds = pending_winner_odds();
-                                spinning.set(false);
-                                winner.set(selected_name.clone());
-                                winner_sources.set(selected_sources.clone());
-                                winner_odds.set(selected_odds);
-                                if !selected_name.is_empty() {
-                                    let mut history = spin_history();
-                                    history.insert(0, SpinHistoryItem {
-                                        name: selected_name,
-                                        sources: selected_sources,
-                                        odds: selected_odds,
-                                    });
-                                    if history.len() > 30 {
-                                        history.truncate(30);
+                div { class: "wheel-stage",
+                    div { class: "wheel-stage-glow" }
+                    div { class: "wheel-stage-ring" }
+                    div { class: "wheel-shell",
+                        div { class: "wheel-pointer" }
+                        div {
+                            class: "wheel",
+                            style: format!(
+                                "--rotation:{}deg;--transition:{};--wheel-bg:{};",
+                                wheel_rotation(),
+                                if spinning() { &spin_transition } else { "none" },
+                                wheel_background
+                            ),
+                            ontransitionend: move |_| {
+                                if spinning() {
+                                    let selected_name = pending_winner();
+                                    let selected_sources = pending_winner_sources();
+                                    let selected_odds = pending_winner_odds();
+                                    spinning.set(false);
+                                    winner.set(selected_name.clone());
+                                    winner_sources.set(selected_sources.clone());
+                                    winner_odds.set(selected_odds);
+                                    if !selected_name.is_empty() {
+                                        let mut history = spin_history();
+                                        history.insert(0, SpinHistoryItem {
+                                            name: selected_name,
+                                            sources: selected_sources,
+                                            odds: selected_odds,
+                                        });
+                                        if history.len() > 30 {
+                                            history.truncate(30);
+                                        }
+                                        spin_history.set(history);
                                     }
-                                    spin_history.set(history);
+                                    show_winner_popup.set(true);
+                                    let mut show_winner_popup = show_winner_popup;
+                                    spawn(async move {
+                                        sleep(Duration::from_millis(3600)).await;
+                                        show_winner_popup.set(false);
+                                    });
                                 }
-                                show_winner_popup.set(true);
-                                let mut show_winner_popup = show_winner_popup;
-                                spawn(async move {
-                                    sleep(Duration::from_millis(3600)).await;
-                                    show_winner_popup.set(false);
-                                });
-                            }
-                        },
-                        div { class: "wheel-hub" }
-                        if spin_pool.is_empty() {
-                            div { class: "wheel-empty", "{tr(lang, \"Add or load games first\", \"Agrega o carga juegos primero\")}" }
-                        } else {
-                            for (label_angle, label_flip, game_name) in wheel_labels.iter() {
-                                div {
-                                    class: "wheel-label",
-                                    style: format!(
-                                        "--label-angle:{}deg;--label-flip:{}deg;",
-                                        label_angle,
-                                        label_flip
-                                    ),
-                                    span { "{game_name}" }
+                            },
+                            div { class: "wheel-hub" }
+                            if spin_pool.is_empty() {
+                                div { class: "wheel-empty", "{tr(lang, \"Add or load games first\", \"Agrega o carga juegos primero\")}" }
+                            } else {
+                                for (label_angle, label_flip, game_name) in wheel_labels.iter() {
+                                    div {
+                                        class: "wheel-label",
+                                        style: format!(
+                                            "--label-angle:{}deg;--label-flip:{}deg;",
+                                            label_angle,
+                                            label_flip
+                                        ),
+                                        span { "{game_name}" }
+                                    }
                                 }
                             }
                         }
                     }
+                    p { class: "wheel-caption", "{tr(lang, \"Focus the wheel, then keep settings out of the way until you need them.\", \"Enfoca la ruleta y deja los ajustes fuera del camino hasta necesitarlos.\")}" }
                 }
                 div { class: "button-row",
                     button {
@@ -1987,545 +2000,4 @@ fn wheel_gradient(count: usize) -> String {
     format!("conic-gradient({})", stops.join(", "))
 }
 
-const DESKTOP_CSS: &str = r#"
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-:root {
-  --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", sans-serif;
-  --panel-bg: rgba(255, 255, 255, 0.86);
-  --panel-border: rgba(15, 32, 50, 0.16);
-  --field-border: rgba(15, 32, 50, 0.2);
-  --control-border: rgba(15, 32, 50, 0.18);
-  --button-accent: #f25f5c;
-  --button-accent-ink: #ffffff;
-  --button-ghost-bg: #dbe9f2;
-  --button-ghost-ink: #10314c;
-  --content-ink: #0f2032;
-  --subtle-ink: #3c556f;
-  --kicker-ink: #1f3f5b;
-  --suggested-bg: rgba(36, 123, 160, 0.08);
-  --suggested-fill-start: rgba(36, 123, 160, 0.4);
-  --suggested-fill-end: #247ba0;
-  --shadow-soft: none;
-  --line-height: 1.45;
-  --text-xs: 0.78rem;
-  --text-sm: 0.88rem;
-  --text-base: 1rem;
-  --text-lg: 1.12rem;
-  --text-xl: 1.45rem;
-  --text-2xl: clamp(1.7rem, 3vw, 2.2rem);
-  --text-hero: clamp(1.9rem, 4vw, 2.6rem);
-  --space-1: 0.35rem;
-  --space-2: 0.5rem;
-  --space-3: 0.7rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --radius-sm: 10px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 20px;
-}
-
-.layout.os-windows {
-  --font-body: "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Segoe UI Semibold", "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  --radius-sm: 10px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --button-accent: #d8534f;
-  --button-ghost-bg: #dbe9f2;
-  --button-ghost-ink: #10314c;
-}
-
-.layout.os-macos {
-  --font-body: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
-  --font-display: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
-  --radius-sm: 12px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --panel-bg: rgba(255, 255, 255, 0.82);
-  --panel-border: rgba(31, 41, 55, 0.14);
-  --field-border: rgba(31, 41, 55, 0.2);
-  --control-border: rgba(31, 41, 55, 0.16);
-  --button-accent: #0a84ff;
-  --button-ghost-bg: rgba(9, 132, 255, 0.14);
-  --button-ghost-ink: #0a3f73;
-  --shadow-soft: 0 10px 22px rgba(17, 24, 39, 0.08);
-}
-
-.layout.os-linux {
-  --font-body: "Noto Sans", "Ubuntu", "Cantarell", sans-serif;
-  --font-display: "Noto Sans", "Ubuntu", "Cantarell", sans-serif;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --panel-bg: rgba(255, 255, 255, 0.9);
-  --panel-border: rgba(15, 32, 50, 0.24);
-  --field-border: rgba(15, 32, 50, 0.26);
-  --control-border: rgba(15, 32, 50, 0.24);
-  --button-accent: #2c7a7b;
-  --button-ghost-bg: #deecec;
-  --button-ghost-ink: #134143;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  line-height: var(--line-height);
-  color: var(--content-ink);
-  background:
-    radial-gradient(circle at 8% 14%, #ffe066 0%, transparent 34%),
-    radial-gradient(circle at 90% 20%, #70c1b3 0%, transparent 34%),
-    radial-gradient(circle at 52% 98%, #ff9f1c 0%, transparent 38%),
-    linear-gradient(150deg, #f7f3e8 0%, #dbe8f6 100%);
-}
-
-.layout {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-5) var(--space-6);
-  display: grid;
-  gap: var(--space-4);
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.workspace.sidebar-collapsed {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.sidebar {
-  display: grid;
-  gap: var(--space-4);
-  position: sticky;
-  top: var(--space-4);
-}
-
-.content-stack {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.settings-section-switcher {
-  display: grid;
-  gap: var(--space-2);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: var(--space-2);
-  padding: var(--space-1);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.58);
-}
-
-.settings-section-trigger {
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--button-ghost-ink);
-}
-
-.settings-section-trigger.is-active {
-  background: var(--button-ghost-ink);
-  color: white;
-  box-shadow: var(--shadow-soft);
-}
-
-.hero,
-.panel {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  box-shadow: var(--shadow-soft);
-}
-
-.hero h1 {
-  margin: 0;
-  font-size: var(--text-hero);
-  font-family: var(--font-display);
-  line-height: 1.1;
-}
-
-.hero p {
-  margin: var(--space-2) 0 0;
-}
-
-.kicker {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: var(--text-xs);
-  color: var(--kicker-ink);
-}
-
-h2 {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  line-height: 1.15;
-}
-
-.muted,
-.status {
-  margin: var(--space-2) 0 0;
-  color: var(--subtle-ink);
-  font-size: var(--text-sm);
-}
-
-textarea {
-  width: 100%;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-sm);
-  margin-top: var(--space-2);
-  padding: var(--space-3);
-  font: inherit;
-  resize: vertical;
-}
-
-input {
-  width: 100%;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-}
-
-select {
-  width: 100%;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.input-grid {
-  margin-top: var(--space-2);
-  display: grid;
-  gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-.control-grid {
-  margin-top: var(--space-2);
-  display: grid;
-  gap: var(--space-1);
-}
-
-.control-row {
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-2);
-  display: grid;
-  grid-template-columns: 150px 1fr auto;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.control-row span {
-  color: var(--subtle-ink);
-  font-size: var(--text-sm);
-}
-
-.control-row.suggested-row {
-  background: var(--suggested-bg);
-}
-
-.suggested-bar {
-  height: 0.45rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--suggested-fill-start), var(--suggested-fill-end));
-}
-
-.button-row {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-top: var(--space-2);
-}
-
-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.6rem var(--space-4);
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--button-accent);
-  color: var(--button-accent-ink);
-}
-
-button.ghost {
-  background: var(--button-ghost-bg);
-  color: var(--button-ghost-ink);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.wheel-shell {
-  margin: var(--space-4) auto 0;
-  width: min(74vw, 460px);
-  aspect-ratio: 1;
-  position: relative;
-}
-
-.wheel-pointer {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
-  border-top: 22px solid #10263a;
-  z-index: 3;
-}
-
-.wheel {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 10px solid #10263a;
-  background: var(--wheel-bg, #f4f0e6);
-  position: relative;
-  overflow: hidden;
-  transform: rotate(var(--rotation));
-  transition: var(--transition);
-}
-
-.wheel-hub {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 16%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #10263a;
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.72);
-  z-index: 2;
-}
-
-.wheel-empty {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #39526f;
-  font-weight: 700;
-}
-
-.wheel-label {
-  position: absolute;
-  inset: 0;
-  transform: rotate(var(--label-angle));
-  transform-origin: center;
-  z-index: 1;
-}
-
-.wheel-label span {
-  position: absolute;
-  left: 50%;
-  top: 20%;
-  transform: translateX(-50%) rotate(calc(90deg + var(--label-flip, 0deg)));
-  transform-origin: center;
-  max-width: 38%;
-  line-height: 1.05;
-  font-size: clamp(0.56rem, 1.15vw, 0.82rem);
-  font-weight: 700;
-  text-align: center;
-  text-wrap: balance;
-  text-shadow:
-    0 1px 1px rgba(255, 255, 255, 0.8),
-    0 0 6px rgba(255, 255, 255, 0.35);
-}
-
-.winner {
-  margin-top: var(--space-3);
-  border: 1px solid rgba(15, 32, 50, 0.2);
-  background: #f9f3df;
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-}
-
-.winner p {
-  margin: 0;
-  color: #39526f;
-}
-
-.winner strong {
-  margin-top: var(--space-1);
-  display: inline-block;
-  font-size: var(--text-xl);
-}
-
-.history-list {
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-1);
-}
-
-.history-list li {
-  border: 1px solid rgba(15, 32, 50, 0.18);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.65);
-  padding: var(--space-2) var(--space-3);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.history-list small {
-  color: #3f5b76;
-}
-
-.history-list span {
-  font-weight: 700;
-  color: #102d47;
-}
-
-.winner-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(13, 26, 41, 0.55);
-  backdrop-filter: blur(3px);
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-}
-
-.winner-popup {
-  position: relative;
-  width: min(90vw, 520px);
-  border-radius: var(--radius-xl);
-  border: 1px solid rgba(16, 38, 58, 0.2);
-  background:
-    radial-gradient(circle at 20% 10%, rgba(255, 224, 102, 0.56) 0%, transparent 40%),
-    radial-gradient(circle at 88% 20%, rgba(112, 193, 179, 0.44) 0%, transparent 45%),
-    linear-gradient(145deg, #fdf7e8 0%, #e7f0f8 100%);
-  padding: var(--space-5);
-  animation: winner-pop 420ms cubic-bezier(.12,.87,.24,1.07);
-}
-
-.winner-glow {
-  position: absolute;
-  inset: -20px;
-  border-radius: 24px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  animation: winner-ring 1.8s ease-out infinite;
-  pointer-events: none;
-}
-
-.winner-tag {
-  margin: 0;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #24415c;
-}
-
-.winner-popup h3 {
-  margin: var(--space-2) 0;
-  font-size: clamp(1.9rem, 6vw, 2.8rem);
-  font-family: var(--font-display);
-  line-height: 1.1;
-}
-
-.winner-popup p {
-  margin: 0;
-  color: #2d4d69;
-}
-
-.winner-popup button {
-  margin-top: var(--space-3);
-}
-
-@media (max-width: 1240px) {
-  .layout {
-    padding: var(--space-5) var(--space-4) var(--space-6);
-    gap: var(--space-3);
-  }
-
-  .workspace {
-    grid-template-columns: minmax(236px, 290px) minmax(0, 1fr);
-    gap: var(--space-3);
-  }
-
-  .sidebar {
-    gap: var(--space-3);
-  }
-
-  .wheel-shell {
-    width: min(82vw, 430px);
-  }
-}
-
-@media (max-width: 1040px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-  }
-}
-
-@media (max-width: 760px) {
-  .layout {
-    padding: var(--space-4) var(--space-3) var(--space-5);
-  }
-
-  .settings-section-switcher {
-    grid-template-columns: 1fr;
-  }
-
-  .control-row {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .button-row {
-    gap: var(--space-1);
-  }
-}
-
-@keyframes winner-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.65) rotate(-4deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes winner-ring {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.92);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.06);
-  }
-}
-"#;
+const DESKTOP_CSS: &str = include_str!("desktop.css");

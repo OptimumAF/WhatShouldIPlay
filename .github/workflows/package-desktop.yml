@@ -129,7 +129,7 @@ jobs:
 
       - name: Publish packaged release assets (Windows/Linux)
         if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.platform != 'macos' }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             ${{ matrix.artifact_glob }}
@@ -137,7 +137,7 @@ jobs:
 
       - name: Publish packaged release assets (macOS)
         if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.platform == 'macos' }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             apps/desktop/target/release/bundle/osx/*.app.zip

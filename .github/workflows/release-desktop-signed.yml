@@ -100,7 +100,7 @@ jobs:
             apps/desktop/target/release/SHA256SUMS.txt
 
       - name: Publish signed release artifacts
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag }}
           files: |

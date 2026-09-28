@@ -30,7 +30,7 @@ Live site:
 - Steam account import using Steam Web API key + SteamID64
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay with odds + source details in both web and desktop apps
-- Optional cloud sync across devices via user-provided private GitHub Gist
+- Optional cloud sync across devices via a user-provided secret GitHub Gist (unlisted, not private)
 - Progressive Web App support (installable web app + offline shell cache)
 - Optional web notifications for trend updates and spin reminders
 - Multi-language web UI support (English and Spanish)
@@ -131,6 +131,12 @@ cargo build --release
 ## Legacy sync data
 
 Earlier versions could include a Steam API key in Gist sync snapshots and retain Steam/GitHub credentials in browser storage. The current local records are rewritten without those credentials when the app starts; imported games and IDs remain. If you used Gist sync with an earlier version, consider rotating the Steam API key. Updating the current Gist file does not remove older revisions, and this application does not delete remote Gist history. GitHub documents [Gist revision history](https://docs.github.com/en/get-started/writing-on-github/editing-and-sharing-content-with-gists/creating-gists). This is a precaution based on the old serialization path, not evidence that anyone accessed a key.
+
+## Optional Gist sync privacy
+
+The web app creates or updates `whatshouldiplay-sync.json` through `api.github.com` only when you choose a sync action. The snapshot includes settings, named profiles, manual and Steam-imported games and metadata, SteamID64, exclusions, notification preferences, and spin history. Credential fields are omitted. The GitHub token authenticates the API request and remains in page memory only; the Steam API key is also session-only. Reloading requires reentry. Gist ID and non-secret imported game data remain in local browser storage until changed or disconnected.
+
+A secret Gist is unlisted, **not private**: anyone with its URL can read it. The app does not encrypt snapshots before upload. Disconnect clears the local token, Gist ID, and sync reference without deleting local games or remote Gist content. See [GitHub's Gist visibility guidance](https://docs.github.com/en/get-started/writing-on-github/editing-and-sharing-content-with-gists/creating-gists).
 
 ## Open Source Standards
 

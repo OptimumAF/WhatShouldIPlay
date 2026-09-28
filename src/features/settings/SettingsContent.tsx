@@ -132,6 +132,7 @@ export interface SettingsContentProps {
   onCreateGistPush: () => void;
   onPushSync: () => void;
   onPullSync: () => void;
+  onDisconnect: () => void;
   activeAccountProfileId: string;
   accountProfiles: CloudProfileOption[];
   accountProfileDraftName: string;
@@ -226,6 +227,7 @@ export function SettingsContent({
   onCreateGistPush,
   onPushSync,
   onPullSync,
+  onDisconnect,
   activeAccountProfileId,
   accountProfiles,
   accountProfileDraftName,
@@ -381,6 +383,7 @@ export function SettingsContent({
               onCreateGistPush={onCreateGistPush}
               onPushSync={onPushSync}
               onPullSync={onPullSync}
+              onDisconnect={onDisconnect}
               activeAccountProfileId={activeAccountProfileId}
               accountProfiles={accountProfiles}
               accountProfileDraftName={accountProfileDraftName}

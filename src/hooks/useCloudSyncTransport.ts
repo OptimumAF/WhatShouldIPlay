@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { createSyncGist, pullSyncSnapshot, updateSyncGist } from "../lib/cloudSyncClient";
+import { CloudSyncError, createSyncGist, pullSyncSnapshot, updateSyncGist } from "../lib/cloudSyncClient";
 import { formatSyncTimestamp } from "../lib/appUtils";
 
 type ToastTone = "info" | "success" | "error";
@@ -68,7 +68,7 @@ export const useCloudSyncTransport = <TSnapshot extends BaseSnapshot>({
       setCloudSyncStatus(t("messages.cloudUploaded"));
       pushToast("success", t("messages.cloudUploaded"));
     } catch (error) {
-      const message = (error as Error).message;
+      const message = error instanceof CloudSyncError ? error.message : t("messages.cloudSyncUnexpectedError");
       setCloudSyncStatus(message);
       pushToast("error", `${message} Check token permissions and gist access, then retry.`);
     } finally {
@@ -108,7 +108,7 @@ export const useCloudSyncTransport = <TSnapshot extends BaseSnapshot>({
       setCloudSyncStatus(`Created sync gist ${createdGistId}.`);
       pushToast("success", `Created sync gist ${createdGistId}.`);
     } catch (error) {
-      const message = (error as Error).message;
+      const message = error instanceof CloudSyncError ? error.message : t("messages.cloudSyncUnexpectedError");
       if (message === "GitHub API did not return gist id.") {
         setCloudSyncStatus(t("messages.cloudMissingGistId"));
         pushToast("error", t("messages.cloudMissingGistId"));
@@ -179,7 +179,7 @@ export const useCloudSyncTransport = <TSnapshot extends BaseSnapshot>({
         pushToast("success", t("messages.cloudDownloadedApplied"));
       }
     } catch (error) {
-      const message = (error as Error).message;
+      const message = error instanceof CloudSyncError ? error.message : t("messages.cloudSyncUnexpectedError");
       setCloudSyncStatus(message);
       pushToast("error", `${message} ${t("messages.retryHint")}`);
     } finally {

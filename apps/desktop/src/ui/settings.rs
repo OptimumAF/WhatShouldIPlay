@@ -464,9 +464,9 @@ pub(crate) fn render_settings_sidebar(
                                             ));
                                             status.set(tr(lang, "Steam import complete.", "Importacion Steam completa.").to_string());
                                         }
-                                        Err(err) => {
+                                        Err(_) => {
                                             steam_import_status.set(format!(
-                                                "{}: {err}",
+                                                "{}.",
                                                 tr(lang, "Steam import failed", "Fallo la importacion de Steam")
                                             ));
                                             status.set(

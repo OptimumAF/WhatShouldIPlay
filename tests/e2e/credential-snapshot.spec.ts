@@ -3,6 +3,52 @@ import { expect, test } from "@playwright/test";
 const STEAM_CANARY = "synthetic-steam-key-never-export";
 const GIST_CANARY = "synthetic-gist-token-never-export";
 
+test("Cloud Sync explains secret Gists and disconnect keeps the local library", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("pickagame.onboarding.v1", JSON.stringify(true));
+    localStorage.setItem("pickagame.manual-games.v1", JSON.stringify(["Local Only Game"]));
+  });
+  await page.goto("/");
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Advanced" }).click();
+  await page.getByRole("button", { name: "Show Advanced Options" }).click();
+  await expect(page.getByText(/Secret Gists are unlisted, not private/)).toBeVisible();
+  await expect(page.getByText(/Uploads settings, profiles, manual and imported games/)).toBeVisible();
+
+  await page.getByLabel("GitHub token with gist scope").fill(GIST_CANARY);
+  await page.getByLabel("Sync Gist ID").fill("synthetic-gist-id");
+  await page.getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.getByLabel("GitHub token with gist scope")).toBeEmpty();
+  await expect(page.getByLabel("Sync Gist ID")).toBeEmpty();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("pickagame.cloud-sync.v1"))).not.toContain(
+    "synthetic-gist-id",
+  );
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("pickagame.manual-games.v1"))).toContain(
+    "Local Only Game",
+  );
+});
+
+test("Steam import errors never display a provider response containing a credential", async ({ page }) => {
+  const canary = "synthetic-secret-in-provider-response";
+  await page.addInitScript(() => {
+    localStorage.setItem("pickagame.onboarding.v1", JSON.stringify(true));
+  });
+  await page.route("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/**", async (route) => {
+    await route.fulfill({
+      status: 403,
+      headers: { "access-control-allow-origin": "*" },
+      body: `request rejected: ${canary}`,
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByLabel("Steam Web API Key").fill("synthetic-session-only-key");
+  await page.getByRole("textbox", { name: "SteamID64", exact: true }).fill("synthetic-id");
+  await page.getByRole("button", { name: "Import Steam Library" }).click();
+  await expect(page.getByText(/Steam import failed/).first()).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(canary);
+});
+
 test("legacy browser storage drops retained credentials but keeps imported games and IDs", async ({ page }) => {
   await page.addInitScript(({ steamCanary, gistCanary }) => {
     localStorage.setItem("pickagame.onboarding.v1", JSON.stringify(true));
@@ -33,7 +79,7 @@ test("legacy browser storage drops retained credentials but keeps imported games
   await expect(page.getByLabel("Steam Web API Key")).toBeEmpty();
   await page.getByRole("tab", { name: "Advanced" }).click();
   await page.getByRole("button", { name: "Show Advanced Options" }).click();
-  await expect(page.getByRole("note")).toContainText("Updating the Gist file does not erase its revision history");
+  await expect(page.getByText(/Updating the Gist file does not erase its revision history/)).toBeVisible();
   await expect(page.getByLabel("GitHub token with gist scope")).toBeEmpty();
   await expect(page.getByLabel("Sync Gist ID")).toHaveValue("synthetic-gist-id");
 });

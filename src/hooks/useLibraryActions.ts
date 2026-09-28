@@ -221,9 +221,9 @@ export const useLibraryActions = <TEnabledSources extends { steamImport: boolean
         setSteamImportStatus(message);
         pushToast("error", `${message} If needed, verify your API key and Steam privacy settings.`);
       } else {
-        const message = (error as Error).message;
+        const message = t("messages.steamImportFailed");
         setSteamImportStatus(message);
-        pushToast("error", `${message} Double-check your key, SteamID64, and profile visibility.`);
+        pushToast("error", message);
       }
     } finally {
       setSteamImportLoading(false);

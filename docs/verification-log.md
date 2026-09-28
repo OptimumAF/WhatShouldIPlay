@@ -46,3 +46,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `npx playwright test tests/e2e/credential-snapshot.spec.ts --project=chromium`: **3 passed / 3**. Tests cover startup rewrite while preserving imported game/App ID/Steam ID/Gist ID, UI fields blank for keys, legacy Gist pull, no adoption of the remote key, subsequent credential-free push, and an intercepted GET/PATCH sequence with no DELETE. They also assert the visible revision-history notice.
 
 **Limits:** The tests use synthetic credentials and intercepted GitHub responses. GitHub's historical revisions cannot be removed by rewriting the app's current file. No live account was used, and no claim of actual key access is made. Desktop credential persistence has not yet been audited. The adjacent “private Gist” copy remains incorrect and is the active M01.03 fix.
+
+## 2026-09-28 — M01.03 Gist disclosure and error redaction
+
+**Task:** M01.03 (VERIFY).  
+**Implementation:** English/Spanish UI and README now describe secret Gists as unlisted and readable by anyone with the URL, state the exact categories sent to `api.github.com`, and explain session-only Steam/GitHub keys. Disconnect clears local token, Gist ID, conflict, and sync reference while preserving the library. Gist transport errors no longer echo response bodies; unexpected sync errors use generic text. Web and desktop Steam import errors no longer display arbitrary provider/HTTP error text. Desktop Steam key is a Dioxus signal initialized empty; no desktop persistence path was found in this audit.
+
+- `npm run test:unit` before the error fix: **3 passed, 1 failed / 4**; the server-error canary appeared in the old message. After the fix: **4 passed / 4**.
+- Targeted Chromium test before disclosure/disconnect implementation: **3 passed, 1 failed / 4**; the secret-Gist explanation was absent. After implementation and a test locator correction: `npx playwright test tests/e2e/credential-snapshot.spec.ts --project=chromium` **5 passed / 5**. It checks disclosure, disconnect, retained local games, and a synthetic provider error body remaining out of the UI.
+- `npm run typecheck`: passed. `npm run build`: passed with committed data. `cargo check --manifest-path apps/desktop/Cargo.toml`: passed.
+- `cargo run --manifest-path apps/desktop/Cargo.toml`: started on Windows; process `pick-a-game-desktop` had a responding `Dioxus App` window. It was then stopped. This is startup evidence only, not a desktop journey check.
+
+**Limits:** No live GitHub credential was available, so upload/pull success and disconnect behavior against a real account are unverified. The browser tests intercepted GitHub and Steam API requests with synthetic values. The desktop import error UI compiled but was not exercised with a real request. M01.03 remains VERIFY. M00.02 still needs fresh-profile repeated-spin and settings-persistence checks.

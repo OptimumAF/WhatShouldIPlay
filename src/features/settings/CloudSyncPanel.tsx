@@ -29,6 +29,7 @@ interface CloudSyncPanelProps {
   onCreateGistPush: () => void;
   onPushSync: () => void;
   onPullSync: () => void;
+  onDisconnect: () => void;
   activeAccountProfileId: string;
   accountProfiles: CloudProfileOption[];
   accountProfileDraftName: string;
@@ -57,6 +58,7 @@ export function CloudSyncPanel({
   onCreateGistPush,
   onPushSync,
   onPullSync,
+  onDisconnect,
   activeAccountProfileId,
   accountProfiles,
   accountProfileDraftName,
@@ -86,6 +88,9 @@ export function CloudSyncPanel({
         <HelpTip text={t("helpTips.cloudSync")} />
       </h2>
       <p className="muted">{t("cloudSyncDescription")}</p>
+      <p className="muted" role="note">{t("cloudPrivacyNotice")}</p>
+      <p className="muted">{t("cloudPayloadNotice")}</p>
+      <p className="muted">{t("cloudTokenNotice")}</p>
       <p className="muted" role="note">{t("cloudLegacyNotice")}</p>
       <div className="steam-grid">
         <label htmlFor="cloud-token" className="sr-only">
@@ -129,6 +134,9 @@ export function CloudSyncPanel({
             <Download className="ui-icon" aria-hidden="true" />
             {t("pullSync")}
           </span>
+        </button>
+        <button type="button" className="ghost" onClick={onDisconnect} disabled={cloudSyncLoading || (!gistToken && !gistId)}>
+          {t("disconnectCloudSync")}
         </button>
       </div>
 

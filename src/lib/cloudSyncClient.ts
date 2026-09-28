@@ -5,17 +5,12 @@ interface CloudSyncFileEntry {
   raw_url?: string;
 }
 
-const readResponseError = async (response: Response, fallback: string) => {
-  try {
-    const text = await response.text();
-    if (text.trim()) {
-      return `${fallback} ${text.trim()}`;
-    }
-  } catch {
-    // Ignore parse failures and keep fallback.
+export class CloudSyncError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CloudSyncError";
   }
-  return fallback;
-};
+}
 
 export const updateSyncGist = async (params: {
   gistId: string;
@@ -39,7 +34,7 @@ export const updateSyncGist = async (params: {
   });
 
   if (!response.ok) {
-    throw new Error(await readResponseError(response, `Cloud sync upload failed (${response.status}).`));
+    throw new CloudSyncError(`Cloud sync upload failed (${response.status}).`);
   }
 };
 
@@ -66,11 +61,11 @@ export const createSyncGist = async (params: {
   });
 
   if (!response.ok) {
-    throw new Error(await readResponseError(response, `Could not create gist (${response.status}).`));
+    throw new CloudSyncError(`Could not create gist (${response.status}).`);
   }
   const json = (await response.json()) as { id?: string };
   if (!json.id) {
-    throw new Error("GitHub API did not return gist id.");
+    throw new CloudSyncError("GitHub API did not return gist id.");
   }
   return json.id;
 };
@@ -96,7 +91,7 @@ export const pullSyncSnapshot = async (params: {
   });
 
   if (!response.ok) {
-    throw new Error(await readResponseError(response, `Cloud sync download failed (${response.status}).`));
+    throw new CloudSyncError(`Cloud sync download failed (${response.status}).`);
   }
 
   const json = (await response.json()) as {
@@ -105,19 +100,23 @@ export const pullSyncSnapshot = async (params: {
 
   const file = resolveSyncFile(json.files);
   if (!file) {
-    throw new Error(params.noFileError);
+    throw new CloudSyncError(params.noFileError);
   }
 
   let content = file.content ?? "";
   if (!content && file.raw_url) {
     const raw = await fetch(file.raw_url);
     if (!raw.ok) {
-      throw new Error(await readResponseError(raw, `Failed to load gist raw file (${raw.status}).`));
+      throw new CloudSyncError(`Failed to load gist raw file (${raw.status}).`);
     }
     content = await raw.text();
   }
   if (!content) {
-    throw new Error(params.emptyFileError);
+    throw new CloudSyncError(params.emptyFileError);
   }
-  return JSON.parse(content) as unknown;
+  try {
+    return JSON.parse(content) as unknown;
+  } catch {
+    throw new CloudSyncError("Sync file is not valid JSON.");
+  }
 };

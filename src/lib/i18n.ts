@@ -175,7 +175,13 @@ const resources = {
       steamImportingStatus: "Importing your Steam library...",
       cloudSyncTitle: "Cloud Sync (Optional)",
       cloudSyncDescription:
-        "Sync your settings/history across devices using a private GitHub Gist. Your token is stored locally in this browser only.",
+        "Optional sync uses a secret GitHub Gist. You choose when to create, upload, or download.",
+      cloudPrivacyNotice:
+        "Secret Gists are unlisted, not private. Anyone with the URL can read them. This app does not encrypt snapshots before upload.",
+      cloudPayloadNotice:
+        "Uploads settings, profiles, manual and imported games, SteamID64, exclusions, notification preferences, and spin history to GitHub. Credential fields are omitted.",
+      cloudTokenNotice:
+        "Your GitHub token is sent to api.github.com for authentication and kept only in this page session. Your Steam API key is also session-only. Reenter keys after reload.",
       cloudLegacyNotice:
         "Earlier app versions could include your Steam API key in sync snapshots. If you synced with an earlier version, rotate that key. Updating the Gist file does not erase its revision history.",
       cloudTokenLabel: "GitHub token with gist scope",
@@ -185,6 +191,7 @@ const resources = {
       createGistPush: "Create Gist + Push",
       pushSync: "Push Sync",
       pullSync: "Pull Sync",
+      disconnectCloudSync: "Disconnect",
       syncingWithGist: "Syncing with GitHub Gist...",
       cloudReference: "Local cloud reference: {{value}}",
       cloudConflictOlder:
@@ -194,9 +201,9 @@ const resources = {
       restorePointsTitle: "Local restore points",
       restore: "Restore",
       clearRestorePoints: "Clear Restore Points",
-      accountProfilesTitle: "Account-linked profile presets",
+      accountProfilesTitle: "Named settings profiles",
       accountProfilesDescription:
-        "Save named settings presets and sync them via your cloud snapshot for continuity across devices.",
+        "Save settings profiles locally. They are included only when you choose to upload a snapshot.",
       activeProfile: "Active Profile",
       newProfileName: "New Profile Name",
       none: "None",
@@ -291,7 +298,7 @@ const resources = {
         spinReminders: "Sends periodic reminders to spin again when the page is not active.",
         reminderInterval: "Sets how often reminder notifications can fire, in minutes.",
         cloudSync:
-          "Syncs settings/history through a private GitHub Gist. Token stays in your local browser storage.",
+          "Syncs settings/history through a secret GitHub Gist. Anyone with its URL can read it. Your token lasts only for this page session.",
       },
       messages: {
         quickStartComplete: "Quick start complete. You can reopen it anytime from Quick Tour.",
@@ -304,6 +311,7 @@ const resources = {
         steamImporting: "Importing Steam library...",
         steamImportBlocked:
           "Steam import blocked in browser (likely CORS/network). Use the desktop app import for reliable account pulls.",
+        steamImportFailed: "Steam import failed. Check the key, SteamID64, and profile visibility.",
         cloudSnapshotInvalid: "Cloud snapshot format is invalid.",
         cloudKeepLocalStatus: "Kept local data. Cloud conflict was dismissed.",
         cloudKeepLocalToast: "Kept local data. Pull again anytime.",
@@ -342,6 +350,8 @@ const resources = {
         cloudConflictChoose: "Conflict detected. Choose Keep Local or Apply Remote.",
         cloudDownloadedApplied: "Cloud sync downloaded and applied.",
         cloudRestorePointsCleared: "Cleared local cloud restore points.",
+        cloudDisconnected: "Disconnected. GitHub token and Gist ID cleared; local games remain.",
+        cloudSyncUnexpectedError: "Cloud sync failed. Check the Gist, token permissions, and connection.",
         retryHint: "Retry in a minute or check your network connection.",
       },
     },
@@ -518,7 +528,13 @@ const resources = {
       steamImportingStatus: "Importando tu biblioteca de Steam...",
       cloudSyncTitle: "Sync en nube (Opcional)",
       cloudSyncDescription:
-        "Sincroniza ajustes/historial entre dispositivos usando un Gist privado de GitHub. Tu token se guarda solo en este navegador.",
+        "La sincronizacion opcional usa un Gist secreto de GitHub. Tu eliges cuando crear, subir o descargar.",
+      cloudPrivacyNotice:
+        "Los Gists secretos no aparecen en listados, pero no son privados. Cualquiera con el enlace puede leerlos. Esta app no cifra las instantaneas antes de subirlas.",
+      cloudPayloadNotice:
+        "Sube ajustes, perfiles, juegos manuales e importados, SteamID64, exclusiones, preferencias de notificacion e historial a GitHub. Omite los campos de credenciales.",
+      cloudTokenNotice:
+        "Tu token de GitHub se envia a api.github.com para autenticar y solo permanece en esta sesion de pagina. Tu clave API de Steam tambien dura solo esta sesion. Vuelve a ingresarlas tras recargar.",
       cloudLegacyNotice:
         "Versiones anteriores podian incluir tu clave API de Steam en las instantaneas. Si sincronizaste con una version anterior, cambia esa clave. Actualizar el archivo del Gist no borra su historial de revisiones.",
       cloudTokenLabel: "Token de GitHub con scope gist",
@@ -528,6 +544,7 @@ const resources = {
       createGistPush: "Crear Gist + Subir",
       pushSync: "Subir sync",
       pullSync: "Bajar sync",
+      disconnectCloudSync: "Desconectar",
       syncingWithGist: "Sincronizando con GitHub Gist...",
       cloudReference: "Referencia local de nube: {{value}}",
       cloudConflictOlder:
@@ -537,9 +554,9 @@ const resources = {
       restorePointsTitle: "Puntos de restauracion locales",
       restore: "Restaurar",
       clearRestorePoints: "Limpiar puntos de restauracion",
-      accountProfilesTitle: "Perfiles vinculados a cuenta",
+      accountProfilesTitle: "Perfiles de ajustes con nombre",
       accountProfilesDescription:
-        "Guarda preajustes con nombre y sincronizalos en tu instantanea en nube para continuidad entre dispositivos.",
+        "Guarda perfiles de ajustes localmente. Solo se incluyen cuando decides subir una instantanea.",
       activeProfile: "Perfil activo",
       newProfileName: "Nombre del perfil nuevo",
       none: "Ninguno",
@@ -634,7 +651,7 @@ const resources = {
         spinReminders: "Envia recordatorios periodicos para volver a girar cuando la pagina no esta activa.",
         reminderInterval: "Define cada cuantos minutos pueden enviarse recordatorios.",
         cloudSync:
-          "Sincroniza ajustes/historial con un Gist privado de GitHub. El token queda en tu almacenamiento local.",
+          "Sincroniza ajustes/historial con un Gist secreto de GitHub. Cualquiera con el enlace puede leerlo. El token dura solo esta sesion de pagina.",
       },
       messages: {
         quickStartComplete: "Inicio rapido completo. Puedes abrirlo de nuevo desde Tour rapido.",
@@ -647,6 +664,7 @@ const resources = {
         steamImporting: "Importando biblioteca de Steam...",
         steamImportBlocked:
           "Importacion de Steam bloqueada en navegador (probable CORS/red). Usa la app desktop para mayor fiabilidad.",
+        steamImportFailed: "Fallo la importacion de Steam. Revisa la clave, SteamID64 y visibilidad del perfil.",
         cloudSnapshotInvalid: "Formato de instantanea en nube invalido.",
         cloudKeepLocalStatus: "Se mantuvieron los datos locales. El conflicto de nube fue descartado.",
         cloudKeepLocalToast: "Se mantuvieron los datos locales. Puedes volver a bajar luego.",
@@ -685,6 +703,8 @@ const resources = {
         cloudConflictChoose: "Conflicto detectado. Elige Mantener local o Aplicar remoto.",
         cloudDownloadedApplied: "Cloud sync descargado y aplicado.",
         cloudRestorePointsCleared: "Se limpiaron los puntos de restauracion locales.",
+        cloudDisconnected: "Desconectado. Se borraron el token de GitHub y el ID del Gist; los juegos locales permanecen.",
+        cloudSyncUnexpectedError: "Fallo la sincronizacion. Revisa el Gist, los permisos del token y la conexion.",
         retryHint: "Vuelve a intentar en un minuto o revisa tu conexion.",
       },
     },

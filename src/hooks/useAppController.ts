@@ -401,6 +401,14 @@ export const useAppController = (): AppShellViewProps => {
     sanitizeAccountProfiles,
   });
 
+  const disconnectCloudSync = useCallback(() => {
+    setGistToken("");
+    setGistId("");
+    setCloudSyncReferenceAt("");
+    setPendingCloudConflictSnapshot(null);
+    setCloudSyncStatus(t("messages.cloudDisconnected"));
+  }, [setCloudSyncReferenceAt, setCloudSyncStatus, setGistId, setGistToken, setPendingCloudConflictSnapshot, t]);
+
   const {
     showSettingsPane,
     showPlayPane,
@@ -569,6 +577,7 @@ export const useAppController = (): AppShellViewProps => {
     onCreateGistPush: createCloudSyncGist,
     onPushSync: pushCloudSync,
     onPullSync: pullCloudSync,
+    onDisconnect: disconnectCloudSync,
     activeAccountProfileId,
     accountProfiles: cloudProfileOptions,
     accountProfileDraftName,

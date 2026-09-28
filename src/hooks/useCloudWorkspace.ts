@@ -29,8 +29,6 @@ interface UseCloudWorkspaceInput {
   setSpinHistory: (updater: SpinHistoryItem[] | ((current: SpinHistoryItem[]) => SpinHistoryItem[])) => void;
   manualGames: string[];
   setManualGames: (entries: string[]) => void;
-  steamApiKey: string;
-  setSteamApiKey: (value: string) => void;
   steamId: string;
   setSteamId: (value: string) => void;
   steamImportGames: GameEntry[];
@@ -88,8 +86,6 @@ export const useCloudWorkspace = ({
   setSpinHistory,
   manualGames,
   setManualGames,
-  steamApiKey,
-  setSteamApiKey,
   steamId,
   setSteamId,
   steamImportGames,
@@ -173,7 +169,6 @@ export const useCloudWorkspace = ({
     currentSettingsSnapshot,
     spinHistory,
     manualGames,
-    steamApiKey,
     steamId,
     steamImportGames,
     excludePlayed,
@@ -227,7 +222,6 @@ export const useCloudWorkspace = ({
     normalizeManualGames: normalizeGames,
     setManualGames,
     sanitizeSteamImport: (raw) => sanitizeSteamImport(raw as StoredSteamImport | null),
-    setSteamApiKey,
     setSteamId,
     setSteamImportGames,
     sanitizeExclusions: (raw) => sanitizeExclusions(raw as StoredExclusions | null),

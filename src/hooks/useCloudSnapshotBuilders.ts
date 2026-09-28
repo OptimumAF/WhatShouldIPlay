@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { serializePortableSnapshot } from "../lib/portableSnapshot";
+import type { CloudSyncSnapshot } from "../lib/appSchemas";
 
 interface SpinHistoryLike {
   sources: string[];
@@ -18,46 +20,10 @@ interface CloudRestorePoint<TSnapshot> {
   snapshot: TSnapshot;
 }
 
-interface SteamImportLike<TGameEntry> {
-  steamApiKey: string;
-  steamId: string;
-  steamImportGames: TGameEntry[];
-}
-
-interface ExclusionsLike {
-  excludePlayed: boolean;
-  excludeCompleted: boolean;
-  playedGames: string[];
-  completedGames: string[];
-}
-
-interface NotificationsLike {
-  notificationsEnabled: boolean;
-  trendNotifications: boolean;
-  reminderNotifications: boolean;
-  reminderIntervalMinutes: number;
-}
-
-interface CloudSnapshotPayload<TSettings, TGameEntry, TSpinHistory extends SpinHistoryLike> {
-  version: number;
-  exportedAt: string;
-  settings: TSettings;
-  spinHistory: TSpinHistory[];
-  manualGames: string[];
-  steamImport: SteamImportLike<TGameEntry>;
-  exclusions: ExclusionsLike;
-  notifications: NotificationsLike;
-  profiles: {
-    activeProfileId?: string;
-    items: AccountProfileLike<TSettings>[];
-  };
-}
-
 interface UseCloudSnapshotBuildersInput<TSettings, TGameEntry, TSpinHistory extends SpinHistoryLike, TSnapshot> {
   currentSettingsSnapshot: () => TSettings;
   spinHistory: TSpinHistory[];
   manualGames: string[];
-  steamApiKey: string;
   steamId: string;
   steamImportGames: TGameEntry[];
   excludePlayed: boolean;
@@ -85,7 +51,6 @@ export const useCloudSnapshotBuilders = <
   currentSettingsSnapshot,
   spinHistory,
   manualGames,
-  steamApiKey,
   steamId,
   steamImportGames,
   excludePlayed,
@@ -102,14 +67,13 @@ export const useCloudSnapshotBuilders = <
   setCloudRestorePoints,
 }: UseCloudSnapshotBuildersInput<TSettings, TGameEntry, TSpinHistory, TSnapshot>) => {
   const buildCloudSnapshot = useCallback(
-    (): CloudSnapshotPayload<TSettings, TGameEntry, TSpinHistory> => ({
+    (): CloudSyncSnapshot => serializePortableSnapshot({
       version: 1,
       exportedAt: new Date().toISOString(),
       settings: currentSettingsSnapshot(),
       spinHistory: spinHistory.slice(0, 50),
       manualGames,
       steamImport: {
-        steamApiKey,
         steamId,
         steamImportGames,
       },
@@ -148,7 +112,6 @@ export const useCloudSnapshotBuilders = <
       reminderIntervalMinutes,
       reminderNotifications,
       spinHistory,
-      steamApiKey,
       steamId,
       steamImportGames,
       trendNotifications,
@@ -157,10 +120,7 @@ export const useCloudSnapshotBuilders = <
 
   const pushCloudRestorePoint = useCallback(
     (reason: string) => {
-      const snapshot = {
-        ...buildCloudSnapshot(),
-        settings: currentSettingsSnapshot(),
-      } as unknown as TSnapshot;
+      const snapshot = buildCloudSnapshot() as unknown as TSnapshot;
       const id =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
@@ -173,7 +133,7 @@ export const useCloudSnapshotBuilders = <
       };
       setCloudRestorePoints((current) => [point, ...current].slice(0, maxCloudRestorePoints));
     },
-    [buildCloudSnapshot, currentSettingsSnapshot, maxCloudRestorePoints, setCloudRestorePoints],
+    [buildCloudSnapshot, maxCloudRestorePoints, setCloudRestorePoints],
   );
 
   return {

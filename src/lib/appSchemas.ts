@@ -30,6 +30,12 @@ export const storedSteamImportSchema = z.object({
   steamImportGames: z.array(gameMetadataSchema).default([]),
 });
 
+// Portable snapshots deliberately omit the locally stored Steam API key.
+export const portableSteamImportSchema = z.object({
+  steamId: z.string().default(""),
+  steamImportGames: z.array(gameMetadataSchema).default([]),
+});
+
 export const storedExclusionsSchema = z.object({
   excludePlayed: z.boolean().default(true),
   excludeCompleted: z.boolean().default(true),
@@ -96,7 +102,7 @@ export const cloudSyncSnapshotSchema = z.object({
   settings: cloudSettingsSchema.optional(),
   spinHistory: spinHistorySchema.optional(),
   manualGames: z.array(z.string()).optional(),
-  steamImport: storedSteamImportSchema.optional(),
+  steamImport: portableSteamImportSchema.optional(),
   exclusions: storedExclusionsSchema.optional(),
   notifications: storedNotificationSettingsSchema.optional(),
   profiles: z

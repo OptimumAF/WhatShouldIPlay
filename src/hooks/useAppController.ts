@@ -359,8 +359,6 @@ export const useAppController = (): AppShellViewProps => {
     setSpinHistory,
     manualGames,
     setManualGames,
-    steamApiKey,
-    setSteamApiKey,
     steamId,
     setSteamId,
     steamImportGames,

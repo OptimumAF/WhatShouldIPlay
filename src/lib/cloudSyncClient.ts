@@ -1,3 +1,5 @@
+import { serializePortableSnapshot } from "./portableSnapshot";
+
 interface CloudSyncFileEntry {
   content?: string;
   raw_url?: string;
@@ -30,7 +32,7 @@ export const updateSyncGist = async (params: {
     body: JSON.stringify({
       files: {
         "whatshouldiplay-sync.json": {
-          content: JSON.stringify(params.snapshot, null, 2),
+          content: JSON.stringify(serializePortableSnapshot(params.snapshot), null, 2),
         },
       },
     }),
@@ -57,7 +59,7 @@ export const createSyncGist = async (params: {
       public: false,
       files: {
         "whatshouldiplay-sync.json": {
-          content: JSON.stringify(params.snapshot, null, 2),
+          content: JSON.stringify(serializePortableSnapshot(params.snapshot), null, 2),
         },
       },
     }),

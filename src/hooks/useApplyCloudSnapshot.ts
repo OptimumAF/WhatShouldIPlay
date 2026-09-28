@@ -70,7 +70,6 @@ interface UseApplyCloudSnapshotInput<
   normalizeManualGames: (entries: string[]) => string[];
   setManualGames: (entries: string[]) => void;
   sanitizeSteamImport: (raw: unknown) => TSteamImport;
-  setSteamApiKey: (value: string) => void;
   setSteamId: (value: string) => void;
   setSteamImportGames: (entries: TGameEntry[]) => void;
   sanitizeExclusions: (raw: unknown) => TExclusions;
@@ -108,7 +107,6 @@ export const useApplyCloudSnapshot = <
   normalizeManualGames,
   setManualGames,
   sanitizeSteamImport,
-  setSteamApiKey,
   setSteamId,
   setSteamImportGames,
   sanitizeExclusions,
@@ -157,7 +155,6 @@ export const useApplyCloudSnapshot = <
 
       if (snapshot.steamImport) {
         const sanitized = sanitizeSteamImport(snapshot.steamImport);
-        setSteamApiKey(sanitized.steamApiKey);
         setSteamId(sanitized.steamId);
         setSteamImportGames(sanitized.steamImportGames);
       }
@@ -218,7 +215,6 @@ export const useApplyCloudSnapshot = <
       setReminderIntervalMinutes,
       setReminderNotifications,
       setSpinHistory,
-      setSteamApiKey,
       setSteamId,
       setSteamImportGames,
       setTrendNotifications,

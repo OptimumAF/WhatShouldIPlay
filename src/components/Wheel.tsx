@@ -52,7 +52,11 @@ export function Wheel({ games, rotation, spinning, spinDurationMs = 4800, onSpin
               : "none",
           } as CSSProperties
         }
-        onTransitionEnd={onSpinEnd}
+        onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && event.propertyName === "transform") {
+            onSpinEnd();
+          }
+        }}
       >
         <div className="wheel-hub" aria-hidden="true" />
         {games.length > 0 ? (

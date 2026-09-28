@@ -61,7 +61,7 @@ Record actual checks against the committed dataset and note environmental limits
 
 ## 2026-09-28 — M01.04 wheel landing
 
-**Task:** M01.04 (DONE).  
+**Task:** M01.04 (DONE).
 **Implementation:** Web spin selection accepts an injected random function for deterministic tests. Both clients now calculate the selected sector's absolute target orientation and advance from the current normalized orientation by whole turns plus a forward offset. The fractional profile values affect the number of whole visual turns, not the final sector. Rust exposes a pure selected-index target calculation and the desktop UI uses it.
 
 - `npm run test:unit` before the web fix: **4 passed, 2 failed / 6**. The new cases showed a nonzero starting rotation and fractional profile landing on the wrong sector. After the fix: **6 passed / 6**. The new tests cover 1, 2, 3, 4, 5, 10, and 37 sectors; 10.5, 8, 6.4, and 2.2 revolution settings; bounded jitter samples; and repeated spins from accumulated rotations.
@@ -69,3 +69,14 @@ Record actual checks against the committed dataset and note environmental limits
 - `npm run typecheck`: passed. `npm run build`: passed with committed data. `cargo test --manifest-path apps/desktop/Cargo.toml`: **1 passed / 1** after adding the Rust sector test. `cargo check --manifest-path apps/desktop/Cargo.toml`: passed. `git diff --check`: passed.
 
 **Limits:** Desktop wheel rendering was not visually checked; the Rust engine test and successful wiring/compilation establish the desktop calculation. The Chromium test used a seeded profile, so fresh-profile onboarding and settings persistence remain M00.02 gaps. Spin state mutation and one-time finalization are M01.05 work.
+
+## 2026-09-28 — M01.05 web spin lifecycle
+
+**Task:** M01.05 (IN_PROGRESS, web portion verified).
+**Implementation:** The web controller copies the eligible ordering, available entry keys/App IDs, effective weights, selected winner metadata, and motion duration into one spin operation before rotating. A synchronous ref blocks repeat entry, and finalization clears the pending operation before writing history. The wheel renders the captured labels through the completed result, and its transition handler ignores bubbled child events and other properties. The fallback uses the captured duration.
+
+- New Chromium regressions against the pre-fix build: **2 failed / 2** after the fixture navigation wait was corrected. Adding a manual game during a spin changed the wheel labels, and a bubbled child transition ended the spin. The corrected fixture uses four manual games and a one-spin cooldown.
+- `npm run typecheck`: passed. `npm run test:unit`: **6 passed / 6**. `npm run build`: passed with committed data.
+- `npx playwright test tests/e2e/spin-lifecycle.spec.ts tests/e2e/wheel-landing.spec.ts --project=chromium`: **3 passed / 3** after rebuilding; the two lifecycle regressions and repeat-spin pointer/result/history check passed. A further synchronous repeat-activation test passed **3 / 3** targeted lifecycle tests, measuring one pair of random draws and one history item.
+
+**Limits:** The desktop UI still uses live derived labels and has no fallback finalizer, so M01.05 remains unchecked. Entry keys are provisional for manual games until M02.01 introduces persistent IDs. The web test did not use live data refresh or a real account.

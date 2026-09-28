@@ -171,3 +171,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `git diff --check`: passed. No live Steam credentials or provider calls were used.
 
 **Limits:** Existing manual games remain name strings, played/completed exclusions still use names, and the data ingester's `dedupeByName` and desktop pool still merge by name. The browser fixture intercepts the feed after ingestion; it does not validate published feed preservation. M02.01b/c own these gaps, and the parent stays unchecked.
+
+## 2026-09-28 — M00.02 untouched SHA runtime journey
+
+**Task:** M00.02 (DONE).
+**Environment and isolation:** A managed, detached baseline checkout at original SHA `3278b2a2ad100790a33368bafe93c1e97bc5e1d0` was used solely for verification. Its `git status --short --branch` remained clean. The existing baseline checks from the first log entry used that same SHA; this later pass fills the fresh-profile and desktop-startup gaps without changing its source. No live data refresh or credentials were used.
+
+- In the baseline checkout, pinned Node 22.23.3/npm 10.9.9 `npm ci` passed (126 packages; 9 audit findings: 2 low, 1 moderate, 6 high), and `npm run build` passed against the committed dataset.
+- The current branch's `tests/e2e/fresh-profile.spec.ts` was run by Playwright against the baseline checkout's preview server, not the current branch build: **1 passed / 1**. It skipped onboarding, selected Owned Focus and reduced animation, added three manual games, spun twice with different winners, found two history entries, reloaded, and checked retained settings/manual games/history. This test file did not exist at the baseline SHA; its assertions exercise the untouched baseline runtime.
+- Baseline `cargo run --manifest-path apps/desktop/Cargo.toml` built and launched on Windows using a shared ignored target directory. `Get-Process pick-a-game-desktop` reported one responding `Dioxus App` window. The preview server and desktop process were stopped after the check. No desktop spin or scan was exercised.
+- Earlier unchanged-base checks: typecheck/build passed, original Chromium **1 passed / 4** with three stale-tab assertions, Cargo check passed, Cargo test found **0 tests**, and Cargo fmt check failed on pre-existing formatting. Those results are not recast as passes by the later corrected tests.
+
+**Limits:** One successful baseline repeated-spin journey does not establish that the decorative-label click interception cannot occur intermittently; a later pre-fix run did fail at that click and the current branch has the pointer-events regression fix. Desktop startup does not verify a desktop spin. The baseline had no tracked `Cargo.lock`, which M00.04 addressed on the development branch. The baseline worktree was retired after use.

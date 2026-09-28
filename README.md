@@ -6,8 +6,8 @@
 
 WhatShouldIPlay is an open source game-picker platform with:
 
-- A GitHub Pages web app for spinning a wheel from live top-game sources and user-entered games
-- A Rust + Dioxus desktop app with local game scanning and the same spin experience
+- A GitHub Pages web app for spinning a wheel from a periodically generated top-game feed and user-entered games
+- A Rust + Dioxus desktop app with local game scanning and a corresponding spin experience
 - Automated data refresh and deployment workflows
 
 Live site:
@@ -30,11 +30,13 @@ Live site:
 - Steam account import using Steam Web API key + SteamID64
 - Source-mix random wheel spin with animated result
 - Winner popup celebration overlay with odds + source details in both web and desktop apps
-- Optional cloud sync across devices via a user-provided secret GitHub Gist (unlisted, not private)
+- Optional web cloud sync across browsers via a user-provided secret GitHub Gist (unlisted, not private); desktop sync is not implemented
 - Progressive Web App support (installable web app + offline shell cache)
 - Optional web notifications for trend updates and spin reminders
 - Multi-language web UI support (English and Spanish)
 - Scheduled data refresh and deterministic static hosting
+
+Implementation and verification status for each capability, including desktop gaps, is in the [capability/parity audit](docs/feature-parity.md). The [development plan](docs/DEVELOPMENT_PLAN.md) tracks remaining work.
 
 ## Technology
 

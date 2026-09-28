@@ -24,7 +24,7 @@ The project will not migrate to a single shared UI runtime in 2026.
   - Same source defaults and preset intent
   - Same major UX patterns (content-first layout, collapsible settings)
 - Shared data contracts:
-  - Cloud snapshot structure is treated as canonical contract between clients.
+  - A credential-free cloud snapshot is the intended portable contract between clients. The current web snapshot has no verified desktop reader or writer; cross-client portability remains M02.04/M07 work.
   - Contract updates require backward-compatible parsing and migration handling.
 - Shared design direction:
   - Token-based spacing/typography/color model on both clients.

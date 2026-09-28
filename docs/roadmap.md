@@ -2,9 +2,9 @@
 
 This roadmap tracks planned work for WhatShouldIPlay across web, desktop, and release engineering.
 
-**Current execution status (September 2026):** The March–June dates below were original targets, not verified completion dates. The active, evidence-based task list and release gates are in the [living development plan](DEVELOPMENT_PLAN.md). Features listed here remain subject to that plan's verification and approval rules.
+**Current execution status (September 2026):** The March–June 2026 targets have elapsed. This roadmap records current scope and gaps without a replacement deadline. See the [living development plan](DEVELOPMENT_PLAN.md) for task gates and the [capability/parity audit](feature-parity.md) for client and verification status.
 
-## Milestone: M1 Core UX Hardening (Target: March 2026)
+## Milestone: M1 Core UX Hardening — Partial
 
 Owner: `@OptimumAF`
 
@@ -13,7 +13,9 @@ Owner: `@OptimumAF`
 - Improve wheel data quality and naming normalization consistency
 - Add "exclude completed/played" controls
 
-## Milestone: M2 Discovery and Integrations (Target: April 2026)
+The web controls exist, but metadata quality, canonical identity, focused exclusion tests, and desktop parity remain open (plan M02–M05 and M08).
+
+## Milestone: M2 Discovery and Integrations — Partial
 
 Owner: `@OptimumAF`
 
@@ -21,7 +23,9 @@ Owner: `@OptimumAF`
 - Additional trend/review sources for discovery
 - Optional community sharing hooks (share result card, seedable wheel links)
 
-## Milestone: M3 Accounts and Sync (Target: May 2026)
+Desktop scan code covers several launcher locations; actual scans are unverified. Extra discovery sources and shareable results are not implemented (plan M04–M05).
+
+## Milestone: M3 Accounts and Sync — Partial web implementation
 
 Owner: `@OptimumAF`
 
@@ -29,7 +33,9 @@ Owner: `@OptimumAF`
 - Cloud sync of presets, history, and source weights
 - Session portability between web and desktop
 
-## Milestone: M4 Release and Trust (Target: June 2026)
+The web app has local named profiles and optional secret-Gist sync code. A live sync round trip, desktop sync, cross-client portability, and a product account model are not verified or implemented. The core remains usable without an account (plan M01.03, M02, M06–M07).
+
+## Milestone: M4 Release and Trust — Workflows present, release unverified
 
 Owner: `@OptimumAF`
 
@@ -37,6 +43,8 @@ Owner: `@OptimumAF`
 - Installer packaging and release channel docs
 - Artifact attestations/provenance
 - Fully enabled signed desktop release pipeline
+
+Windows, macOS, and Linux artifact workflows exist, but this branch has no hosted runs. Packaging and signing require separate validation; signing also requires owner-managed secrets and an owner-approved release (plan M10–M11).
 
 ## Contribution Notes
 

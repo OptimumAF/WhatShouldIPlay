@@ -311,7 +311,12 @@ async fn fetch_steam_api_top(client: &Client) -> Result<Vec<GameItem>> {
         .await
         .context("steam api json parse failed")?;
 
-    let top = data.response.ranks.into_iter().take(TOP_N).collect::<Vec<_>>();
+    let top = data
+        .response
+        .ranks
+        .into_iter()
+        .take(TOP_N)
+        .collect::<Vec<_>>();
     let mut items = Vec::new();
 
     for entry in top {
@@ -330,9 +335,8 @@ async fn fetch_steam_api_top(client: &Client) -> Result<Vec<GameItem>> {
 }
 
 async fn fetch_steam_app_name(client: &Client, app_id: u32) -> Result<String> {
-    let url = format!(
-        "https://store.steampowered.com/api/appdetails?appids={app_id}&filters=basic"
-    );
+    let url =
+        format!("https://store.steampowered.com/api/appdetails?appids={app_id}&filters=basic");
     let json = client
         .get(url)
         .send()
@@ -377,7 +381,10 @@ struct SteamOwnedGame {
     playtime_forever: Option<u64>,
 }
 
-pub(crate) async fn fetch_steam_owned_games(api_key: &str, steam_id: &str) -> Result<Vec<GameItem>> {
+pub(crate) async fn fetch_steam_owned_games(
+    api_key: &str,
+    steam_id: &str,
+) -> Result<Vec<GameItem>> {
     let client = Client::builder()
         .user_agent(USER_AGENT)
         .build()
@@ -399,7 +406,13 @@ pub(crate) async fn fetch_steam_owned_games(api_key: &str, steam_id: &str) -> Re
         .context("steam owned-games parse failed")?;
 
     let mut items = Vec::new();
-    for (index, game) in response.response.games.unwrap_or_default().into_iter().enumerate() {
+    for (index, game) in response
+        .response
+        .games
+        .unwrap_or_default()
+        .into_iter()
+        .enumerate()
+    {
         let name = normalize_name(&game.name);
         if name.is_empty() {
             continue;
@@ -567,11 +580,19 @@ fn scan_epic_launcher_manifests() -> Vec<String> {
 fn scan_gog_install_dirs() -> Vec<String> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files) = std::env::var("ProgramFiles") {
-        roots.push(PathBuf::from(&program_files).join("GOG Galaxy").join("Games"));
+        roots.push(
+            PathBuf::from(&program_files)
+                .join("GOG Galaxy")
+                .join("Games"),
+        );
         roots.push(PathBuf::from(&program_files).join("GOG Games"));
     }
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
-        roots.push(PathBuf::from(&program_files_x86).join("GOG Galaxy").join("Games"));
+        roots.push(
+            PathBuf::from(&program_files_x86)
+                .join("GOG Galaxy")
+                .join("Games"),
+        );
         roots.push(PathBuf::from(&program_files_x86).join("GOG Games"));
     }
 
@@ -587,7 +608,11 @@ fn scan_ubisoft_install_dirs() -> Vec<String> {
                 .join("Ubisoft Game Launcher")
                 .join("games"),
         );
-        roots.push(PathBuf::from(&program_files_x86).join("Ubisoft").join("games"));
+        roots.push(
+            PathBuf::from(&program_files_x86)
+                .join("Ubisoft")
+                .join("games"),
+        );
     }
     if let Ok(program_files) = std::env::var("ProgramFiles") {
         roots.push(
@@ -682,7 +707,11 @@ fn scan_shortcuts() -> Vec<String> {
         if !root.exists() {
             continue;
         }
-        for entry in walkdir::WalkDir::new(root).max_depth(2).into_iter().flatten() {
+        for entry in walkdir::WalkDir::new(root)
+            .max_depth(2)
+            .into_iter()
+            .flatten()
+        {
             let path = entry.path();
             if !path.is_file() {
                 continue;

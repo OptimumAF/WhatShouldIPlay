@@ -11,12 +11,15 @@ use contracts::TopGamesPayloadContract;
 use data::refresh_scanned_games;
 use engine::{build_weighted_pool, derive_wheel_data, SpinOperation};
 use ui::settings::render_settings_sidebar;
-use ui::{render_hero_masthead, render_spin_history_panel, render_wheel_panel, render_winner_overlay};
+use ui::{
+    render_hero_masthead, render_spin_history_panel, render_wheel_panel, render_winner_overlay,
+};
 
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 const TOP_N: usize = 30;
-const SHARED_TOP_GAMES_URL: &str = "https://optimumaf.github.io/WhatShouldIPlay/data/top-games.json";
+const SHARED_TOP_GAMES_URL: &str =
+    "https://optimumaf.github.io/WhatShouldIPlay/data/top-games.json";
 
 #[derive(Clone, Debug, Default)]
 struct OnlineData {
@@ -301,11 +304,16 @@ fn App() -> Element {
             "rapid" => (tr(lang, "Rapid", "Rapido"), 3200.0, 6.4, 0.20),
             _ => (tr(lang, "Balanced", "Equilibrado"), 4800.0, 8.0, 0.24),
         };
-    let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) = if (settings.reduced_spin_animation)() {
-        (760.0, 2.2, 0.10)
-    } else {
-        (profile_duration_ms, profile_revolutions, profile_jitter_ratio)
-    };
+    let (spin_duration_ms, spin_revolutions, spin_jitter_ratio) =
+        if (settings.reduced_spin_animation)() {
+            (760.0, 2.2, 0.10)
+        } else {
+            (
+                profile_duration_ms,
+                profile_revolutions,
+                profile_jitter_ratio,
+            )
+        };
     let spin_transition = format!(
         "transform {:.0}ms cubic-bezier(.17,.67,.11,.99)",
         spin_duration_ms

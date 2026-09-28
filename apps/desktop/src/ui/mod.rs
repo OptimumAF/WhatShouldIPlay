@@ -6,8 +6,9 @@ pub(crate) mod settings;
 
 use crate::{
     data::refresh_scanned_games,
-    engine::{pick_weighted_index, spin_target_rotation, take_spin_result, SpinOperation}, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
-    UiLang, WeightedPoolGame,
+    engine::{pick_weighted_index, spin_target_rotation, take_spin_result, SpinOperation},
+    format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem, UiLang,
+    WeightedPoolGame,
 };
 
 pub(crate) fn render_hero_masthead(
@@ -82,10 +83,21 @@ pub(crate) fn render_wheel_panel(
     you_should_play_label: &'static str,
 ) -> Element {
     let display = display_spin();
-    let visible_count = display.as_ref().map_or(spin_pool.len(), |operation| operation.eligible.len());
-    let visible_labels = display.as_ref().map_or_else(|| wheel_labels.clone(), |operation| operation.wheel_labels.clone());
-    let visible_background = display.as_ref().map_or_else(|| wheel_background.to_string(), |operation| operation.wheel_background.clone());
-    let visible_transition = display.as_ref().map_or_else(|| spin_transition.to_string(), |operation| operation.transition.clone());
+    let visible_count = display
+        .as_ref()
+        .map_or(spin_pool.len(), |operation| operation.eligible.len());
+    let visible_labels = display.as_ref().map_or_else(
+        || wheel_labels.clone(),
+        |operation| operation.wheel_labels.clone(),
+    );
+    let visible_background = display.as_ref().map_or_else(
+        || wheel_background.to_string(),
+        |operation| operation.wheel_background.clone(),
+    );
+    let visible_transition = display.as_ref().map_or_else(
+        || spin_transition.to_string(),
+        |operation| operation.transition.clone(),
+    );
     let start_background = wheel_background.to_string();
     let start_transition = spin_transition.to_string();
     rsx! {
@@ -357,7 +369,16 @@ fn start_spin(
     let mut rng = rand::rng();
     let behavior_weighted = weighted_mode || adaptive_recommendations;
     let candidate_weights = if behavior_weighted && adaptive_spin_weights.len() == spin_pool.len() {
-        adaptive_spin_weights.iter().map(|weight| if weight.is_finite() { weight.max(0.0) } else { 0.0 }).collect::<Vec<_>>()
+        adaptive_spin_weights
+            .iter()
+            .map(|weight| {
+                if weight.is_finite() {
+                    weight.max(0.0)
+                } else {
+                    0.0
+                }
+            })
+            .collect::<Vec<_>>()
     } else {
         Vec::new()
     };
@@ -429,7 +450,9 @@ fn finalize_spin_result(
         let mut pending = pending_spin.write();
         take_spin_result(&mut pending, expected_id)
     };
-    let Some(operation) = operation else { return; };
+    let Some(operation) = operation else {
+        return;
+    };
     debug_assert!(operation.winner_index < operation.eligible.len());
     debug_assert_eq!(operation.effective_weights.len(), operation.eligible.len());
     let selected = operation.winner;

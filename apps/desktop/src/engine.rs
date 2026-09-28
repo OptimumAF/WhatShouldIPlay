@@ -70,7 +70,10 @@ pub(crate) fn take_spin_result(
     pending: &mut Option<SpinOperation>,
     expected_id: u64,
 ) -> Option<SpinOperation> {
-    if pending.as_ref().is_some_and(|operation| operation.id == expected_id) {
+    if pending
+        .as_ref()
+        .is_some_and(|operation| operation.id == expected_id)
+    {
         pending.take()
     } else {
         None
@@ -293,7 +296,8 @@ pub(crate) fn spin_target_rotation(
     let bounded_jitter = jitter_ratio.clamp(0.0, 0.49);
     let jitter = (jitter_unit * 2.0 - 1.0) * segment * bounded_jitter;
     let target_orientation = (-winner_center + jitter).rem_euclid(360.0);
-    let forward_offset = (target_orientation - current_rotation.rem_euclid(360.0)).rem_euclid(360.0);
+    let forward_offset =
+        (target_orientation - current_rotation.rem_euclid(360.0)).rem_euclid(360.0);
     let whole_turns = revolutions.clamp(0.5, 16.0).round().max(1.0);
     current_rotation + 360.0 * whole_turns + forward_offset
 }
@@ -337,12 +341,29 @@ mod tests {
     #[test]
     fn spin_operation_freezes_pool_and_can_be_consumed_only_once() {
         let mut pool = vec![
-            WeightedPoolGame { name: "Alpha".into(), sources: vec!["Manual".into()], weight: 1.0 },
-            WeightedPoolGame { name: "Beta".into(), sources: vec!["Steam Import".into()], weight: 2.0 },
+            WeightedPoolGame {
+                name: "Alpha".into(),
+                sources: vec!["Manual".into()],
+                weight: 1.0,
+            },
+            WeightedPoolGame {
+                name: "Beta".into(),
+                sources: vec!["Steam Import".into()],
+                weight: 2.0,
+            },
         ];
-        let labels = vec![(90.0, 0.0, "Alpha".to_string()), (270.0, 180.0, "Beta".to_string())];
+        let labels = vec![
+            (90.0, 0.0, "Alpha".to_string()),
+            (270.0, 180.0, "Beta".to_string()),
+        ];
         let mut pending = Some(SpinOperation::new(
-            7, &pool, &[1.0, 2.0], 1, &labels, "frozen-gradient", "transform 760ms ease",
+            7,
+            &pool,
+            &[1.0, 2.0],
+            1,
+            &labels,
+            "frozen-gradient",
+            "transform 760ms ease",
         ));
         pool[1].name = "Changed".into();
         assert_eq!(pending.as_ref().unwrap().eligible[1].name, "Beta");
@@ -413,16 +434,8 @@ fn suggested_source_weight(base_weight: f64, multiplier: f64) -> f64 {
 
 fn segment_color(index: usize) -> &'static str {
     const COLORS: [&str; 10] = [
-        "#f25f5c",
-        "#247ba0",
-        "#70c1b3",
-        "#ffe066",
-        "#ff9f1c",
-        "#2ec4b6",
-        "#e76f51",
-        "#118ab2",
-        "#8ac926",
-        "#ef476f",
+        "#f25f5c", "#247ba0", "#70c1b3", "#ffe066", "#ff9f1c", "#2ec4b6", "#e76f51", "#118ab2",
+        "#8ac926", "#ef476f",
     ];
     COLORS[index % COLORS.len()]
 }
@@ -432,7 +445,12 @@ fn wheel_gradient(count: usize) -> String {
     for index in 0..count {
         let start = index as f64 * (360.0 / count as f64);
         let end = (index + 1) as f64 * (360.0 / count as f64);
-        stops.push(format!("{} {:.4}deg {:.4}deg", segment_color(index), start, end));
+        stops.push(format!(
+            "{} {:.4}deg {:.4}deg",
+            segment_color(index),
+            start,
+            end
+        ));
     }
     format!("conic-gradient({})", stops.join(", "))
 }

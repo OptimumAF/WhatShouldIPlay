@@ -86,6 +86,7 @@ export function CloudSyncPanel({
         <HelpTip text={t("helpTips.cloudSync")} />
       </h2>
       <p className="muted">{t("cloudSyncDescription")}</p>
+      <p className="muted" role="note">{t("cloudLegacyNotice")}</p>
       <div className="steam-grid">
         <label htmlFor="cloud-token" className="sr-only">
           {t("cloudTokenLabel")}

@@ -29,7 +29,6 @@ interface UsePersistenceBridgeInput {
   filters: AdvancedFilters;
   spinHistory: SpinHistoryItem[];
   manualGames: string[];
-  steamApiKey: string;
   steamId: string;
   steamImportGames: GameEntry[];
   excludePlayed: boolean;
@@ -42,7 +41,6 @@ interface UsePersistenceBridgeInput {
   reminderIntervalMinutes: number;
   cloudProvider: StoredCloudSync["provider"];
   gistId: string;
-  gistToken: string;
   accountProfiles: AccountProfilePreset[];
   activeAccountProfileId: string;
   cloudRestorePoints: CloudRestorePoint[];
@@ -62,7 +60,6 @@ export const usePersistenceBridge = ({
   filters,
   spinHistory,
   manualGames,
-  steamApiKey,
   steamId,
   steamImportGames,
   excludePlayed,
@@ -75,7 +72,6 @@ export const usePersistenceBridge = ({
   reminderIntervalMinutes,
   cloudProvider,
   gistId,
-  gistToken,
   accountProfiles,
   activeAccountProfileId,
   cloudRestorePoints,
@@ -106,13 +102,12 @@ export const usePersistenceBridge = ({
       weightedMode,
     ],
   );
-  const persistedSteamImport = useMemo<StoredSteamImport>(
+  const persistedSteamImport = useMemo<Pick<StoredSteamImport, "steamId" | "steamImportGames">>(
     () => ({
-      steamApiKey,
       steamId,
       steamImportGames,
     }),
-    [steamApiKey, steamId, steamImportGames],
+    [steamId, steamImportGames],
   );
   const persistedExclusions = useMemo<StoredExclusions>(
     () => ({
@@ -132,13 +127,12 @@ export const usePersistenceBridge = ({
     }),
     [notificationsEnabled, reminderIntervalMinutes, reminderNotifications, trendNotifications],
   );
-  const persistedCloudSync = useMemo<StoredCloudSync>(
+  const persistedCloudSync = useMemo<Pick<StoredCloudSync, "provider" | "gistId">>(
     () => ({
       provider: cloudProvider,
       gistId,
-      gistToken,
     }),
-    [cloudProvider, gistId, gistToken],
+    [cloudProvider, gistId],
   );
 
   useAppPersistence({

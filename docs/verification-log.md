@@ -34,3 +34,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `npx playwright test tests/e2e/credential-snapshot.spec.ts --project=chromium`: **1 passed / 1** after correcting a test-only navigation wait. It seeded an old restore point and inspected the application's intercepted `PATCH` payload in Chromium.
 
 **Limits:** GitHub was intercepted with synthetic credentials; this establishes the payload sent at the browser boundary, not successful live Gist sync. Live transport and disclosure remain M01.03/M07. Browser local Steam-key retention and historical remote revisions remain M01.02/M01.03. The three pre-existing Chromium failures recorded above are unresolved. Node pinning and a committed Cargo lockfile remain M00.04.
+
+## 2026-09-28 — M01.02 legacy credential migration
+
+**Task:** M01.02 (DONE); session-only credential state also advances M01.03.  
+**Implementation:** Browser state initialization ignores old saved Steam/GitHub credentials; persistence rewrites only Steam ID/imported games and Gist ID/provider. The Cloud Sync panel and README warn that old snapshots could contain a Steam key, rotation may be appropriate, and replacing the current Gist file does not erase its revision history. No remote content is deleted by this migration.
+
+- New Chromium local-storage test before the fix: **1 failed / 2 total**, showing the old Steam key still stored. The existing portable-payload test passed.
+- `npm run typecheck`: passed after the fix.
+- `npm run build`: passed with committed data.
+- `npx playwright test tests/e2e/credential-snapshot.spec.ts --project=chromium`: **3 passed / 3**. Tests cover startup rewrite while preserving imported game/App ID/Steam ID/Gist ID, UI fields blank for keys, legacy Gist pull, no adoption of the remote key, subsequent credential-free push, and an intercepted GET/PATCH sequence with no DELETE. They also assert the visible revision-history notice.
+
+**Limits:** The tests use synthetic credentials and intercepted GitHub responses. GitHub's historical revisions cannot be removed by rewriting the app's current file. No live account was used, and no claim of actual key access is made. Desktop credential persistence has not yet been audited. The adjacent “private Gist” copy remains incorrect and is the active M01.03 fix.

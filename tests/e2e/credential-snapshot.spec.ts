@@ -1,6 +1,99 @@
 import { expect, test } from "@playwright/test";
 
 const STEAM_CANARY = "synthetic-steam-key-never-export";
+const GIST_CANARY = "synthetic-gist-token-never-export";
+
+test("legacy browser storage drops retained credentials but keeps imported games and IDs", async ({ page }) => {
+  await page.addInitScript(({ steamCanary, gistCanary }) => {
+    localStorage.setItem("pickagame.onboarding.v1", JSON.stringify(true));
+    localStorage.setItem(
+      "pickagame.steam-import.v1",
+      JSON.stringify({
+        steamApiKey: steamCanary,
+        steamId: "synthetic-steam-id",
+        steamImportGames: [{ name: "Synthetic Owned Game", appId: 42 }],
+      }),
+    );
+    localStorage.setItem(
+      "pickagame.cloud-sync.v1",
+      JSON.stringify({ provider: "githubGist", gistId: "synthetic-gist-id", gistToken: gistCanary }),
+    );
+  }, { steamCanary: STEAM_CANARY, gistCanary: GIST_CANARY });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Spin For Your Next Game" })).toBeVisible();
+
+  const storedSteam = () => page.evaluate(() => localStorage.getItem("pickagame.steam-import.v1"));
+  const storedGist = () => page.evaluate(() => localStorage.getItem("pickagame.cloud-sync.v1"));
+  await expect.poll(storedSteam).toContain("Synthetic Owned Game");
+  await expect.poll(storedSteam).not.toContain(STEAM_CANARY);
+  await expect.poll(storedGist).toContain("synthetic-gist-id");
+  await expect.poll(storedGist).not.toContain(GIST_CANARY);
+
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await expect(page.getByLabel("Steam Web API Key")).toBeEmpty();
+  await page.getByRole("tab", { name: "Advanced" }).click();
+  await page.getByRole("button", { name: "Show Advanced Options" }).click();
+  await expect(page.getByRole("note")).toContainText("Updating the Gist file does not erase its revision history");
+  await expect(page.getByLabel("GitHub token with gist scope")).toBeEmpty();
+  await expect(page.getByLabel("Sync Gist ID")).toHaveValue("synthetic-gist-id");
+});
+
+test("pulling a legacy Gist keeps the session key local and never uploads the old key", async ({ page }) => {
+  const remoteKey = "synthetic-legacy-remote-key";
+  const methods: string[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem("pickagame.onboarding.v1", JSON.stringify(true));
+  });
+  await page.route("https://api.github.com/gists/synthetic-gist-id", async (route) => {
+    const method = route.request().method();
+    methods.push(method);
+    if (method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          files: {
+            "whatshouldiplay-sync.json": {
+              content: JSON.stringify({
+                version: 1,
+                manualGames: ["Legacy Game"],
+                steamImport: {
+                  steamApiKey: remoteKey,
+                  steamId: "legacy-steam-id",
+                  steamImportGames: [{ name: "Legacy Owned Game", appId: 77 }],
+                },
+              }),
+            },
+          },
+        }),
+      });
+    } else {
+      await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    }
+  });
+  await page.goto("/");
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByLabel("Steam Web API Key").fill("synthetic-session-only-key");
+  await page.getByRole("tab", { name: "Advanced" }).click();
+  await page.getByRole("button", { name: "Show Advanced Options" }).click();
+  await page.getByLabel("GitHub token with gist scope").fill("synthetic-auth-only");
+  await page.getByLabel("Sync Gist ID").fill("synthetic-gist-id");
+  await page.getByRole("button", { name: "Pull Sync" }).click();
+
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("pickagame.manual-games.v1"))).toContain("Legacy Game");
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await expect(page.getByLabel("Steam Web API Key")).toHaveValue("synthetic-session-only-key");
+  await page.getByRole("tab", { name: "Advanced" }).click();
+  const requestPromise = page.waitForRequest(
+    (request) => request.url() === "https://api.github.com/gists/synthetic-gist-id" && request.method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "Push Sync" }).click();
+  const request = await requestPromise;
+  const body = JSON.stringify(request.postDataJSON());
+  expect(body).not.toContain(remoteKey);
+  expect(body).not.toContain("synthetic-session-only-key");
+  expect(methods).toEqual(["GET", "PATCH"]);
+});
 
 test("legacy restore points are scrubbed and Gist upload contains only portable data", async ({ page }) => {
   await page.addInitScript((canary) => {

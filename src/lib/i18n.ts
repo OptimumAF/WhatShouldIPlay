@@ -176,6 +176,8 @@ const resources = {
       cloudSyncTitle: "Cloud Sync (Optional)",
       cloudSyncDescription:
         "Sync your settings/history across devices using a private GitHub Gist. Your token is stored locally in this browser only.",
+      cloudLegacyNotice:
+        "Earlier app versions could include your Steam API key in sync snapshots. If you synced with an earlier version, rotate that key. Updating the Gist file does not erase its revision history.",
       cloudTokenLabel: "GitHub token with gist scope",
       cloudTokenPlaceholder: "GitHub token (gist scope)",
       cloudGistIdLabel: "Sync Gist ID",
@@ -517,6 +519,8 @@ const resources = {
       cloudSyncTitle: "Sync en nube (Opcional)",
       cloudSyncDescription:
         "Sincroniza ajustes/historial entre dispositivos usando un Gist privado de GitHub. Tu token se guarda solo en este navegador.",
+      cloudLegacyNotice:
+        "Versiones anteriores podian incluir tu clave API de Steam en las instantaneas. Si sincronizaste con una version anterior, cambia esa clave. Actualizar el archivo del Gist no borra su historial de revisiones.",
       cloudTokenLabel: "Token de GitHub con scope gist",
       cloudTokenPlaceholder: "Token de GitHub (scope gist)",
       cloudGistIdLabel: "ID del Gist de sync",

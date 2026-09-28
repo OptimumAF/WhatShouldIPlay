@@ -82,7 +82,8 @@ export const useAppState = () => {
   const [manualInput, setManualInput] = useState("");
   const [manualGames, setManualGames] = useState<string[]>(initialManualGames);
   const [steamImportGames, setSteamImportGames] = useState<GameEntry[]>(initialSteamImport.steamImportGames);
-  const [steamApiKey, setSteamApiKey] = useState(initialSteamImport.steamApiKey);
+  // Legacy stored credentials are intentionally not loaded into a new browser session.
+  const [steamApiKey, setSteamApiKey] = useState("");
   const [steamId, setSteamId] = useState(initialSteamImport.steamId);
   const [steamImportStatus, setSteamImportStatus] = useState<string>("");
   const [steamImportLoading, setSteamImportLoading] = useState(false);
@@ -99,7 +100,7 @@ export const useAppState = () => {
   const [freshTrendsNotice, setFreshTrendsNotice] = useState(false);
   const [cloudProvider] = useState<StoredCloudSync["provider"]>(initialCloudSync.provider);
   const [gistId, setGistId] = useState(initialCloudSync.gistId);
-  const [gistToken, setGistToken] = useState(initialCloudSync.gistToken);
+  const [gistToken, setGistToken] = useState("");
   const [cloudSyncStatus, setCloudSyncStatus] = useState("");
   const [cloudSyncLoading, setCloudSyncLoading] = useState(false);
   const [accountProfiles, setAccountProfiles] = useState<AccountProfilePreset[]>(initialAccountProfiles);

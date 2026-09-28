@@ -128,6 +128,10 @@ cargo build --release
 - The updater attempts direct SteamDB parsing first, then falls back to Steam charts API to maintain continuity.
 - Browser environments cannot scan installed local games; local scan is desktop-only.
 
+## Legacy sync data
+
+Earlier versions could include a Steam API key in Gist sync snapshots and retain Steam/GitHub credentials in browser storage. The current local records are rewritten without those credentials when the app starts; imported games and IDs remain. If you used Gist sync with an earlier version, consider rotating the Steam API key. Updating the current Gist file does not remove older revisions, and this application does not delete remote Gist history. GitHub documents [Gist revision history](https://docs.github.com/en/get-started/writing-on-github/editing-and-sharing-content-with-gists/creating-gists). This is a precaution based on the old serialization path, not evidence that anyone accessed a key.
+
 ## Open Source Standards
 
 - License: MIT

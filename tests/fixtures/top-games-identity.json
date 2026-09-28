@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "sources": {
+    "steamcharts": {
+      "id": "steamcharts",
+      "label": "Synthetic SteamCharts",
+      "fetchedAt": "2026-01-01T00:00:00.000Z",
+      "games": [
+        {
+          "name": "Echo Harbor",
+          "source": "steamcharts",
+          "appId": 10101,
+          "rank": 1,
+          "platforms": ["windows"],
+          "tags": ["Puzzle"]
+        }
+      ]
+    },
+    "steamdb": {
+      "id": "steamdb",
+      "label": "Synthetic SteamDB",
+      "fetchedAt": "2026-01-01T00:00:00.000Z",
+      "games": [
+        {
+          "name": "ECHO HARBOR",
+          "source": "steamdb",
+          "appId": 10101,
+          "rank": 2
+        },
+        {
+          "name": "Echo Harbor",
+          "source": "steamdb",
+          "appId": 20202,
+          "rank": 3
+        }
+      ]
+    },
+    "twitchmetrics": {
+      "id": "twitchmetrics",
+      "label": "Synthetic TwitchMetrics",
+      "fetchedAt": "2025-12-31T00:00:00.000Z",
+      "note": "Synthetic fetch failure; retained an older observation.",
+      "games": [
+        {
+          "name": "Unknown Fields Adventure",
+          "source": "twitchmetrics",
+          "score": 7
+        }
+      ]
+    },
+    "itchio": {
+      "id": "itchio",
+      "label": "Synthetic itch.io",
+      "fetchedAt": "2026-01-01T00:00:00.000Z",
+      "games": [
+        {
+          "name": "Paper Lantern",
+          "source": "itchio",
+          "url": "https://example.invalid/paper-lantern"
+        }
+      ]
+    }
+  }
+}

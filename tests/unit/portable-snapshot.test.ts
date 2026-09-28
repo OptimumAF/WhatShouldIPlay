@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { sanitizeCloudRestorePoints } from "../../src/lib/appConfig";
 import { cloudSyncSnapshotSchema } from "../../src/lib/appSchemas";
@@ -7,44 +8,8 @@ import { createSyncGist, updateSyncGist } from "../../src/lib/cloudSyncClient";
 const STEAM_CANARY = "synthetic-steam-key-never-export";
 const GIST_CANARY = "synthetic-gist-token-never-export";
 
-const legacySnapshot = () => ({
-  version: 1,
-  exportedAt: "2026-09-28T00:00:00.000Z",
-  gistToken: GIST_CANARY,
-  settings: {
-    weightedMode: false,
-    githubToken: GIST_CANARY,
-    filters: { platform: "any", futureSecret: STEAM_CANARY },
-  },
-  spinHistory: [
-    {
-      name: "Synthetic Game",
-      sources: ["manual"],
-      odds: 1,
-      spunAt: "2026-09-28T00:00:00.000Z",
-      credential: STEAM_CANARY,
-    },
-  ],
-  manualGames: ["Synthetic Game"],
-  steamImport: {
-    steamApiKey: STEAM_CANARY,
-    steamId: "synthetic-steam-id",
-    steamImportGames: [
-      { name: "Synthetic Game", appId: 42, source: "steamImport", futureToken: GIST_CANARY },
-    ],
-  },
-  profiles: {
-    activeProfileId: "synthetic-profile",
-    items: [
-      {
-        id: "synthetic-profile",
-        name: "Synthetic profile",
-        updatedAt: "2026-09-28T00:00:00.000Z",
-        settings: { weightedMode: true, steamApiKey: STEAM_CANARY },
-      },
-    ],
-  },
-});
+const legacySnapshot = (): unknown =>
+  JSON.parse(readFileSync(new URL("../fixtures/legacy-snapshot.json", import.meta.url), "utf8"));
 
 const assertCredentialFree = (value: unknown) => {
   const serialized = JSON.stringify(value);

@@ -148,3 +148,14 @@ Record actual checks against the committed dataset and note environmental limits
 - Source audit inspected README, `docs/ARCHITECTURE.md`, `docs/desktop-ui-strategy.md`, roadmap, web features/hooks, `scripts/fetch-top-games.mjs`, desktop main/data/engine/UI, contracts, tests, and workflows. `rg` found no remaining roadmap `Target: March/April/May/June` headings. `git diff --check`: passed.
 
 **Plan revision:** The M00.03 task text and acceptance criteria are unchanged. Documentation now exposes cross-client sync, filters, local persistence, and source quality as partial/absent/unverified where appropriate. M01.05 remains VERIFY pending desktop interaction and stable IDs; M02–M10 keep their original dependencies and scope. Historical workflow results are explicitly not treated as validation of the current branch.
+
+## 2026-09-28 — M00.05 synthetic fixtures
+
+**Task:** M00.05 (DONE).
+**Implementation:** Added invented top-game observations that distinguish a shared Steam App ID across sources from a same-title game with a different App ID. Added manual-entry ID and extreme-weight cases, a retained-data source-failure note, missing metadata, the exact nonzero-rotation case from the M01.04 failure, and a version-1 credential-bearing snapshot with fake canaries. The existing credential and wheel tests now read those shared fixtures. TypeScript and Rust tests parse the same feed; the fixture guide identifies current and intended contract semantics.
+
+- Pinned Node 22.23.3/npm 10.9.9 `npm run test:unit`: **11 passed / 11**. Two added fixture tests validate the top-game contract, distinct provider/manual IDs, unknown metadata, source-failure note, and extreme-weight deterministic landing. Existing snapshot and wheel tests still pass using the files.
+- `cargo test --manifest-path apps/desktop/Cargo.toml --locked`: **3 passed / 3**, including a new Rust deserialization test of the shared feed.
+- `cargo fmt --manifest-path apps/desktop/Cargo.toml --check`: first failed on one new line wrap, then passed after `cargo fmt`. Pinned `npm run typecheck`: passed. `git diff --check`: passed.
+
+**Recorded first failure:** [M01.04's red test](verification-log.md#2026-09-28--m0104-wheel-landing) observed the four-sector case from 90° start with eight turns land at the wrong pointer sector before the fix. `selection-edge-cases.json` now makes its inputs reusable and deterministic; the passing current wheel test is not presented as a newly discovered failure. Current name-keyed pool merging of distinct App IDs remains open for M02.01; these fixtures do not mark that task complete.

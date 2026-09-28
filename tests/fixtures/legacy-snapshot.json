@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "gistToken": "synthetic-gist-token-never-export",
+  "settings": {
+    "weightedMode": false,
+    "githubToken": "synthetic-gist-token-never-export",
+    "filters": {
+      "platform": "any",
+      "futureSecret": "synthetic-steam-key-never-export"
+    }
+  },
+  "spinHistory": [
+    {
+      "name": "Synthetic Game",
+      "sources": ["manual"],
+      "odds": 1,
+      "spunAt": "2026-01-01T00:00:00.000Z",
+      "credential": "synthetic-steam-key-never-export"
+    }
+  ],
+  "manualGames": ["Synthetic Game"],
+  "steamImport": {
+    "steamApiKey": "synthetic-steam-key-never-export",
+    "steamId": "synthetic-steam-id",
+    "steamImportGames": [
+      {
+        "name": "Synthetic Game",
+        "appId": 42,
+        "source": "steamImport",
+        "futureToken": "synthetic-gist-token-never-export"
+      }
+    ]
+  },
+  "profiles": {
+    "activeProfileId": "synthetic-profile",
+    "items": [
+      {
+        "id": "synthetic-profile",
+        "name": "Synthetic profile",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "settings": {
+          "weightedMode": true,
+          "steamApiKey": "synthetic-steam-key-never-export"
+        }
+      }
+    ]
+  }
+}

@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { pickSpinWithWeights } from "../../src/lib/wheel";
 
 const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
 const indexAtTopPointer = (count: number, rotation: number) =>
   Math.floor(normalizeAngle(-rotation) / (360 / count));
+
+const recordedFailure = JSON.parse(
+  readFileSync(new URL("../fixtures/selection-edge-cases.json", import.meta.url), "utf8"),
+) as {
+  recordedWheelFailure: {
+    sectorCount: number;
+    startRotation: number;
+    winnerIndex: number;
+    revolutions: number;
+    jitterRatio: number;
+    jitterRandom: number;
+  };
+};
 
 const pickWithRandom = (
   count: number,
@@ -25,9 +39,17 @@ const pickWithRandom = (
 };
 
 test("the top pointer lands on the chosen sector from a nonzero starting angle", () => {
-  const result = pickWithRandom(4, 90, 0, 8, 0, 0.5);
-  assert.equal(result.winnerIndex, 0);
-  assert.equal(indexAtTopPointer(4, result.nextRotation), result.winnerIndex);
+  const fixture = recordedFailure.recordedWheelFailure;
+  const result = pickWithRandom(
+    fixture.sectorCount,
+    fixture.startRotation,
+    fixture.winnerIndex,
+    fixture.revolutions,
+    fixture.jitterRatio,
+    fixture.jitterRandom,
+  );
+  assert.equal(result.winnerIndex, fixture.winnerIndex);
+  assert.equal(indexAtTopPointer(fixture.sectorCount, result.nextRotation), result.winnerIndex);
 });
 
 test("all motion profiles and bounded jitter land after repeated spins", () => {

@@ -61,3 +61,29 @@ pub struct GameContract {
     #[serde(rename = "estimatedLength")]
     pub estimated_length: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TopGamesPayloadContract;
+
+    #[test]
+    fn synthetic_feed_retains_provider_ids_failure_note_and_unknown_metadata() {
+        let feed: TopGamesPayloadContract = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/top-games-identity.json"
+        ))
+        .expect("synthetic feed must parse on desktop");
+        let charts = &feed.sources.steamcharts.games;
+        let db = &feed.sources.steamdb.games;
+        assert_eq!(charts[0].app_id, Some(10101));
+        assert_eq!(db[0].app_id, Some(10101));
+        assert_eq!(db[1].app_id, Some(20202));
+        assert!(feed
+            .sources
+            .twitchmetrics
+            .note
+            .as_ref()
+            .is_some_and(|note| note.contains("fetch failure")));
+        assert_eq!(feed.sources.twitchmetrics.games[0].price_usd, None);
+        assert_eq!(feed.sources.itchio.games[0].is_free, None);
+    }
+}

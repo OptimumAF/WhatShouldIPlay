@@ -1,0 +1,17 @@
+{
+  "manualGames": [
+    { "id": "manual:synthetic-one", "name": "Echo Harbor" },
+    { "id": "manual:synthetic-two", "name": "Echo Harbor" }
+  ],
+  "distinctProviderKeys": ["steam:10101", "steam:20202"],
+  "sameProviderKeyAcrossSources": "steam:10101",
+  "unusualWeights": [0, 0.0001, 1000000],
+  "recordedWheelFailure": {
+    "sectorCount": 4,
+    "startRotation": 90,
+    "winnerIndex": 0,
+    "revolutions": 8,
+    "jitterRatio": 0,
+    "jitterRandom": 0.5
+  }
+}

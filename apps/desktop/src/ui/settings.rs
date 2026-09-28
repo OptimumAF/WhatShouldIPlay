@@ -2,7 +2,9 @@ use dioxus::prelude::*;
 
 use crate::{
     data::{fetch_online_sources, fetch_steam_owned_games, refresh_scanned_games},
-    manual_store::{append_manual_records, save_manual_records},
+    manual_store::{
+        append_manual_records, manual_record_label, rename_manual_record, save_manual_records,
+    },
     on_off_label, tr, GameItem, ManualGameRecord, UiLang,
 };
 
@@ -34,6 +36,8 @@ pub(crate) fn render_settings_sidebar(
     scanned_games: Signal<Vec<String>>,
     mut manual_games: Signal<Vec<ManualGameRecord>>,
     mut manual_text: Signal<String>,
+    mut manual_edit_id: Signal<String>,
+    mut manual_edit_text: Signal<String>,
     mut manual_storage_error: Signal<Option<String>>,
     manual_storage_blocked: Signal<bool>,
     mut steam_api_key: Signal<String>,
@@ -68,6 +72,7 @@ pub(crate) fn render_settings_sidebar(
     suggested_manual_weight_label: String,
     suggested_scanned_weight_label: String,
 ) -> Element {
+    let manual_choices = manual_games();
     rsx! {
         aside { class: "sidebar",
             section { class: "panel",
@@ -545,6 +550,72 @@ pub(crate) fn render_settings_sidebar(
                         }
                     }
                     p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
+                    if !manual_choices.is_empty() {
+                        div { class: "control-row",
+                            span { "{tr(lang, \"Rename manual game\", \"Renombrar juego manual\")}" }
+                            select {
+                                value: "{manual_edit_id}",
+                                oninput: move |evt| {
+                                    let id = evt.value();
+                                    let name = manual_games()
+                                        .iter()
+                                        .find(|record| record.id == id)
+                                        .map(|record| record.name.clone())
+                                        .unwrap_or_default();
+                                    manual_edit_id.set(id);
+                                    manual_edit_text.set(name);
+                                },
+                                option { value: "", "{tr(lang, \"Choose a game\", \"Elegir un juego\")}" }
+                                for record in manual_choices.iter() {
+                                    option {
+                                        value: "{record.id}",
+                                        "{manual_record_label(&manual_choices, &record.id).unwrap_or_else(|| record.name.clone())}"
+                                    }
+                                }
+                            }
+                        }
+                        if !manual_edit_id().is_empty() {
+                            div { class: "control-row",
+                                input {
+                                    value: "{manual_edit_text}",
+                                    oninput: move |evt| manual_edit_text.set(evt.value()),
+                                    placeholder: "{tr(lang, \"New name\", \"Nuevo nombre\")}",
+                                }
+                                button {
+                                    disabled: manual_storage_blocked(),
+                                    onclick: move |_| {
+                                        let current = manual_games();
+                                        match rename_manual_record(&current, &manual_edit_id(), &manual_edit_text()) {
+                                            Ok(renamed) => match save_manual_records(&renamed) {
+                                                Ok(()) => {
+                                                    manual_games.set(renamed);
+                                                    manual_edit_id.set(String::new());
+                                                    manual_edit_text.set(String::new());
+                                                    manual_storage_error.set(None);
+                                                }
+                                                Err(error) => manual_storage_error.set(Some(format!(
+                                                    "Manual rename could not be saved ({error}). Your edit is still in the box."
+                                                ))),
+                                            },
+                                            Err(error) => manual_storage_error.set(Some(format!(
+                                                "Manual rename was not applied ({error})."
+                                            ))),
+                                        }
+                                    },
+                                    "{tr(lang, \"Save Name\", \"Guardar nombre\")}"
+                                }
+                                button {
+                                    class: "ghost",
+                                    onclick: move |_| {
+                                        manual_edit_id.set(String::new());
+                                        manual_edit_text.set(String::new());
+                                        manual_storage_error.set(None);
+                                    },
+                                    "{tr(lang, \"Cancel\", \"Cancelar\")}"
+                                }
+                            }
+                        }
+                    }
                     if let Some(error) = manual_storage_error() {
                         p { role: "alert", "{error}" }
                     }

@@ -496,6 +496,44 @@ mod tests {
         let next = derive_wheel_data(&pool, &[result], 1, false);
         assert_eq!(next.spin_pool.len(), 1);
         assert_eq!(next.spin_pool[0].id, "manual:synthetic-two");
+
+        let renamed = crate::manual_store::rename_manual_record(
+            &manual,
+            "manual:synthetic-one",
+            "New Harbor",
+        )
+        .unwrap();
+        let renamed_pool = build_weighted_pool(
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &[],
+            &[],
+            &[],
+            &[],
+            &renamed,
+            &[],
+        );
+        let prior_history = SpinHistoryItem {
+            id: Some("manual:synthetic-one".into()),
+            name: "Echo Harbor".into(),
+            display_name: "Echo Harbor (1)".into(),
+            sources: "Manual".into(),
+            odds: 0.5,
+        };
+        let after_rename = derive_wheel_data(&renamed_pool, &[prior_history], 1, false);
+        assert_eq!(after_rename.spin_pool.len(), 1);
+        assert_eq!(after_rename.spin_pool[0].id, "manual:synthetic-two");
     }
 
     fn index_at_top_pointer(count: usize, rotation: f64) -> usize {

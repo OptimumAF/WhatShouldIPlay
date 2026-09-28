@@ -64,6 +64,43 @@ pub(crate) fn append_manual_records(
     records
 }
 
+pub(crate) fn rename_manual_record(
+    existing: &[ManualGameRecord],
+    id: &str,
+    input: &str,
+) -> io::Result<Vec<ManualGameRecord>> {
+    let name = normalize_name(input);
+    if name.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "empty manual game name",
+        ));
+    }
+    let mut records = existing.to_vec();
+    let record = records
+        .iter_mut()
+        .find(|entry| entry.id == id)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "manual game ID not found"))?;
+    record.name = name;
+    Ok(records)
+}
+
+pub(crate) fn manual_record_label(records: &[ManualGameRecord], id: &str) -> Option<String> {
+    let record = records.iter().find(|entry| entry.id == id)?;
+    let name_key = record.name.to_lowercase();
+    let mut matching_ids = records
+        .iter()
+        .filter(|entry| entry.name.to_lowercase() == name_key)
+        .map(|entry| entry.id.as_str())
+        .collect::<Vec<_>>();
+    if matching_ids.len() == 1 {
+        return Some(record.name.clone());
+    }
+    matching_ids.sort_unstable();
+    let ordinal = matching_ids.iter().position(|entry| *entry == id)? + 1;
+    Some(format!("{} ({ordinal})", record.name))
+}
+
 fn invalid_data(message: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message)
 }
@@ -148,8 +185,54 @@ fn save_at(path: &Path, records: &[ManualGameRecord]) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{append_manual_records, load_at, save_at};
+    use super::{
+        append_manual_records, load_at, manual_record_label, rename_manual_record, save_at,
+    };
     use crate::ManualGameRecord;
+
+    #[test]
+    fn rename_one_equal_title_record_keeps_its_id_after_reload() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/selection-edge-cases.json"
+        ))
+        .unwrap();
+        let records: Vec<ManualGameRecord> =
+            serde_json::from_value(fixture["manualGames"].clone()).unwrap();
+        assert_eq!(
+            manual_record_label(&records, "manual:synthetic-one").as_deref(),
+            Some("Echo Harbor (1)")
+        );
+        assert_eq!(
+            manual_record_label(&records, "manual:synthetic-two").as_deref(),
+            Some("Echo Harbor (2)")
+        );
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("manual-games.v1.json");
+        save_at(&path, &records).unwrap();
+
+        let renamed = rename_manual_record(
+            &load_at(&path).unwrap(),
+            "manual:synthetic-one",
+            "New Harbor",
+        )
+        .unwrap();
+        save_at(&path, &renamed).unwrap();
+        assert_eq!(
+            load_at(&path).unwrap(),
+            vec![
+                ManualGameRecord {
+                    id: "manual:synthetic-one".into(),
+                    name: "New Harbor".into()
+                },
+                ManualGameRecord {
+                    id: "manual:synthetic-two".into(),
+                    name: "Echo Harbor".into()
+                },
+            ]
+        );
+        assert!(rename_manual_record(&renamed, "manual:missing", "Another").is_err());
+        assert!(rename_manual_record(&renamed, "manual:synthetic-one", "   ").is_err());
+    }
 
     #[test]
     fn same_title_records_keep_unique_ids_across_two_replacements() {

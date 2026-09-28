@@ -6,7 +6,7 @@ pub(crate) mod settings;
 
 use crate::{
     data::refresh_scanned_games,
-    engine::pick_weighted_index, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
+    engine::{pick_weighted_index, spin_target_rotation}, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
     UiLang, WeightedPoolGame,
 };
 
@@ -62,7 +62,6 @@ pub(crate) fn render_wheel_panel(
     weighted_mode: Signal<bool>,
     adaptive_recommendations: Signal<bool>,
     adaptive_spin_weights: Vec<f64>,
-    segment_angle: f64,
     spin_jitter_ratio: f64,
     spin_revolutions: f64,
     pending_winner: Signal<String>,
@@ -184,7 +183,6 @@ pub(crate) fn render_wheel_panel(
                             weighted_mode(),
                             adaptive_recommendations(),
                             &adaptive_spin_weights,
-                            segment_angle,
                             spin_jitter_ratio,
                             spin_revolutions,
                             wheel_rotation,
@@ -320,7 +318,6 @@ fn start_spin(
     weighted_mode: bool,
     adaptive_recommendations: bool,
     adaptive_spin_weights: &[f64],
-    segment_angle: f64,
     spin_jitter_ratio: f64,
     spin_revolutions: f64,
     mut wheel_rotation: Signal<f64>,
@@ -343,10 +340,14 @@ fn start_spin(
     } else {
         rng.random_range(0..spin_pool.len())
     };
-    let winner_center = winner_index as f64 * segment_angle + (segment_angle / 2.0);
-    let jitter =
-        rng.random_range(-(segment_angle * spin_jitter_ratio)..(segment_angle * spin_jitter_ratio));
-    let next = wheel_rotation() + 360.0 * spin_revolutions + (360.0 - winner_center) + jitter;
+    let next = spin_target_rotation(
+        spin_pool.len(),
+        winner_index,
+        wheel_rotation(),
+        spin_revolutions,
+        spin_jitter_ratio,
+        rng.random_range(0.0..1.0),
+    );
     let selected = &spin_pool[winner_index];
     let total_weight = if behavior_weighted {
         adaptive_spin_weights.iter().sum::<f64>().max(0.0001)

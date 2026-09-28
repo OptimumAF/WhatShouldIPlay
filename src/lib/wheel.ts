@@ -46,8 +46,8 @@ const sanitizeWeights = (count: number, weights?: number[]) => {
   return { sanitized, total };
 };
 
-const pickWeightedIndex = (weights: number[], total: number) => {
-  let cursor = Math.random() * total;
+const pickWeightedIndex = (weights: number[], total: number, random: () => number) => {
+  let cursor = random() * total;
   for (let index = 0; index < weights.length; index += 1) {
     cursor -= weights[index] ?? 0;
     if (cursor <= 0) {
@@ -62,6 +62,7 @@ export const pickSpinWithWeights = (
   currentRotation: number,
   weights?: number[],
   motion?: SpinMotionOptions,
+  random: () => number = Math.random,
 ) => {
   if (count <= 0) {
     return {
@@ -72,8 +73,8 @@ export const pickSpinWithWeights = (
 
   const weighted = sanitizeWeights(count, weights);
   const winnerIndex = weighted
-    ? pickWeightedIndex(weighted.sanitized, weighted.total)
-    : Math.floor(Math.random() * count);
+    ? pickWeightedIndex(weighted.sanitized, weighted.total, random)
+    : Math.floor(random() * count);
   const segment = 360 / count;
   const revolutions =
     typeof motion?.revolutions === "number" && Number.isFinite(motion.revolutions)
@@ -84,8 +85,12 @@ export const pickSpinWithWeights = (
       ? Math.max(0, Math.min(0.49, motion.jitterRatio))
       : 0.3;
   const winnerCenter = winnerIndex * segment + segment / 2;
-  const jitter = Math.random() * (segment * jitterRatio * 2) - segment * jitterRatio;
-  const nextRotation = currentRotation + 360 * revolutions + (360 - winnerCenter) + jitter;
+  const jitter = (random() * 2 - 1) * segment * jitterRatio;
+  const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+  const targetOrientation = normalizeAngle(-winnerCenter + jitter);
+  const forwardOffset = normalizeAngle(targetOrientation - normalizeAngle(currentRotation));
+  const wholeTurns = Math.max(1, Math.round(revolutions));
+  const nextRotation = currentRotation + 360 * wholeTurns + forwardOffset;
 
   return {
     nextRotation,

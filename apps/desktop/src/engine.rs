@@ -16,7 +16,6 @@ pub(crate) struct SuggestedWeights {
 pub(crate) struct DerivedWheelData {
     pub(crate) spin_pool: Vec<WeightedPoolGame>,
     pub(crate) cooldown_exhausted: bool,
-    pub(crate) segment_angle: f64,
     pub(crate) wheel_background: String,
     pub(crate) wheel_labels: Vec<(f64, f64, String)>,
     pub(crate) behavior_signal_count: usize,
@@ -197,7 +196,6 @@ pub(crate) fn derive_wheel_data(
     DerivedWheelData {
         spin_pool,
         cooldown_exhausted,
-        segment_angle,
         wheel_background,
         wheel_labels,
         behavior_signal_count,
@@ -222,6 +220,64 @@ pub(crate) fn pick_weighted_index(weights: &[f64], rng: &mut impl rand::Rng) -> 
         }
     }
     weights.len() - 1
+}
+
+pub(crate) fn spin_target_rotation(
+    count: usize,
+    selected_index: usize,
+    current_rotation: f64,
+    revolutions: f64,
+    jitter_ratio: f64,
+    jitter_unit: f64,
+) -> f64 {
+    if count == 0 {
+        return current_rotation;
+    }
+    debug_assert!(selected_index < count);
+    let segment = 360.0 / count as f64;
+    let winner_center = selected_index as f64 * segment + segment / 2.0;
+    let bounded_jitter = jitter_ratio.clamp(0.0, 0.49);
+    let jitter = (jitter_unit * 2.0 - 1.0) * segment * bounded_jitter;
+    let target_orientation = (-winner_center + jitter).rem_euclid(360.0);
+    let forward_offset = (target_orientation - current_rotation.rem_euclid(360.0)).rem_euclid(360.0);
+    let whole_turns = revolutions.clamp(0.5, 16.0).round().max(1.0);
+    current_rotation + 360.0 * whole_turns + forward_offset
+}
+
+#[cfg(test)]
+mod tests {
+    use super::spin_target_rotation;
+
+    fn index_at_top_pointer(count: usize, rotation: f64) -> usize {
+        ((-rotation).rem_euclid(360.0) / (360.0 / count as f64)).floor() as usize
+    }
+
+    #[test]
+    fn every_motion_profile_and_bounded_jitter_lands_on_selected_sector() {
+        for count in [1, 2, 3, 4, 5, 10, 37] {
+            for turns in [10.5, 8.0, 6.4, 2.2] {
+                for jitter_unit in [0.0, 0.5, 0.999] {
+                    let mut rotation = 90.0;
+                    for selected_index in 0..count {
+                        let next = spin_target_rotation(
+                            count,
+                            selected_index,
+                            rotation,
+                            turns,
+                            0.28,
+                            jitter_unit,
+                        );
+                        assert_eq!(
+                            index_at_top_pointer(count, next),
+                            selected_index,
+                            "count={count}, turns={turns}, jitter={jitter_unit}, from={rotation}"
+                        );
+                        rotation = next;
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn compute_weight(base_weight: f64, rank: Option<usize>, score: Option<u64>) -> f64 {

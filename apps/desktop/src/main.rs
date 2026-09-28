@@ -405,7 +405,6 @@ fn App() -> Element {
                         settings.weighted_mode,
                         settings.adaptive_recommendations,
                         derived_wheel.adaptive_spin_weights.clone(),
-                        derived_wheel.segment_angle,
                         spin_jitter_ratio,
                         spin_revolutions,
                         spin.pending_winner,

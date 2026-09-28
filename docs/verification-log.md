@@ -58,3 +58,14 @@ Record actual checks against the committed dataset and note environmental limits
 - `cargo run --manifest-path apps/desktop/Cargo.toml`: started on Windows; process `pick-a-game-desktop` had a responding `Dioxus App` window. It was then stopped. This is startup evidence only, not a desktop journey check.
 
 **Limits:** No live GitHub credential was available, so upload/pull success and disconnect behavior against a real account are unverified. The browser tests intercepted GitHub and Steam API requests with synthetic values. The desktop import error UI compiled but was not exercised with a real request. M01.03 remains VERIFY. M00.02 still needs fresh-profile repeated-spin and settings-persistence checks.
+
+## 2026-09-28 — M01.04 wheel landing
+
+**Task:** M01.04 (DONE).  
+**Implementation:** Web spin selection accepts an injected random function for deterministic tests. Both clients now calculate the selected sector's absolute target orientation and advance from the current normalized orientation by whole turns plus a forward offset. The fractional profile values affect the number of whole visual turns, not the final sector. Rust exposes a pure selected-index target calculation and the desktop UI uses it.
+
+- `npm run test:unit` before the web fix: **4 passed, 2 failed / 6**. The new cases showed a nonzero starting rotation and fractional profile landing on the wrong sector. After the fix: **6 passed / 6**. The new tests cover 1, 2, 3, 4, 5, 10, and 37 sectors; 10.5, 8, 6.4, and 2.2 revolution settings; bounded jitter samples; and repeated spins from accumulated rotations.
+- Targeted Chromium pointer/result/history test with the corrected manual-only fixture against the previous build: **1 failed / 1**, with Delta under the pointer and Alpha reported as winner. The Playwright configuration serves `dist`, so the test was rerun after `npm run build` for the fix: **1 passed / 1**, checking two actual spins and the History tab.
+- `npm run typecheck`: passed. `npm run build`: passed with committed data. `cargo test --manifest-path apps/desktop/Cargo.toml`: **1 passed / 1** after adding the Rust sector test. `cargo check --manifest-path apps/desktop/Cargo.toml`: passed. `git diff --check`: passed.
+
+**Limits:** Desktop wheel rendering was not visually checked; the Rust engine test and successful wiring/compilation establish the desktop calculation. The Chromium test used a seeded profile, so fresh-profile onboarding and settings persistence remain M00.02 gaps. Spin state mutation and one-time finalization are M01.05 work.

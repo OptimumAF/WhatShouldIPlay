@@ -245,6 +245,22 @@ pub(crate) fn build_weighted_pool(
     output
 }
 
+pub(crate) fn exclude_statused_games(
+    pool: &[WeightedPoolGame],
+    played_ids: &[String],
+    completed_ids: &[String],
+) -> Vec<WeightedPoolGame> {
+    let excluded = played_ids
+        .iter()
+        .chain(completed_ids)
+        .map(String::as_str)
+        .collect::<HashSet<_>>();
+    pool.iter()
+        .filter(|entry| !excluded.contains(entry.id.as_str()))
+        .cloned()
+        .collect()
+}
+
 pub(crate) fn derive_wheel_data(
     full_pool: &[WeightedPoolGame],
     spin_history: &[SpinHistoryItem],
@@ -373,8 +389,8 @@ pub(crate) fn spin_target_rotation(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_weighted_pool, derive_wheel_data, spin_target_rotation, take_spin_result,
-        SpinOperation,
+        build_weighted_pool, derive_wheel_data, exclude_statused_games, spin_target_rotation,
+        take_spin_result, SpinOperation,
     };
     use crate::{
         online_data_from_contract, ManualGameRecord, SpinHistoryItem, TopGamesPayloadContract,
@@ -534,6 +550,23 @@ mod tests {
         let after_rename = derive_wheel_data(&renamed_pool, &[prior_history], 1, false);
         assert_eq!(after_rename.spin_pool.len(), 1);
         assert_eq!(after_rename.spin_pool[0].id, "manual:synthetic-two");
+
+        let played = exclude_statused_games(&pool, &["manual:synthetic-one".into()], &[]);
+        assert_eq!(
+            played
+                .iter()
+                .map(|entry| entry.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["manual:synthetic-two"]
+        );
+        let completed = exclude_statused_games(&pool, &[], &["manual:synthetic-two".into()]);
+        assert_eq!(
+            completed
+                .iter()
+                .map(|entry| entry.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["manual:synthetic-one"]
+        );
     }
 
     fn index_at_top_pointer(count: usize, rotation: f64) -> usize {

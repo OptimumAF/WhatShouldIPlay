@@ -10,7 +10,7 @@ mod manual_store;
 mod ui;
 use contracts::TopGamesPayloadContract;
 use data::refresh_scanned_games;
-use engine::{build_weighted_pool, derive_wheel_data, SpinOperation};
+use engine::{build_weighted_pool, derive_wheel_data, exclude_statused_games, SpinOperation};
 use ui::settings::render_settings_sidebar;
 use ui::{
     render_hero_masthead, render_spin_history_panel, render_wheel_panel, render_winner_overlay,
@@ -53,13 +53,23 @@ struct WeightedPoolGame {
     weight: f64,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SpinHistoryItem {
     id: Option<String>,
     name: String,
     display_name: String,
     sources: String,
     odds: f64,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DesktopLocalState {
+    manual_records: Vec<ManualGameRecord>,
+    history: Vec<SpinHistoryItem>,
+    played_ids: Vec<String>,
+    completed_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -97,6 +107,8 @@ struct DesktopDataState {
     manual_text: Signal<String>,
     manual_edit_id: Signal<String>,
     manual_edit_text: Signal<String>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
     manual_storage_error: Signal<Option<String>>,
     manual_storage_blocked: Signal<bool>,
     steam_api_key: Signal<String>,
@@ -206,17 +218,21 @@ fn host_platform_label(lang: UiLang) -> &'static str {
 
 #[component]
 fn App() -> Element {
-    let initial_manual = use_signal(|| match manual_store::load_manual_records() {
-        Ok(records) => (records, None, false),
+    let initial_local = use_signal(|| match manual_store::load_desktop_state() {
+        Ok(state) => (state, None, false),
         Err(error) => (
-            Vec::new(),
+            DesktopLocalState::default(),
             Some(format!(
-                "Manual library could not be loaded ({error}). Its file was left untouched."
+                "Desktop state could not be loaded ({error}). Its file was left untouched."
             )),
             true,
         ),
     });
-    let (initial_manual_records, initial_manual_error, initial_manual_blocked) = initial_manual();
+    let (initial_state, initial_local_error, initial_local_blocked) = initial_local();
+    let initial_manual_records = initial_state.manual_records.clone();
+    let initial_played_ids = initial_state.played_ids.clone();
+    let initial_completed_ids = initial_state.completed_ids.clone();
+    let initial_history = initial_state.history;
     let data = DesktopDataState {
         ui_lang: use_signal(|| UiLang::En),
         steamcharts_games: use_signal(Vec::<GameItem>::new),
@@ -228,8 +244,10 @@ fn App() -> Element {
         manual_text: use_signal(String::new),
         manual_edit_id: use_signal(String::new),
         manual_edit_text: use_signal(String::new),
-        manual_storage_error: use_signal(|| initial_manual_error),
-        manual_storage_blocked: use_signal(|| initial_manual_blocked),
+        played_ids: use_signal(|| initial_played_ids),
+        completed_ids: use_signal(|| initial_completed_ids),
+        manual_storage_error: use_signal(|| initial_local_error),
+        manual_storage_blocked: use_signal(|| initial_local_blocked),
         steam_api_key: use_signal(String::new),
         steam_id: use_signal(String::new),
         steam_import_status: use_signal(String::new),
@@ -266,7 +284,7 @@ fn App() -> Element {
         display_spin: use_signal(|| None::<SpinOperation>),
         pending_spin: use_signal(|| None::<SpinOperation>),
         next_spin_id: use_signal(|| 0_u64),
-        spin_history: use_signal(Vec::<SpinHistoryItem>::new),
+        spin_history: use_signal(|| initial_history),
         show_winner_popup: use_signal(|| false),
     };
 
@@ -304,8 +322,10 @@ fn App() -> Element {
         &(data.scanned_games)(),
     );
 
+    let status_pool =
+        exclude_statused_games(&full_pool, &(data.played_ids)(), &(data.completed_ids)());
     let derived_wheel = derive_wheel_data(
-        &full_pool,
+        &status_pool,
         &(spin.spin_history)(),
         (settings.cooldown_spins)(),
         (settings.adaptive_recommendations)(),
@@ -399,6 +419,9 @@ fn App() -> Element {
                         data.manual_text,
                         data.manual_edit_id,
                         data.manual_edit_text,
+                        spin.spin_history,
+                        data.played_ids,
+                        data.completed_ids,
                         data.manual_storage_error,
                         data.manual_storage_blocked,
                         data.steam_api_key,
@@ -458,6 +481,11 @@ fn App() -> Element {
                         spin.winner_sources,
                         spin.winner_odds,
                         spin.spin_history,
+                        data.manual_games,
+                        data.played_ids,
+                        data.completed_ids,
+                        data.manual_storage_error,
+                        data.manual_storage_blocked,
                         spin.show_winner_popup,
                         layout.show_sidebar,
                         layout.active_settings_section,

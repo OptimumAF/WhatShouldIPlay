@@ -7,7 +7,9 @@ pub(crate) mod settings;
 use crate::{
     data::refresh_scanned_games,
     engine::{pick_weighted_index, spin_target_rotation, take_spin_result, SpinOperation},
-    format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem, UiLang,
+    format_odds, localize_source_chain,
+    manual_store::save_desktop_state,
+    parse_ui_lang, tr, DesktopLocalState, ManualGameRecord, SpinHistoryItem, UiLang,
     WeightedPoolGame,
 };
 
@@ -73,6 +75,11 @@ pub(crate) fn render_wheel_panel(
     winner_sources: Signal<String>,
     winner_odds: Signal<f64>,
     mut spin_history: Signal<Vec<SpinHistoryItem>>,
+    manual_games: Signal<Vec<ManualGameRecord>>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
+    mut local_storage_error: Signal<Option<String>>,
+    local_storage_blocked: Signal<bool>,
     show_winner_popup: Signal<bool>,
     mut show_sidebar: Signal<bool>,
     mut active_settings_section: Signal<String>,
@@ -169,6 +176,11 @@ pub(crate) fn render_wheel_panel(
                                     winner_sources,
                                     winner_odds,
                                     spin_history,
+                                    manual_games,
+                                    played_ids,
+                                    completed_ids,
+                                    local_storage_error,
+                                    local_storage_blocked,
                                     show_winner_popup,
                                     next_spin_id,
                                 );
@@ -219,6 +231,11 @@ pub(crate) fn render_wheel_panel(
                             winner_sources,
                             winner_odds,
                             spin_history,
+                            manual_games,
+                            played_ids,
+                            completed_ids,
+                            local_storage_error,
+                            local_storage_blocked,
                             show_winner_popup,
                         );
                     },
@@ -226,9 +243,31 @@ pub(crate) fn render_wheel_panel(
                 }
                 button {
                     class: "ghost",
-                    onclick: move |_| spin_history.set(Vec::new()),
+                    onclick: move |_| {
+                        if local_storage_blocked() {
+                            return;
+                        }
+                        let next = DesktopLocalState {
+                            manual_records: manual_games(),
+                            history: Vec::new(),
+                            played_ids: played_ids(),
+                            completed_ids: completed_ids(),
+                        };
+                        match save_desktop_state(&next) {
+                            Ok(()) => {
+                                spin_history.set(Vec::new());
+                                local_storage_error.set(None);
+                            }
+                            Err(error) => local_storage_error.set(Some(format!(
+                                "History could not be cleared ({error})."
+                            ))),
+                        }
+                    },
                     {tr(lang, "Clear History", "Limpiar historial")}
                 }
+            }
+            if let Some(error) = local_storage_error() {
+                p { role: "alert", "{error}" }
             }
             if !winner().is_empty() {
                 div { class: "winner winner-rich",
@@ -360,6 +399,11 @@ fn start_spin(
     mut winner_sources: Signal<String>,
     mut winner_odds: Signal<f64>,
     spin_history: Signal<Vec<SpinHistoryItem>>,
+    manual_games: Signal<Vec<ManualGameRecord>>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
+    local_storage_error: Signal<Option<String>>,
+    local_storage_blocked: Signal<bool>,
     show_winner_popup: Signal<bool>,
 ) {
     if spinning() || spin_pool.is_empty() {
@@ -429,6 +473,11 @@ fn start_spin(
             winner_sources,
             winner_odds,
             spin_history,
+            manual_games,
+            played_ids,
+            completed_ids,
+            local_storage_error,
+            local_storage_blocked,
             show_winner_popup,
             next_spin_id,
         );
@@ -443,6 +492,11 @@ fn finalize_spin_result(
     mut winner_sources: Signal<String>,
     mut winner_odds: Signal<f64>,
     mut spin_history: Signal<Vec<SpinHistoryItem>>,
+    manual_games: Signal<Vec<ManualGameRecord>>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
+    mut local_storage_error: Signal<Option<String>>,
+    local_storage_blocked: Signal<bool>,
     mut show_winner_popup: Signal<bool>,
     next_spin_id: Signal<u64>,
 ) {
@@ -466,6 +520,20 @@ fn finalize_spin_result(
     history.insert(0, selected);
     if history.len() > 30 {
         history.truncate(30);
+    }
+    if !local_storage_blocked() {
+        let next = DesktopLocalState {
+            manual_records: manual_games(),
+            history: history.clone(),
+            played_ids: played_ids(),
+            completed_ids: completed_ids(),
+        };
+        match save_desktop_state(&next) {
+            Ok(()) => local_storage_error.set(None),
+            Err(error) => local_storage_error.set(Some(format!(
+                "Spin history could not be saved ({error}). The result is available until the app closes."
+            ))),
+        }
     }
     spin_history.set(history);
 

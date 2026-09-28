@@ -3,9 +3,10 @@ use dioxus::prelude::*;
 use crate::{
     data::{fetch_online_sources, fetch_steam_owned_games, refresh_scanned_games},
     manual_store::{
-        append_manual_records, manual_record_label, rename_manual_record, save_manual_records,
+        append_manual_records, manual_record_label, rename_manual_record, save_desktop_state,
+        set_manual_status, ManualStatus,
     },
-    on_off_label, tr, GameItem, ManualGameRecord, UiLang,
+    on_off_label, tr, DesktopLocalState, GameItem, ManualGameRecord, SpinHistoryItem, UiLang,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -38,6 +39,9 @@ pub(crate) fn render_settings_sidebar(
     mut manual_text: Signal<String>,
     mut manual_edit_id: Signal<String>,
     mut manual_edit_text: Signal<String>,
+    spin_history: Signal<Vec<SpinHistoryItem>>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
     mut manual_storage_error: Signal<Option<String>>,
     manual_storage_blocked: Signal<bool>,
     mut steam_api_key: Signal<String>,
@@ -73,6 +77,22 @@ pub(crate) fn render_settings_sidebar(
     suggested_scanned_weight_label: String,
 ) -> Element {
     let manual_choices = manual_games();
+    let selected_manual_id = manual_edit_id();
+    let selected_status_label = if completed_ids().iter().any(|id| id == &selected_manual_id) {
+        tr(
+            lang,
+            "Completed: excluded from the wheel",
+            "Completado: excluido de la ruleta",
+        )
+    } else if played_ids().iter().any(|id| id == &selected_manual_id) {
+        tr(
+            lang,
+            "Played: excluded from the wheel",
+            "Jugado: excluido de la ruleta",
+        )
+    } else {
+        tr(lang, "Eligible for the wheel", "Disponible para la ruleta")
+    };
     rsx! {
         aside { class: "sidebar",
             section { class: "panel",
@@ -514,11 +534,13 @@ pub(crate) fn render_settings_sidebar(
                         button {
                             disabled: manual_storage_blocked(),
                             onclick: move |_| {
-                                let merged = append_manual_records(&manual_games(), &manual_text());
-                                if merged.len() == manual_games().len() {
+                                let mut next = current_local_state(manual_games, spin_history, played_ids, completed_ids);
+                                let merged = append_manual_records(&next.manual_records, &manual_text());
+                                if merged.len() == next.manual_records.len() {
                                     return;
                                 }
-                                match save_manual_records(&merged) {
+                                next.manual_records = merged.clone();
+                                match save_desktop_state(&next) {
                                     Ok(()) => {
                                         manual_games.set(merged);
                                         manual_text.set(String::new());
@@ -584,9 +606,11 @@ pub(crate) fn render_settings_sidebar(
                                 button {
                                     disabled: manual_storage_blocked(),
                                     onclick: move |_| {
-                                        let current = manual_games();
-                                        match rename_manual_record(&current, &manual_edit_id(), &manual_edit_text()) {
-                                            Ok(renamed) => match save_manual_records(&renamed) {
+                                        let mut next = current_local_state(manual_games, spin_history, played_ids, completed_ids);
+                                        match rename_manual_record(&next.manual_records, &manual_edit_id(), &manual_edit_text()) {
+                                            Ok(renamed) => {
+                                                next.manual_records = renamed.clone();
+                                                match save_desktop_state(&next) {
                                                 Ok(()) => {
                                                     manual_games.set(renamed);
                                                     manual_edit_id.set(String::new());
@@ -596,7 +620,8 @@ pub(crate) fn render_settings_sidebar(
                                                 Err(error) => manual_storage_error.set(Some(format!(
                                                     "Manual rename could not be saved ({error}). Your edit is still in the box."
                                                 ))),
-                                            },
+                                                }
+                                            }
                                             Err(error) => manual_storage_error.set(Some(format!(
                                                 "Manual rename was not applied ({error})."
                                             ))),
@@ -614,6 +639,36 @@ pub(crate) fn render_settings_sidebar(
                                     "{tr(lang, \"Cancel\", \"Cancelar\")}"
                                 }
                             }
+                            p { class: "muted", "{selected_status_label}" }
+                            div { class: "button-row",
+                                button {
+                                    class: "ghost",
+                                    disabled: manual_storage_blocked(),
+                                    onclick: move |_| apply_manual_status(
+                                        manual_games, spin_history, played_ids, completed_ids,
+                                        manual_storage_error, &manual_edit_id(), ManualStatus::Played,
+                                    ),
+                                    "{tr(lang, \"Mark Played\", \"Marcar jugado\")}"
+                                }
+                                button {
+                                    class: "ghost",
+                                    disabled: manual_storage_blocked(),
+                                    onclick: move |_| apply_manual_status(
+                                        manual_games, spin_history, played_ids, completed_ids,
+                                        manual_storage_error, &manual_edit_id(), ManualStatus::Completed,
+                                    ),
+                                    "{tr(lang, \"Mark Completed\", \"Marcar completado\")}"
+                                }
+                                button {
+                                    class: "ghost",
+                                    disabled: manual_storage_blocked(),
+                                    onclick: move |_| apply_manual_status(
+                                        manual_games, spin_history, played_ids, completed_ids,
+                                        manual_storage_error, &manual_edit_id(), ManualStatus::Eligible,
+                                    ),
+                                    "{tr(lang, \"Restore to Wheel\", \"Volver a la ruleta\")}"
+                                }
+                            }
                         }
                     }
                     if let Some(error) = manual_storage_error() {
@@ -623,5 +678,44 @@ pub(crate) fn render_settings_sidebar(
                 }
             }
         }
+    }
+}
+
+fn current_local_state(
+    manual_games: Signal<Vec<ManualGameRecord>>,
+    spin_history: Signal<Vec<SpinHistoryItem>>,
+    played_ids: Signal<Vec<String>>,
+    completed_ids: Signal<Vec<String>>,
+) -> DesktopLocalState {
+    DesktopLocalState {
+        manual_records: manual_games(),
+        history: spin_history(),
+        played_ids: played_ids(),
+        completed_ids: completed_ids(),
+    }
+}
+
+fn apply_manual_status(
+    manual_games: Signal<Vec<ManualGameRecord>>,
+    spin_history: Signal<Vec<SpinHistoryItem>>,
+    mut played_ids: Signal<Vec<String>>,
+    mut completed_ids: Signal<Vec<String>>,
+    mut storage_error: Signal<Option<String>>,
+    id: &str,
+    status: ManualStatus,
+) {
+    let current = current_local_state(manual_games, spin_history, played_ids, completed_ids);
+    match set_manual_status(&current, id, status).and_then(|next| {
+        save_desktop_state(&next)?;
+        Ok(next)
+    }) {
+        Ok(next) => {
+            played_ids.set(next.played_ids);
+            completed_ids.set(next.completed_ids);
+            storage_error.set(None);
+        }
+        Err(error) => storage_error.set(Some(format!(
+            "Manual status could not be saved ({error}). The previous status is unchanged."
+        ))),
     }
 }

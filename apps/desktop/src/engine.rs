@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    provenance::SourceId, source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem,
-    WeightedPoolGame,
+    provenance::{ScanCandidate, ScanEvidence, SourceId},
+    source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem, WeightedPoolGame,
 };
 
 #[derive(Clone, Debug)]
@@ -105,7 +105,7 @@ pub(crate) fn build_weighted_pool(
     twitch: &[GameItem],
     steam_import: &[GameItem],
     manual: &[ManualGameRecord],
-    scanned: &[String],
+    scanned: &[ScanCandidate],
 ) -> Vec<WeightedPoolGame> {
     let mut pool = HashMap::<String, WeightedPoolGame>::new();
 
@@ -114,7 +114,8 @@ pub(crate) fn build_weighted_pool(
                       id: Option<String>,
                       base_weight: f64,
                       rank: Option<usize>,
-                      score: Option<u64>| {
+                      score: Option<u64>,
+                      scan_evidence: &[ScanEvidence]| {
         let trimmed = crate::normalize_name(name);
         if trimmed.is_empty() {
             return;
@@ -133,6 +134,11 @@ pub(crate) fn build_weighted_pool(
                 existing.sources.push(label.to_string());
                 existing.source_ids.push(source);
             }
+            for evidence in scan_evidence {
+                if !existing.scan_evidence.contains(evidence) {
+                    existing.scan_evidence.push(*evidence);
+                }
+            }
         } else {
             pool.insert(
                 key.clone(),
@@ -142,6 +148,7 @@ pub(crate) fn build_weighted_pool(
                     name: trimmed,
                     sources: vec![label.to_string()],
                     source_ids: vec![source],
+                    scan_evidence: scan_evidence.to_vec(),
                     weight: score_weight,
                 },
             );
@@ -159,6 +166,7 @@ pub(crate) fn build_weighted_pool(
                 steamcharts_weight,
                 game.rank,
                 game.score,
+                &[],
             );
         }
     }
@@ -173,6 +181,7 @@ pub(crate) fn build_weighted_pool(
                 steamdb_weight,
                 game.rank,
                 game.score,
+                &[],
             );
         }
     }
@@ -187,6 +196,7 @@ pub(crate) fn build_weighted_pool(
                 twitch_weight,
                 game.rank,
                 game.score,
+                &[],
             );
         }
     }
@@ -201,6 +211,7 @@ pub(crate) fn build_weighted_pool(
                 steam_import_weight,
                 game.rank,
                 game.score,
+                &[],
             );
         }
     }
@@ -213,12 +224,21 @@ pub(crate) fn build_weighted_pool(
                 manual_weight,
                 None,
                 None,
+                &[],
             );
         }
     }
     if include_scanned {
         for game in scanned {
-            insert(game, SourceId::Scan, None, scanned_weight, None, None);
+            insert(
+                &game.name,
+                SourceId::Scan,
+                None,
+                scanned_weight,
+                None,
+                None,
+                &game.evidence,
+            );
         }
     }
 
@@ -389,10 +409,13 @@ mod tests {
         build_weighted_pool, derive_wheel_data, exclude_statused_games, spin_target_rotation,
         take_spin_result, SpinOperation,
     };
-    use crate::provenance::SourceId;
+    use crate::provenance::{
+        observe_sources, InstallationStatus, LauncherId, OwnershipStatus, ScanCandidate,
+        ScanEvidence, ScanEvidenceKind, SourceId,
+    };
     use crate::{
-        online_data_from_contract, ManualGameRecord, SpinHistoryItem, TopGamesPayloadContract,
-        WeightedPoolGame,
+        online_data_from_contract, GameItem, ManualGameRecord, SpinHistoryItem,
+        TopGamesPayloadContract, WeightedPoolGame,
     };
 
     #[test]
@@ -473,6 +496,78 @@ mod tests {
             legacy_next.cooldown_exhausted,
             "a name-only legacy result still blocks both equal titles"
         );
+    }
+
+    #[test]
+    fn desktop_pool_keeps_trend_import_and_local_candidate_evidence_separate() {
+        let trend = GameItem {
+            name: "Echo Harbor".into(),
+            rank: Some(1),
+            score: None,
+            app_id: Some(10101),
+        };
+        let evidence = ScanEvidence {
+            launcher: LauncherId::Generic,
+            kind: ScanEvidenceKind::DirectoryName,
+        };
+        let scanned = ScanCandidate {
+            name: "Echo Harbor".into(),
+            evidence: vec![evidence],
+        };
+        let pool = build_weighted_pool(
+            true,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &[trend.clone()],
+            &[],
+            &[],
+            &[trend],
+            &[],
+            &[scanned],
+        );
+        assert_eq!(pool.len(), 2);
+        let imported = pool.iter().find(|game| game.id == "steam:10101").unwrap();
+        assert_eq!(
+            imported.source_ids,
+            [SourceId::Steamcharts, SourceId::SteamImport]
+        );
+        let imported_observations = observe_sources(&imported.source_ids, &imported.scan_evidence);
+        assert_eq!(
+            imported_observations.ownership,
+            OwnershipStatus::ObservedSteamImport
+        );
+        assert_eq!(
+            imported_observations.installation,
+            InstallationStatus::Unknown
+        );
+
+        let local = pool
+            .iter()
+            .find(|game| game.source_ids == [SourceId::Scan])
+            .unwrap();
+        assert_eq!(local.scan_evidence, [evidence]);
+        let local_observations = observe_sources(&local.source_ids, &local.scan_evidence);
+        assert_eq!(local_observations.ownership, OwnershipStatus::Unknown);
+        assert_eq!(
+            local_observations.installation,
+            InstallationStatus::Candidate
+        );
+        let selected_index = pool.iter().position(|game| game.id == local.id).unwrap();
+        let spin = SpinOperation::new(11, &pool, &[1.0, 1.0], selected_index, &[], "", "");
+        assert_eq!(spin.winner.source_ids, [SourceId::Scan]);
+        let history_json = serde_json::to_string(&spin.winner).unwrap();
+        assert!(!history_json.contains("launcher"));
+        assert!(!history_json.contains("DirectoryName"));
     }
 
     #[test]
@@ -613,6 +708,7 @@ mod tests {
                 display_name: "Alpha".into(),
                 sources: vec!["Manual".into()],
                 source_ids: vec![SourceId::Manual],
+                scan_evidence: vec![],
                 weight: 1.0,
             },
             WeightedPoolGame {
@@ -621,6 +717,7 @@ mod tests {
                 display_name: "Beta".into(),
                 sources: vec!["Steam Import".into()],
                 source_ids: vec![SourceId::SteamImport],
+                scan_evidence: vec![],
                 weight: 2.0,
             },
         ];

@@ -34,7 +34,7 @@ pub(crate) fn render_settings_sidebar(
     steamdb_games: Signal<Vec<GameItem>>,
     twitch_games: Signal<Vec<GameItem>>,
     mut steam_import_games: Signal<Vec<GameItem>>,
-    scanned_games: Signal<Vec<String>>,
+    scanned_games: Signal<Vec<crate::provenance::ScanCandidate>>,
     mut manual_games: Signal<Vec<ManualGameRecord>>,
     mut manual_text: Signal<String>,
     mut manual_edit_id: Signal<String>,
@@ -568,10 +568,10 @@ pub(crate) fn render_settings_sidebar(
                         button {
                             class: "ghost",
                             onclick: move |_| include_scanned.set(!include_scanned()),
-                            {format!("{}: {}", tr(lang, "Scanned", "Escaneado"), on_off_label(lang, include_scanned()))}
+                            {format!("{}: {}", tr(lang, "Local candidates", "Posibles juegos locales"), on_off_label(lang, include_scanned()))}
                         }
                     }
-                    p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
+                    p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Local candidates\", \"Posibles juegos locales\")}: {scanned_games().len()}" }
                     if !manual_choices.is_empty() {
                         div { class: "control-row",
                             span { "{tr(lang, \"Rename manual game\", \"Renombrar juego manual\")}" }
@@ -675,6 +675,7 @@ pub(crate) fn render_settings_sidebar(
                         p { role: "alert", "{error}" }
                     }
                     p { class: "muted", "{tr(lang, \"Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default.\", \"El escaneo desktop revisa manifiestos de Steam, Epic y carpetas comunes de GOG/Ubisoft/Xbox. El rastreo de accesos directos esta desactivado por defecto.\")}" }
+                    p { class: "muted", "{tr(lang, \"Scan results are local candidates, not verified installations or proof of ownership.\", \"Los resultados del escaneo son posibles juegos locales, no instalaciones verificadas ni prueba de propiedad.\")}" }
                 }
             }
         }

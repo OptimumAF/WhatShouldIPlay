@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 
@@ -12,12 +12,14 @@ use serde_json::Value;
 use tokio::time::{sleep, Duration};
 
 use crate::{
-    dedupe_and_sort, dedupe_game_items, normalize_name, tr, GameItem, OnlineData,
-    TopGamesPayloadContract, UiLang, SHARED_TOP_GAMES_URL, TOP_N, USER_AGENT,
+    dedupe_game_items, normalize_name,
+    provenance::{LauncherId, ScanCandidate, ScanEvidence, ScanEvidenceKind},
+    tr, GameItem, OnlineData, TopGamesPayloadContract, UiLang, SHARED_TOP_GAMES_URL, TOP_N,
+    USER_AGENT,
 };
 
 pub(crate) async fn refresh_scanned_games(
-    mut scanned_games: Signal<Vec<String>>,
+    mut scanned_games: Signal<Vec<ScanCandidate>>,
     mut status: Signal<String>,
     ui_lang: Signal<UiLang>,
 ) {
@@ -494,7 +496,7 @@ mod identity_tests {
     }
 }
 
-fn scan_installed_games() -> Vec<String> {
+fn scan_installed_games() -> Vec<ScanCandidate> {
     let mut games = Vec::new();
     games.extend(scan_steam_manifests());
     games.extend(scan_epic_launcher_manifests());
@@ -504,12 +506,56 @@ fn scan_installed_games() -> Vec<String> {
     games.extend(scan_common_install_dirs());
     #[cfg(feature = "deep-shortcut-scan")]
     games.extend(scan_shortcuts());
-    dedupe_and_sort(games)
+    merge_scan_candidates(games)
 }
 
-fn scan_steam_manifests() -> Vec<String> {
+fn candidate_names(
+    names: Vec<String>,
+    launcher: LauncherId,
+    kind: ScanEvidenceKind,
+) -> Vec<ScanCandidate> {
+    names
+        .into_iter()
+        .filter_map(|name| {
+            let name = normalize_name(&name);
+            (!name.is_empty()).then_some(ScanCandidate {
+                name,
+                evidence: vec![ScanEvidence { launcher, kind }],
+            })
+        })
+        .collect()
+}
+
+fn merge_scan_candidates(candidates: Vec<ScanCandidate>) -> Vec<ScanCandidate> {
+    let mut merged = BTreeMap::<String, ScanCandidate>::new();
+    for candidate in candidates {
+        let name = normalize_name(&candidate.name);
+        if name.is_empty() {
+            continue;
+        }
+        let entry = merged
+            .entry(name.to_lowercase())
+            .or_insert_with(|| ScanCandidate {
+                name,
+                evidence: Vec::new(),
+            });
+        for evidence in candidate.evidence {
+            if !entry.evidence.contains(&evidence) {
+                entry.evidence.push(evidence);
+            }
+        }
+    }
+    let mut output = merged.into_values().collect::<Vec<_>>();
+    output.sort_by(|left, right| left.name.cmp(&right.name));
+    output
+}
+
+fn scan_steam_manifests() -> Vec<ScanCandidate> {
+    scan_steam_manifests_from_roots(steam_root_candidates())
+}
+
+fn scan_steam_manifests_from_roots(mut steam_roots: Vec<PathBuf>) -> Vec<ScanCandidate> {
     let mut discovered = Vec::new();
-    let mut steam_roots = steam_root_candidates();
     steam_roots.retain(|path| path.exists());
 
     let path_regex = Regex::new(r#""path"\s+"([^"]+)""#).unwrap();
@@ -561,7 +607,7 @@ fn scan_steam_manifests() -> Vec<String> {
         }
     }
 
-    discovered
+    candidate_names(discovered, LauncherId::Steam, ScanEvidenceKind::Manifest)
 }
 
 fn steam_root_candidates() -> Vec<PathBuf> {
@@ -578,7 +624,7 @@ fn steam_root_candidates() -> Vec<PathBuf> {
     candidates
 }
 
-fn scan_epic_launcher_manifests() -> Vec<String> {
+fn scan_epic_launcher_manifests() -> Vec<ScanCandidate> {
     let mut manifest_roots = Vec::<PathBuf>::new();
     if let Ok(program_data) = std::env::var("ProgramData") {
         manifest_roots.push(
@@ -640,10 +686,10 @@ fn scan_epic_launcher_manifests() -> Vec<String> {
         }
     }
 
-    discovered
+    candidate_names(discovered, LauncherId::Epic, ScanEvidenceKind::Manifest)
 }
 
-fn scan_gog_install_dirs() -> Vec<String> {
+fn scan_gog_install_dirs() -> Vec<ScanCandidate> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files) = std::env::var("ProgramFiles") {
         roots.push(
@@ -662,10 +708,10 @@ fn scan_gog_install_dirs() -> Vec<String> {
         roots.push(PathBuf::from(&program_files_x86).join("GOG Games"));
     }
 
-    scan_child_directories(roots)
+    scan_child_directories(roots, LauncherId::Gog)
 }
 
-fn scan_ubisoft_install_dirs() -> Vec<String> {
+fn scan_ubisoft_install_dirs() -> Vec<ScanCandidate> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
         roots.push(
@@ -690,10 +736,10 @@ fn scan_ubisoft_install_dirs() -> Vec<String> {
         roots.push(PathBuf::from(&program_files).join("Ubisoft").join("games"));
     }
 
-    scan_child_directories(roots)
+    scan_child_directories(roots, LauncherId::Ubisoft)
 }
 
-fn scan_xbox_install_dirs() -> Vec<String> {
+fn scan_xbox_install_dirs() -> Vec<ScanCandidate> {
     let mut roots = Vec::<PathBuf>::new();
     roots.push(PathBuf::from("C:\\XboxGames"));
     if let Ok(program_files) = std::env::var("ProgramFiles") {
@@ -712,10 +758,10 @@ fn scan_xbox_install_dirs() -> Vec<String> {
         );
     }
 
-    scan_child_directories(roots)
+    scan_child_directories(roots, LauncherId::Xbox)
 }
 
-fn scan_common_install_dirs() -> Vec<String> {
+fn scan_common_install_dirs() -> Vec<ScanCandidate> {
     let mut roots = Vec::<PathBuf>::new();
     if let Ok(program_files) = std::env::var("ProgramFiles") {
         roots.push(PathBuf::from(&program_files).join("Epic Games"));
@@ -723,12 +769,15 @@ fn scan_common_install_dirs() -> Vec<String> {
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
         roots.push(PathBuf::from(&program_files_x86).join("Epic Games"));
     }
-    roots.push(PathBuf::from("C:\\Games"));
-
-    scan_child_directories(roots)
+    let mut candidates = scan_child_directories(roots, LauncherId::Epic);
+    candidates.extend(scan_child_directories(
+        vec![PathBuf::from("C:\\Games")],
+        LauncherId::Generic,
+    ));
+    candidates
 }
 
-fn scan_child_directories(roots: Vec<PathBuf>) -> Vec<String> {
+fn scan_child_directories(roots: Vec<PathBuf>, launcher: LauncherId) -> Vec<ScanCandidate> {
     let mut names = Vec::new();
     for root in roots {
         if !root.exists() {
@@ -748,11 +797,79 @@ fn scan_child_directories(roots: Vec<PathBuf>) -> Vec<String> {
             }
         }
     }
-    names
+    candidate_names(names, launcher, ScanEvidenceKind::DirectoryName)
+}
+
+#[cfg(test)]
+mod scan_evidence_tests {
+    use super::{merge_scan_candidates, scan_child_directories, scan_steam_manifests_from_roots};
+    use crate::provenance::{LauncherId, ScanCandidate, ScanEvidence, ScanEvidenceKind};
+    use std::fs;
+
+    #[test]
+    fn synthetic_manifest_and_uncertain_directory_keep_distinct_path_free_evidence() {
+        let fixture = tempfile::tempdir().unwrap();
+        let steam_root = fixture.path().join("Steam");
+        let steamapps = steam_root.join("steamapps");
+        fs::create_dir_all(&steamapps).unwrap();
+        fs::write(
+            steamapps.join("appmanifest_10101.acf"),
+            r#""AppState" { "appid" "10101" "name" "Echo Harbor" }"#,
+        )
+        .unwrap();
+        let generic_root = fixture.path().join("Games");
+        fs::create_dir_all(generic_root.join("Maybe A Game")).unwrap();
+
+        let manifest = scan_steam_manifests_from_roots(vec![steam_root]);
+        let directory = scan_child_directories(vec![generic_root], LauncherId::Generic);
+        assert_eq!(manifest.len(), 1);
+        assert_eq!(manifest[0].name, "Echo Harbor");
+        assert_eq!(
+            manifest[0].evidence,
+            vec![ScanEvidence {
+                launcher: LauncherId::Steam,
+                kind: ScanEvidenceKind::Manifest,
+            }]
+        );
+        assert_eq!(directory.len(), 1);
+        assert_eq!(directory[0].name, "Maybe A Game");
+        assert_eq!(
+            directory[0].evidence,
+            vec![ScanEvidence {
+                launcher: LauncherId::Generic,
+                kind: ScanEvidenceKind::DirectoryName,
+            }]
+        );
+        let debug = format!("{manifest:?}{directory:?}");
+        assert!(!debug.contains(&fixture.path().display().to_string()));
+    }
+
+    #[test]
+    fn duplicate_scan_names_keep_all_evidence_without_extra_candidates() {
+        let merged = merge_scan_candidates(vec![
+            ScanCandidate {
+                name: "Echo Harbor".into(),
+                evidence: vec![ScanEvidence {
+                    launcher: LauncherId::Steam,
+                    kind: ScanEvidenceKind::Manifest,
+                }],
+            },
+            ScanCandidate {
+                name: "echo harbor".into(),
+                evidence: vec![ScanEvidence {
+                    launcher: LauncherId::Generic,
+                    kind: ScanEvidenceKind::DirectoryName,
+                }],
+            },
+        ]);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].name, "Echo Harbor");
+        assert_eq!(merged[0].evidence.len(), 2);
+    }
 }
 
 #[cfg(feature = "deep-shortcut-scan")]
-fn scan_shortcuts() -> Vec<String> {
+fn scan_shortcuts() -> Vec<ScanCandidate> {
     let mut names = Vec::new();
 
     let mut roots = Vec::<PathBuf>::new();
@@ -796,5 +913,5 @@ fn scan_shortcuts() -> Vec<String> {
         }
     }
 
-    names
+    candidate_names(names, LauncherId::Generic, ScanEvidenceKind::ShortcutName)
 }

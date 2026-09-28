@@ -9,9 +9,171 @@ use crate::{
     engine::{pick_weighted_index, spin_target_rotation, take_spin_result, SpinOperation},
     format_odds, localize_source_chain,
     manual_store::save_desktop_state,
-    parse_ui_lang, tr, DesktopLocalState, ManualGameRecord, SpinHistoryItem, UiLang,
-    WeightedPoolGame,
+    parse_ui_lang,
+    provenance::{
+        observe_sources, InstallationStatus, LauncherId, OwnershipStatus, ScanEvidence,
+        ScanEvidenceKind, SourceId,
+    },
+    tr, DesktopLocalState, ManualGameRecord, SpinHistoryItem, UiLang, WeightedPoolGame,
 };
+
+fn evidence_label(lang: UiLang, evidence: ScanEvidence) -> String {
+    let kind = match evidence.kind {
+        ScanEvidenceKind::Manifest => tr(lang, "manifest", "manifiesto"),
+        ScanEvidenceKind::DirectoryName => tr(lang, "directory name", "nombre de carpeta"),
+        #[cfg(feature = "deep-shortcut-scan")]
+        ScanEvidenceKind::ShortcutName => tr(lang, "shortcut name", "nombre de acceso directo"),
+    };
+    let launcher = match evidence.launcher {
+        LauncherId::Steam => Some("Steam"),
+        LauncherId::Epic => Some("Epic"),
+        LauncherId::Gog => Some("GOG"),
+        LauncherId::Ubisoft => Some("Ubisoft"),
+        LauncherId::Xbox => Some("Xbox"),
+        LauncherId::Generic => None,
+    };
+    match (launcher, lang) {
+        (Some(launcher), UiLang::En) => format!("{launcher} {kind}"),
+        (Some(launcher), UiLang::Es) => format!("{kind} ({launcher})"),
+        (None, _) => kind.to_string(),
+    }
+}
+
+fn availability_summary(
+    lang: UiLang,
+    source_ids: &[SourceId],
+    scan_evidence: &[ScanEvidence],
+) -> String {
+    let observations = observe_sources(source_ids, scan_evidence);
+    let ownership = match observations.ownership {
+        OwnershipStatus::Unknown => tr(lang, "Ownership unknown", "Propiedad desconocida"),
+        OwnershipStatus::ObservedSteamImport => tr(
+            lang,
+            "Steam ownership reported by import",
+            "Propiedad en Steam indicada por la importacion",
+        ),
+    };
+    let installation = match observations.installation {
+        InstallationStatus::Unknown => {
+            tr(lang, "Installation unknown", "Instalacion desconocida").to_string()
+        }
+        InstallationStatus::Candidate if observations.scan_evidence.is_empty() => tr(
+            lang,
+            "Local installation candidate (unverified)",
+            "Posible instalacion local (sin verificar)",
+        )
+        .to_string(),
+        InstallationStatus::Candidate => format!(
+            "{}: {} ({})",
+            tr(
+                lang,
+                "Local installation candidate",
+                "Posible instalacion local"
+            ),
+            observations
+                .scan_evidence
+                .into_iter()
+                .map(|evidence| evidence_label(lang, evidence))
+                .collect::<Vec<_>>()
+                .join(", "),
+            tr(lang, "unverified", "sin verificar"),
+        ),
+    };
+    if observations.trend_sources.is_empty() {
+        format!("{ownership} · {installation}")
+    } else {
+        format!(
+            "{} · {ownership} · {installation}",
+            tr(lang, "Trend listing", "En lista de tendencias")
+        )
+    }
+}
+
+fn winner_availability(lang: UiLang, winner: &str, display: Option<&SpinOperation>) -> String {
+    display
+        .filter(|operation| operation.winner.display_name == winner)
+        .map(|operation| {
+            let evidence = operation
+                .eligible
+                .get(operation.winner_index)
+                .map_or(&[][..], |game| game.scan_evidence.as_slice());
+            availability_summary(lang, &operation.winner.source_ids, evidence)
+        })
+        .unwrap_or_else(|| availability_summary(lang, &[], &[]))
+}
+
+#[cfg(test)]
+mod availability_tests {
+    use super::{availability_summary, winner_availability};
+    use crate::{
+        engine::SpinOperation,
+        provenance::{LauncherId, ScanEvidence, ScanEvidenceKind, SourceId},
+        UiLang, WeightedPoolGame,
+    };
+
+    #[test]
+    fn copy_keeps_trends_imports_and_uncertain_scan_results_distinct() {
+        assert_eq!(
+            availability_summary(UiLang::En, &[SourceId::Steamcharts], &[]),
+            "Trend listing · Ownership unknown · Installation unknown"
+        );
+        assert_eq!(
+            availability_summary(UiLang::En, &[SourceId::SteamImport], &[]),
+            "Steam ownership reported by import · Installation unknown"
+        );
+        assert_eq!(
+            availability_summary(
+                UiLang::En,
+                &[SourceId::Steamcharts, SourceId::SteamImport],
+                &[]
+            ),
+            "Trend listing · Steam ownership reported by import · Installation unknown"
+        );
+        let evidence = ScanEvidence {
+            launcher: LauncherId::Generic,
+            kind: ScanEvidenceKind::DirectoryName,
+        };
+        assert_eq!(
+            availability_summary(UiLang::En, &[SourceId::Scan], &[evidence]),
+            "Ownership unknown · Local installation candidate: directory name (unverified)"
+        );
+        assert_eq!(
+            availability_summary(UiLang::En, &[SourceId::Scan], &[]),
+            "Ownership unknown · Local installation candidate (unverified)"
+        );
+        assert_eq!(
+            availability_summary(UiLang::Es, &[SourceId::Scan], &[evidence]),
+            "Propiedad desconocida · Posible instalacion local: nombre de carpeta (sin verificar)"
+        );
+        assert_eq!(
+            availability_summary(UiLang::En, &[], &[]),
+            "Ownership unknown · Installation unknown"
+        );
+    }
+
+    #[test]
+    fn winner_copy_uses_frozen_spin_evidence_only_for_that_winner() {
+        let pool = [WeightedPoolGame {
+            id: "source:scan:echo harbor".into(),
+            name: "Echo Harbor".into(),
+            display_name: "Echo Harbor".into(),
+            sources: vec!["Scanned".into()],
+            source_ids: vec![SourceId::Scan],
+            scan_evidence: vec![ScanEvidence {
+                launcher: LauncherId::Steam,
+                kind: ScanEvidenceKind::Manifest,
+            }],
+            weight: 1.0,
+        }];
+        let spin = SpinOperation::new(1, &pool, &[1.0], 0, &[], "", "");
+        assert!(winner_availability(UiLang::En, "Echo Harbor", Some(&spin))
+            .contains("Steam manifest (unverified)"));
+        assert_eq!(
+            winner_availability(UiLang::En, "Other Game", Some(&spin)),
+            "Ownership unknown · Installation unknown"
+        );
+    }
+}
 
 pub(crate) fn render_hero_masthead(
     lang: UiLang,
@@ -83,7 +245,7 @@ pub(crate) fn render_wheel_panel(
     show_winner_popup: Signal<bool>,
     mut show_sidebar: Signal<bool>,
     mut active_settings_section: Signal<String>,
-    scanned_games: Signal<Vec<String>>,
+    scanned_games: Signal<Vec<crate::provenance::ScanCandidate>>,
     status: Signal<String>,
     ui_lang: Signal<UiLang>,
     spin_button_label: &'static str,
@@ -105,6 +267,8 @@ pub(crate) fn render_wheel_panel(
         || spin_transition.to_string(),
         |operation| operation.transition.clone(),
     );
+    let winner_name = winner();
+    let winner_availability = winner_availability(lang, &winner_name, display.as_ref());
     let start_background = wheel_background.to_string();
     let start_transition = spin_transition.to_string();
     rsx! {
@@ -283,6 +447,7 @@ pub(crate) fn render_wheel_panel(
                             }
                         }
                     }
+                    p { class: "muted", "{winner_availability}" }
                     p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds())}" }
                 }
             }
@@ -303,6 +468,7 @@ pub(crate) fn render_spin_history_panel(lang: UiLang, history: &[SpinHistoryItem
                             div {
                                 strong { "{entry.display_name}" }
                                 small { "{localize_source_chain(lang, &entry.sources)}" }
+                                small { "{availability_summary(lang, &entry.source_ids, &[])}" }
                             }
                             span { "{format_odds(entry.odds)}" }
                         }
@@ -316,10 +482,13 @@ pub(crate) fn render_spin_history_panel(lang: UiLang, history: &[SpinHistoryItem
 pub(crate) fn render_winner_overlay(
     lang: UiLang,
     mut show_winner_popup: Signal<bool>,
+    display_spin: Signal<Option<SpinOperation>>,
     winner: &str,
     winner_sources: &str,
     winner_odds: f64,
 ) -> Element {
+    let operation = display_spin();
+    let availability = winner_availability(lang, winner, operation.as_ref());
     rsx! {
         if show_winner_popup() && !winner.is_empty() {
             div {
@@ -343,8 +512,9 @@ pub(crate) fn render_winner_overlay(
                         }
                     }
                     p { "{tr(lang, \"Sources\", \"Fuentes\")}: {localize_source_chain(lang, winner_sources)}" }
+                    p { class: "muted", "{availability}" }
                     p { "{tr(lang, \"Odds this spin\", \"Probabilidad en este giro\")}: {format_odds(winner_odds)}" }
-                    p { "{tr(lang, \"Launch it. No second guessing.\", \"Abre el juego. Sin dudar.\")}" }
+                    p { "{tr(lang, \"If it is available, give it a try.\", \"Si esta disponible, pruebalo.\")}" }
                     button {
                         onclick: move |_| show_winner_popup.set(false),
                         {tr(lang, "Nice", "Genial")}

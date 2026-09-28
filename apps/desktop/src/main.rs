@@ -1,7 +1,7 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use dioxus::prelude::*;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
 mod contracts;
 mod data;
@@ -52,6 +52,7 @@ struct WeightedPoolGame {
     display_name: String,
     sources: Vec<String>,
     source_ids: Vec<provenance::SourceId>,
+    scan_evidence: Vec<provenance::ScanEvidence>,
     weight: f64,
 }
 
@@ -105,7 +106,7 @@ struct DesktopDataState {
     steamdb_games: Signal<Vec<GameItem>>,
     twitch_games: Signal<Vec<GameItem>>,
     steam_import_games: Signal<Vec<GameItem>>,
-    scanned_games: Signal<Vec<String>>,
+    scanned_games: Signal<Vec<provenance::ScanCandidate>>,
     manual_games: Signal<Vec<ManualGameRecord>>,
     manual_text: Signal<String>,
     manual_edit_id: Signal<String>,
@@ -242,7 +243,7 @@ fn App() -> Element {
         steamdb_games: use_signal(Vec::<GameItem>::new),
         twitch_games: use_signal(Vec::<GameItem>::new),
         steam_import_games: use_signal(Vec::<GameItem>::new),
-        scanned_games: use_signal(Vec::<String>::new),
+        scanned_games: use_signal(Vec::<provenance::ScanCandidate>::new),
         manual_games: use_signal(|| initial_manual_records),
         manual_text: use_signal(String::new),
         manual_edit_id: use_signal(String::new),
@@ -503,7 +504,7 @@ fn App() -> Element {
                 }
             }
         }
-        {render_winner_overlay(lang, spin.show_winner_popup, &(spin.winner)(), &(spin.winner_sources)(), (spin.winner_odds)())}
+        {render_winner_overlay(lang, spin.show_winner_popup, spin.display_spin, &(spin.winner)(), &(spin.winner_sources)(), (spin.winner_odds)())}
     }
 }
 
@@ -658,17 +659,6 @@ fn dedupe_game_items(items: Vec<GameItem>) -> Vec<GameItem> {
         out.push(item);
     }
     out
-}
-
-fn dedupe_and_sort(items: Vec<String>) -> Vec<String> {
-    let mut set = BTreeSet::new();
-    for item in items {
-        let trimmed = normalize_name(&item);
-        if !trimmed.is_empty() {
-            set.insert(trimmed);
-        }
-    }
-    set.into_iter().collect()
 }
 
 const DESKTOP_CSS: &str = include_str!("desktop.css");

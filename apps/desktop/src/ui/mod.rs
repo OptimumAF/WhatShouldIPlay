@@ -262,7 +262,7 @@ pub(crate) fn render_spin_history_panel(lang: UiLang, history: &[SpinHistoryItem
                     for entry in history.iter().take(10) {
                         li {
                             div {
-                                strong { "{entry.name}" }
+                                strong { "{entry.display_name}" }
                                 small { "{localize_source_chain(lang, &entry.sources)}" }
                             }
                             span { "{format_odds(entry.odds)}" }
@@ -458,7 +458,7 @@ fn finalize_spin_result(
     let selected = operation.winner;
 
     spinning.set(false);
-    winner.set(selected.name.clone());
+    winner.set(selected.display_name.clone());
     winner_sources.set(selected.sources.clone());
     winner_odds.set(selected.odds);
 

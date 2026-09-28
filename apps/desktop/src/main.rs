@@ -6,6 +6,7 @@ use std::collections::{BTreeSet, HashSet};
 mod contracts;
 mod data;
 mod engine;
+mod manual_store;
 mod ui;
 use contracts::TopGamesPayloadContract;
 use data::refresh_scanned_games;
@@ -37,10 +38,17 @@ struct GameItem {
     app_id: Option<u64>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct ManualGameRecord {
+    id: String,
+    name: String,
+}
+
 #[derive(Clone, Debug, Default)]
 struct WeightedPoolGame {
     id: String,
     name: String,
+    display_name: String,
     sources: Vec<String>,
     weight: f64,
 }
@@ -49,6 +57,7 @@ struct WeightedPoolGame {
 struct SpinHistoryItem {
     id: Option<String>,
     name: String,
+    display_name: String,
     sources: String,
     odds: f64,
 }
@@ -84,8 +93,10 @@ struct DesktopDataState {
     twitch_games: Signal<Vec<GameItem>>,
     steam_import_games: Signal<Vec<GameItem>>,
     scanned_games: Signal<Vec<String>>,
-    manual_games: Signal<Vec<String>>,
+    manual_games: Signal<Vec<ManualGameRecord>>,
     manual_text: Signal<String>,
+    manual_storage_error: Signal<Option<String>>,
+    manual_storage_blocked: Signal<bool>,
     steam_api_key: Signal<String>,
     steam_id: Signal<String>,
     steam_import_status: Signal<String>,
@@ -193,6 +204,17 @@ fn host_platform_label(lang: UiLang) -> &'static str {
 
 #[component]
 fn App() -> Element {
+    let initial_manual = use_signal(|| match manual_store::load_manual_records() {
+        Ok(records) => (records, None, false),
+        Err(error) => (
+            Vec::new(),
+            Some(format!(
+                "Manual library could not be loaded ({error}). Its file was left untouched."
+            )),
+            true,
+        ),
+    });
+    let (initial_manual_records, initial_manual_error, initial_manual_blocked) = initial_manual();
     let data = DesktopDataState {
         ui_lang: use_signal(|| UiLang::En),
         steamcharts_games: use_signal(Vec::<GameItem>::new),
@@ -200,8 +222,10 @@ fn App() -> Element {
         twitch_games: use_signal(Vec::<GameItem>::new),
         steam_import_games: use_signal(Vec::<GameItem>::new),
         scanned_games: use_signal(Vec::<String>::new),
-        manual_games: use_signal(Vec::<String>::new),
+        manual_games: use_signal(|| initial_manual_records),
         manual_text: use_signal(String::new),
+        manual_storage_error: use_signal(|| initial_manual_error),
+        manual_storage_blocked: use_signal(|| initial_manual_blocked),
         steam_api_key: use_signal(String::new),
         steam_id: use_signal(String::new),
         steam_import_status: use_signal(String::new),
@@ -369,6 +393,8 @@ fn App() -> Element {
                         data.scanned_games,
                         data.manual_games,
                         data.manual_text,
+                        data.manual_storage_error,
+                        data.manual_storage_blocked,
                         data.steam_api_key,
                         data.steam_id,
                         data.steam_import_status,
@@ -536,18 +562,6 @@ fn localize_source_chain(lang: UiLang, sources: &str) -> String {
         .map(|part| source_label_for_lang(lang, part))
         .collect::<Vec<_>>();
     localized.join(" + ")
-}
-
-fn merge_lines(existing: &[String], input: &str) -> Vec<String> {
-    let mut merged = existing.to_vec();
-    for line in input.split(['\n', ',']) {
-        let trimmed = normalize_name(line);
-        if trimmed.is_empty() {
-            continue;
-        }
-        merged.push(trimmed);
-    }
-    dedupe_and_sort(merged)
 }
 
 fn map_contract_games(items: Vec<contracts::GameContract>) -> Vec<GameItem> {

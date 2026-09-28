@@ -2,7 +2,8 @@ use dioxus::prelude::*;
 
 use crate::{
     data::{fetch_online_sources, fetch_steam_owned_games, refresh_scanned_games},
-    merge_lines, on_off_label, tr, GameItem, UiLang,
+    manual_store::{append_manual_records, save_manual_records},
+    on_off_label, tr, GameItem, ManualGameRecord, UiLang,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -31,8 +32,10 @@ pub(crate) fn render_settings_sidebar(
     twitch_games: Signal<Vec<GameItem>>,
     mut steam_import_games: Signal<Vec<GameItem>>,
     scanned_games: Signal<Vec<String>>,
-    mut manual_games: Signal<Vec<String>>,
+    mut manual_games: Signal<Vec<ManualGameRecord>>,
     mut manual_text: Signal<String>,
+    mut manual_storage_error: Signal<Option<String>>,
+    manual_storage_blocked: Signal<bool>,
     mut steam_api_key: Signal<String>,
     mut steam_id: Signal<String>,
     mut steam_import_status: Signal<String>,
@@ -504,10 +507,22 @@ pub(crate) fn render_settings_sidebar(
                     }
                     div { class: "button-row",
                         button {
+                            disabled: manual_storage_blocked(),
                             onclick: move |_| {
-                                let merged = merge_lines(&manual_games(), &manual_text());
-                                manual_games.set(merged);
-                                manual_text.set(String::new());
+                                let merged = append_manual_records(&manual_games(), &manual_text());
+                                if merged.len() == manual_games().len() {
+                                    return;
+                                }
+                                match save_manual_records(&merged) {
+                                    Ok(()) => {
+                                        manual_games.set(merged);
+                                        manual_text.set(String::new());
+                                        manual_storage_error.set(None);
+                                    }
+                                    Err(error) => manual_storage_error.set(Some(format!(
+                                        "Manual library could not be saved ({error}). Your input is still in the box."
+                                    ))),
+                                }
                             },
                             {tr(lang, "Add Manual Games", "Agregar juegos manuales")}
                         }
@@ -530,6 +545,9 @@ pub(crate) fn render_settings_sidebar(
                         }
                     }
                     p { class: "muted", "{tr(lang, \"Manual games\", \"Juegos manuales\")}: {manual_games().len()} | {tr(lang, \"Scanned games\", \"Juegos escaneados\")}: {scanned_games().len()}" }
+                    if let Some(error) = manual_storage_error() {
+                        p { role: "alert", "{error}" }
+                    }
                     p { class: "muted", "{tr(lang, \"Desktop scan checks Steam manifests, Epic launcher manifests, and common install folders for GOG/Ubisoft/Xbox. Shortcut crawling is disabled by default.\", \"El escaneo desktop revisa manifiestos de Steam, Epic y carpetas comunes de GOG/Ubisoft/Xbox. El rastreo de accesos directos esta desactivado por defecto.\")}" }
                 }
             }

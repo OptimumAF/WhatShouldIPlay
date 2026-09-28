@@ -24,6 +24,9 @@ serde_json = "1.0"
 tokio = { version = "1.48", features = ["time"] }
 walkdir = { version = "2.5", optional = true }
 
+[dev-dependencies]
+tempfile = "3.27"
+
 [package.metadata.bundle]
 name = "WhatShouldIPlay"
 identifier = "io.optimumaf.whatshouldiplay"

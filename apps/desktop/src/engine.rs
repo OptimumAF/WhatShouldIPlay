@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{source_index_from_label, GameItem, SpinHistoryItem, WeightedPoolGame};
+use crate::{
+    source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem, WeightedPoolGame,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SuggestedWeights {
@@ -57,6 +59,7 @@ impl SpinOperation {
             winner: SpinHistoryItem {
                 id: Some(selected.id.clone()),
                 name: selected.name.clone(),
+                display_name: selected.display_name.clone(),
                 sources: selected.sources.join(" + "),
                 odds: effective_weights[winner_index] / total,
             },
@@ -99,14 +102,14 @@ pub(crate) fn build_weighted_pool(
     steamdb: &[GameItem],
     twitch: &[GameItem],
     steam_import: &[GameItem],
-    manual: &[String],
+    manual: &[ManualGameRecord],
     scanned: &[String],
 ) -> Vec<WeightedPoolGame> {
     let mut pool = HashMap::<String, WeightedPoolGame>::new();
 
     let mut insert = |name: &str,
                       source: &str,
-                      app_id: Option<u64>,
+                      id: Option<String>,
                       base_weight: f64,
                       rank: Option<usize>,
                       score: Option<u64>| {
@@ -123,10 +126,7 @@ pub(crate) fn build_weighted_pool(
             "Scanned" => "scan",
             _ => "unknown",
         };
-        let key = app_id
-            .filter(|id| *id > 0)
-            .map(|id| format!("steam:{id}"))
-            .unwrap_or_else(|| format!("source:{source_id}:{}", trimmed.to_lowercase()));
+        let key = id.unwrap_or_else(|| format!("source:{source_id}:{}", trimmed.to_lowercase()));
         let score_weight = if weighted_mode {
             compute_weight(base_weight, rank, score)
         } else {
@@ -142,6 +142,7 @@ pub(crate) fn build_weighted_pool(
                 key.clone(),
                 WeightedPoolGame {
                     id: key,
+                    display_name: trimmed.clone(),
                     name: trimmed,
                     sources: vec![source.to_string()],
                     weight: score_weight,
@@ -155,7 +156,9 @@ pub(crate) fn build_weighted_pool(
             insert(
                 &game.name,
                 "SteamCharts",
-                game.app_id,
+                game.app_id
+                    .filter(|id| *id > 0)
+                    .map(|id| format!("steam:{id}")),
                 steamcharts_weight,
                 game.rank,
                 game.score,
@@ -167,7 +170,9 @@ pub(crate) fn build_weighted_pool(
             insert(
                 &game.name,
                 "SteamDB",
-                game.app_id,
+                game.app_id
+                    .filter(|id| *id > 0)
+                    .map(|id| format!("steam:{id}")),
                 steamdb_weight,
                 game.rank,
                 game.score,
@@ -179,7 +184,9 @@ pub(crate) fn build_weighted_pool(
             insert(
                 &game.name,
                 "TwitchMetrics",
-                game.app_id,
+                game.app_id
+                    .filter(|id| *id > 0)
+                    .map(|id| format!("steam:{id}")),
                 twitch_weight,
                 game.rank,
                 game.score,
@@ -191,7 +198,9 @@ pub(crate) fn build_weighted_pool(
             insert(
                 &game.name,
                 "Steam Import",
-                game.app_id,
+                game.app_id
+                    .filter(|id| *id > 0)
+                    .map(|id| format!("steam:{id}")),
                 steam_import_weight,
                 game.rank,
                 game.score,
@@ -200,7 +209,14 @@ pub(crate) fn build_weighted_pool(
     }
     if include_manual {
         for game in manual {
-            insert(game, "Manual", None, manual_weight, None, None);
+            insert(
+                &game.name,
+                "Manual",
+                Some(game.id.clone()),
+                manual_weight,
+                None,
+                None,
+            );
         }
     }
     if include_scanned {
@@ -211,6 +227,21 @@ pub(crate) fn build_weighted_pool(
 
     let mut output = pool.into_values().collect::<Vec<_>>();
     output.sort_by(|left, right| left.name.cmp(&right.name).then(left.id.cmp(&right.id)));
+    let mut title_counts = HashMap::new();
+    for game in &output {
+        *title_counts
+            .entry(game.name.to_lowercase())
+            .or_insert(0_usize) += 1;
+    }
+    let mut title_ordinals = HashMap::new();
+    for game in &mut output {
+        let key = game.name.to_lowercase();
+        if title_counts[&key] > 1 {
+            let ordinal = title_ordinals.entry(key).or_insert(0_usize);
+            *ordinal += 1;
+            game.display_name = format!("{} ({})", game.name, ordinal);
+        }
+    }
     output
 }
 
@@ -261,7 +292,7 @@ pub(crate) fn derive_wheel_data(
             } else {
                 0.0
             };
-            (angle, flip, pool_game.name.clone())
+            (angle, flip, pool_game.display_name.clone())
         })
         .collect::<Vec<_>>();
 
@@ -346,7 +377,8 @@ mod tests {
         SpinOperation,
     };
     use crate::{
-        online_data_from_contract, SpinHistoryItem, TopGamesPayloadContract, WeightedPoolGame,
+        online_data_from_contract, ManualGameRecord, SpinHistoryItem, TopGamesPayloadContract,
+        WeightedPoolGame,
     };
 
     #[test]
@@ -413,6 +445,7 @@ mod tests {
         let legacy = SpinHistoryItem {
             id: None,
             name: "Echo Harbor".into(),
+            display_name: "Echo Harbor".into(),
             sources: "SteamDB".into(),
             odds: 0.5,
         };
@@ -421,6 +454,48 @@ mod tests {
             legacy_next.cooldown_exhausted,
             "a name-only legacy result still blocks both equal titles"
         );
+    }
+
+    #[test]
+    fn desktop_manual_ids_keep_equal_titles_distinct_through_cooldown() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/selection-edge-cases.json"
+        ))
+        .unwrap();
+        let manual: Vec<ManualGameRecord> =
+            serde_json::from_value(fixture["manualGames"].clone()).unwrap();
+        let pool = build_weighted_pool(
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &[],
+            &[],
+            &[],
+            &[],
+            &manual,
+            &[],
+        );
+        assert_eq!(pool.len(), 2);
+        assert_eq!(pool[0].id, "manual:synthetic-one");
+        assert_eq!(pool[1].id, "manual:synthetic-two");
+        assert_eq!(pool[0].display_name, "Echo Harbor (1)");
+        assert_eq!(pool[1].display_name, "Echo Harbor (2)");
+        let result = SpinOperation::new(1, &pool, &[1.0, 1.0], 0, &[], "", "").winner;
+        assert_eq!(result.id.as_deref(), Some("manual:synthetic-one"));
+        assert_eq!(result.display_name, "Echo Harbor (1)");
+        let next = derive_wheel_data(&pool, &[result], 1, false);
+        assert_eq!(next.spin_pool.len(), 1);
+        assert_eq!(next.spin_pool[0].id, "manual:synthetic-two");
     }
 
     fn index_at_top_pointer(count: usize, rotation: f64) -> usize {
@@ -460,12 +535,14 @@ mod tests {
             WeightedPoolGame {
                 id: "manual:alpha".into(),
                 name: "Alpha".into(),
+                display_name: "Alpha".into(),
                 sources: vec!["Manual".into()],
                 weight: 1.0,
             },
             WeightedPoolGame {
                 id: "steam:2".into(),
                 name: "Beta".into(),
+                display_name: "Beta".into(),
                 sources: vec!["Steam Import".into()],
                 weight: 2.0,
             },

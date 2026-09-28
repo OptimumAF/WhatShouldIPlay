@@ -1,11 +1,23 @@
-const CACHE_VERSION = "pickagame-runtime-v1";
-const NAVIGATION_CACHE = "pickagame-navigation-v1";
-const DATA_CACHE = "pickagame-data-v1";
-const META_CACHE = "pickagame-meta-v1";
+const SCOPE_URL = new URL(self.registration.scope);
+const SCOPE_PATH = SCOPE_URL.pathname.endsWith("/") ? SCOPE_URL.pathname : `${SCOPE_URL.pathname}/`;
+const CACHE_NAMESPACE = `pickagame:${encodeURIComponent(SCOPE_URL.href)}:`;
+const CACHE_VERSION = `${CACHE_NAMESPACE}runtime-v2`;
+const NAVIGATION_CACHE = `${CACHE_NAMESPACE}navigation-v2`;
+const DATA_CACHE = `${CACHE_NAMESPACE}data-v2`;
+const META_CACHE = `${CACHE_NAMESPACE}meta-v2`;
+const CURRENT_CACHES = new Set([CACHE_VERSION, NAVIGATION_CACHE, DATA_CACHE, META_CACHE]);
+const TOP_GAMES_PATH = `${SCOPE_PATH}data/top-games.json`;
+const isAppNavigation = (url) =>
+  url.origin === SCOPE_URL.origin &&
+  (url.pathname === SCOPE_PATH || url.pathname === `${SCOPE_PATH}index.html`);
+const isAppAsset = (url, destination) =>
+  (url.pathname.startsWith(`${SCOPE_PATH}assets/`) && ["script", "style", "image", "font"].includes(destination)) ||
+  (url.pathname.startsWith(`${SCOPE_PATH}icons/`) && destination === "image") ||
+  (url.pathname === `${SCOPE_PATH}manifest.webmanifest` && destination === "manifest");
 const SKIP_WAITING_MESSAGE = "SKIP_WAITING";
 const UPDATE_NOTIFICATION_PREFS_MESSAGE = "UPDATE_NOTIFICATION_PREFS";
 const TOP_GAMES_UPDATED_MESSAGE = "TOP_GAMES_UPDATED";
-const NOTIFICATION_PREFS_KEY = `${self.location.origin}/__meta/notification-prefs`;
+const NOTIFICATION_PREFS_KEY = new URL("__meta/notification-prefs", SCOPE_URL).href;
 const DEFAULT_NOTIFICATION_PREFS = {
   enabled: false,
   newTrends: false,
@@ -19,11 +31,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
-      await Promise.all(
-        names
-          .filter((name) => ![CACHE_VERSION, NAVIGATION_CACHE, DATA_CACHE, META_CACHE].includes(name))
-          .map((name) => caches.delete(name)),
-      );
+      await Promise.all(names
+        .filter((name) => name.startsWith(CACHE_NAMESPACE) && !CURRENT_CACHES.has(name))
+        .map((name) => caches.delete(name)));
+      // Old unscoped pickagame-v1 caches are left untouched because their owner cannot be proven.
       await self.clients.claim();
     })(),
   );
@@ -35,7 +46,7 @@ const cacheFirst = async (request, cacheName) => {
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) {
-    cache.put(request, response.clone());
+    await cache.put(request, response.clone());
   }
   return response;
 };
@@ -45,7 +56,7 @@ const networkFirst = async (request, cacheName) => {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {
@@ -88,9 +99,9 @@ const writeNotificationPrefs = async (prefs) => {
 
 const notifyTopGamesUpdate = async () => {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  clients.forEach((client) => {
-    client.postMessage({ type: TOP_GAMES_UPDATED_MESSAGE });
-  });
+  clients
+    .filter((client) => isAppNavigation(new URL(client.url)))
+    .forEach((client) => client.postMessage({ type: TOP_GAMES_UPDATED_MESSAGE }));
 
   const prefs = await readNotificationPrefs();
   if (!prefs.enabled || !prefs.newTrends) return;
@@ -142,21 +153,21 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (request.mode === "navigate") {
+  if (url.origin !== SCOPE_URL.origin) {
+    return;
+  }
+
+  if (request.mode === "navigate" && isAppNavigation(url)) {
     event.respondWith(networkFirst(request, NAVIGATION_CACHE));
     return;
   }
 
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  if (url.pathname.includes("/data/top-games.json")) {
+  if (url.pathname === TOP_GAMES_PATH) {
     event.respondWith(networkFirstTopGames(request));
     return;
   }
 
-  if (["script", "style", "image", "font", "manifest"].includes(request.destination)) {
+  if (isAppAsset(url, request.destination)) {
     event.respondWith(cacheFirst(request, CACHE_VERSION));
   }
 });

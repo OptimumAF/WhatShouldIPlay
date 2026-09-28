@@ -91,3 +91,14 @@ Record actual checks against the committed dataset and note environmental limits
 - `cargo run --manifest-path apps/desktop/Cargo.toml`: built and launched on Windows. `Get-Process pick-a-game-desktop` reported a responding `Dioxus App` main window. A temp screenshot of that window showed the masthead, pool summary, and wheel rendering; the run was then stopped.
 
 **Limits:** The desktop startup screenshot did not exercise a spin, result, history, profile change, or fallback. No desktop automation or manual interaction has verified pointer/result/history identity. M01.05 stays unchecked. Current desktop entries have names and source lists but no persistent cross-client IDs; M02.01 owns that identity migration.
+
+## 2026-09-28 — M01.06 service-worker cache isolation
+
+**Task:** M01.06 (DONE).
+**Implementation:** Cache names now include the application and exact service-worker registration scope. Activation removes obsolete names only within that namespace. The worker handles only this app's base/index navigation, exact top-games data path, generated assets, icons, and manifest, and sends update messages only to this app's clients. Cache writes are awaited. Old unscoped `pickagame-*-v1` caches are left untouched and not reused because another registration on the same origin could own them; the scoped caches refill normally.
+
+- `npm run test:unit` before the fix: **6 passed, 3 failed / 9**. The new failures showed deletion of a sibling cache, handling of a sibling navigation, and absence of the new scoped data cache. After the fix: **9 passed / 9**. Unit tests exercise same-origin sibling paths, scope-specific stale-cache deletion, a changed data response, and update messages limited to this app's client.
+- `npm run build`: passed with committed data; the worker was copied into the preview build.
+- `npx playwright test tests/e2e/service-worker-cache.spec.ts --project=chromium`: **1 passed / 1**. In a fresh browser context, it seeded a sibling sentinel cache, the old unscoped cache name, and an obsolete cache for the app scope before registration. Activation preserved the first two, deleted only the scoped obsolete name, and stored the fetched top-games response in this scope's data cache.
+
+**Limits:** The browser test used the local preview root scope; the unit test exercised a `/WhatShouldIPlay/` deployment scope. Cross-version upgrade of an existing installed user's worker was not exercised. Retaining legacy unscoped caches may consume storage until browser eviction or user cleanup, but avoids deleting data whose owner cannot be proven.

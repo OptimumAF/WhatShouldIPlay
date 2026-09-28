@@ -2,6 +2,8 @@
 
 This roadmap tracks planned work for WhatShouldIPlay across web, desktop, and release engineering.
 
+**Current execution status (September 2026):** The March–June dates below were original targets, not verified completion dates. The active, evidence-based task list and release gates are in the [living development plan](DEVELOPMENT_PLAN.md). Features listed here remain subject to that plan's verification and approval rules.
+
 ## Milestone: M1 Core UX Hardening (Target: March 2026)
 
 Owner: `@OptimumAF`

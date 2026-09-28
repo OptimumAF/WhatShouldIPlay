@@ -8,6 +8,7 @@ import {
   EXCLUSION_STORAGE_KEY,
   HISTORY_STORAGE_KEY,
   MANUAL_GAMES_STORAGE_KEY,
+  MANUAL_RECORDS_STORAGE_KEY,
   NOTIFICATION_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
   STEAM_IMPORT_STORAGE_KEY,
@@ -18,6 +19,7 @@ interface AppPersistenceInput {
   settings: unknown;
   spinHistory: unknown[];
   manualGames: string[];
+  manualRecords: unknown[];
   steamImport: unknown;
   exclusions: unknown;
   notifications: unknown;
@@ -44,6 +46,7 @@ export const useAppPersistence = ({
   settings,
   spinHistory,
   manualGames,
+  manualRecords,
   steamImport,
   exclusions,
   notifications,
@@ -65,6 +68,10 @@ export const useAppPersistence = ({
   useEffect(() => {
     writeStorage(MANUAL_GAMES_STORAGE_KEY, manualGames);
   }, [manualGames]);
+
+  useEffect(() => {
+    writeStorage(MANUAL_RECORDS_STORAGE_KEY, manualRecords);
+  }, [manualRecords]);
 
   useEffect(() => {
     writeStorage(STEAM_IMPORT_STORAGE_KEY, steamImport);

@@ -96,11 +96,11 @@ export const useLibraryActions = <TEnabledSources extends { steamImport: boolean
   }, [markCustom, pushToast, setSourceWeights, setWeightedMode, suggestedSourceWeights, t, weightedMode]);
 
   const addManualGames = useCallback(() => {
-    const incoming = normalizeGames(manualInput.split(/\r?\n|,/g));
-    setManualGames((current) => normalizeGames([...current, ...incoming]));
+    const incoming = manualInput.split(/\r?\n|,/g).map((name) => name.trim()).filter(Boolean);
+    setManualGames((current) => [...current, ...incoming]);
     setManualInput("");
     markCustom();
-  }, [manualInput, markCustom, normalizeGames, setManualGames, setManualInput]);
+  }, [manualInput, markCustom, setManualGames, setManualInput]);
 
   const clearManualGames = useCallback(() => {
     setManualGames([]);

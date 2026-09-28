@@ -691,6 +691,25 @@ select {
   margin-top: var(--space-3);
 }
 
+.manual-record-list {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.manual-record-list form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.manual-record-list input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 button {
   border: 0;
   border-radius: 999px;

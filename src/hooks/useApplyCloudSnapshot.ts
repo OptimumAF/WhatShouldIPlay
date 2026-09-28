@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { sanitizeManualRecords, type ManualGameRecord } from "../lib/manualIdentity";
+import type { GameStatusRecord } from "../lib/appConfig";
 
 interface SnapshotSpinHistoryEntry {
   sources: string[];
@@ -10,6 +12,7 @@ interface SnapshotLike {
   settings?: unknown;
   spinHistory?: SnapshotSpinHistoryEntry[];
   manualGames?: string[];
+  manualRecords?: ManualGameRecord[];
   steamImport?: unknown;
   exclusions?: unknown;
   notifications?: unknown;
@@ -39,6 +42,8 @@ interface ExclusionsShape {
   excludeCompleted: boolean;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
 }
 
 interface NotificationsShape {
@@ -65,18 +70,22 @@ interface UseApplyCloudSnapshotInput<
   invalidSnapshotMessage: string;
   sanitizeSettings: (raw: unknown) => TSettings;
   applyStoredSettings: (settings: TSettings) => void;
-  mapSpinHistory: (entries: SnapshotSpinHistoryEntry[]) => TSpinHistory[];
+  mapSpinHistory: (entries: SnapshotSpinHistoryEntry[], records: ManualGameRecord[]) => TSpinHistory[];
   setSpinHistory: (entries: TSpinHistory[]) => void;
   normalizeManualGames: (entries: string[]) => string[];
-  setManualGames: (entries: string[]) => void;
+  manualRecords: ManualGameRecord[];
+  setManualRecords: (entries: ManualGameRecord[]) => void;
   sanitizeSteamImport: (raw: unknown) => TSteamImport;
   setSteamId: (value: string) => void;
   setSteamImportGames: (entries: TGameEntry[]) => void;
   sanitizeExclusions: (raw: unknown) => TExclusions;
+  migrateExclusions: (exclusions: TExclusions, records: ManualGameRecord[], raw: unknown) => TExclusions;
   setExcludePlayed: (value: boolean) => void;
   setExcludeCompleted: (value: boolean) => void;
   setPlayedGames: (entries: string[]) => void;
   setCompletedGames: (entries: string[]) => void;
+  setPlayedRecords: (entries: GameStatusRecord[]) => void;
+  setCompletedRecords: (entries: GameStatusRecord[]) => void;
   sanitizeNotifications: (raw: unknown) => TNotifications;
   setNotificationsEnabled: (value: boolean) => void;
   setTrendNotifications: (value: boolean) => void;
@@ -105,15 +114,19 @@ export const useApplyCloudSnapshot = <
   mapSpinHistory,
   setSpinHistory,
   normalizeManualGames,
-  setManualGames,
+  manualRecords,
+  setManualRecords,
   sanitizeSteamImport,
   setSteamId,
   setSteamImportGames,
   sanitizeExclusions,
+  migrateExclusions,
   setExcludePlayed,
   setExcludeCompleted,
   setPlayedGames,
   setCompletedGames,
+  setPlayedRecords,
+  setCompletedRecords,
   sanitizeNotifications,
   setNotificationsEnabled,
   setTrendNotifications,
@@ -140,18 +153,19 @@ export const useApplyCloudSnapshot = <
         throw new Error(invalidSnapshotMessage);
       }
       const snapshot = parsed.data;
+      const incomingManualRecords = snapshot.manualRecords || snapshot.manualGames
+        ? sanitizeManualRecords(snapshot.manualRecords ?? null, normalizeManualGames(snapshot.manualGames ?? []))
+        : manualRecords;
 
       if (snapshot.settings) {
         applyStoredSettings(sanitizeSettings(snapshot.settings));
       }
 
       if (snapshot.spinHistory) {
-        setSpinHistory(mapSpinHistory(snapshot.spinHistory).slice(0, 50));
+        setSpinHistory(mapSpinHistory(snapshot.spinHistory, incomingManualRecords).slice(0, 50));
       }
 
-      if (snapshot.manualGames) {
-        setManualGames(normalizeManualGames(snapshot.manualGames));
-      }
+      if (snapshot.manualRecords || snapshot.manualGames) setManualRecords(incomingManualRecords);
 
       if (snapshot.steamImport) {
         const sanitized = sanitizeSteamImport(snapshot.steamImport);
@@ -160,11 +174,13 @@ export const useApplyCloudSnapshot = <
       }
 
       if (snapshot.exclusions) {
-        const sanitized = sanitizeExclusions(snapshot.exclusions);
+        const sanitized = migrateExclusions(sanitizeExclusions(snapshot.exclusions), incomingManualRecords, snapshot.exclusions);
         setExcludePlayed(sanitized.excludePlayed);
         setExcludeCompleted(sanitized.excludeCompleted);
         setPlayedGames(sanitized.playedGames);
         setCompletedGames(sanitized.completedGames);
+        setPlayedRecords(sanitized.playedRecords);
+        setCompletedRecords(sanitized.completedRecords);
       }
 
       if (snapshot.notifications) {
@@ -196,6 +212,8 @@ export const useApplyCloudSnapshot = <
       clearPendingCloudConflict,
       invalidSnapshotMessage,
       mapSpinHistory,
+      manualRecords,
+      migrateExclusions,
       normalizeManualGames,
       safeParseSnapshot,
       sanitizeAccountProfiles,
@@ -209,9 +227,11 @@ export const useApplyCloudSnapshot = <
       setCompletedGames,
       setExcludeCompleted,
       setExcludePlayed,
-      setManualGames,
+      setManualRecords,
       setNotificationsEnabled,
       setPlayedGames,
+      setPlayedRecords,
+      setCompletedRecords,
       setReminderIntervalMinutes,
       setReminderNotifications,
       setSpinHistory,

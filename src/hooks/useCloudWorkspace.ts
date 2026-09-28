@@ -11,6 +11,8 @@ import type {
 } from "../lib/appConfig";
 import type { GameEntry, SourceId } from "../types";
 import { normalizeGames } from "../lib/wheel";
+import { migrateLegacyManualExclusions, type GameStatusRecord } from "../lib/appConfig";
+import { attachLegacyManualHistoryIds, type ManualGameRecord } from "../lib/manualIdentity";
 import { MAX_CLOUD_RESTORE_POINTS } from "../lib/storageKeys";
 import { useCloudSnapshotBuilders } from "./useCloudSnapshotBuilders";
 import { useApplyCloudSnapshot } from "./useApplyCloudSnapshot";
@@ -28,7 +30,8 @@ interface UseCloudWorkspaceInput {
   spinHistory: SpinHistoryItem[];
   setSpinHistory: (updater: SpinHistoryItem[] | ((current: SpinHistoryItem[]) => SpinHistoryItem[])) => void;
   manualGames: string[];
-  setManualGames: (entries: string[]) => void;
+  manualRecords: ManualGameRecord[];
+  setManualRecords: (entries: ManualGameRecord[]) => void;
   steamId: string;
   setSteamId: (value: string) => void;
   steamImportGames: GameEntry[];
@@ -41,6 +44,10 @@ interface UseCloudWorkspaceInput {
   setPlayedGames: (entries: string[]) => void;
   completedGames: string[];
   setCompletedGames: (entries: string[]) => void;
+  playedRecords: GameStatusRecord[];
+  setPlayedRecords: (entries: GameStatusRecord[]) => void;
+  completedRecords: GameStatusRecord[];
+  setCompletedRecords: (entries: GameStatusRecord[]) => void;
   notificationsEnabled: boolean;
   setNotificationsEnabled: (value: boolean) => void;
   trendNotifications: boolean;
@@ -85,7 +92,8 @@ export const useCloudWorkspace = ({
   spinHistory,
   setSpinHistory,
   manualGames,
-  setManualGames,
+  manualRecords,
+  setManualRecords,
   steamId,
   setSteamId,
   steamImportGames,
@@ -98,6 +106,10 @@ export const useCloudWorkspace = ({
   setPlayedGames,
   completedGames,
   setCompletedGames,
+  playedRecords,
+  setPlayedRecords,
+  completedRecords,
+  setCompletedRecords,
   notificationsEnabled,
   setNotificationsEnabled,
   trendNotifications,
@@ -169,12 +181,15 @@ export const useCloudWorkspace = ({
     currentSettingsSnapshot,
     spinHistory,
     manualGames,
+    manualRecords,
     steamId,
     steamImportGames,
     excludePlayed,
     excludeCompleted,
     playedGames,
     completedGames,
+    playedRecords,
+    completedRecords,
     notificationsEnabled,
     trendNotifications,
     reminderNotifications,
@@ -186,14 +201,14 @@ export const useCloudWorkspace = ({
   });
 
   const mapSnapshotSpinHistory = useCallback(
-    (entries: Array<{ sources: string[] } & Record<string, unknown>>): SpinHistoryItem[] =>
-      entries.map(
+    (entries: Array<{ sources: string[] } & Record<string, unknown>>, records: ManualGameRecord[]): SpinHistoryItem[] =>
+      attachLegacyManualHistoryIds(entries.map(
         (entry) =>
           ({
             ...entry,
             sources: entry.sources as SourceId[],
           }) as SpinHistoryItem,
-      ),
+      ), records),
     [],
   );
   const safeParseCloudSnapshot = useCallback(
@@ -220,15 +235,19 @@ export const useCloudWorkspace = ({
     mapSpinHistory: mapSnapshotSpinHistory,
     setSpinHistory: setSpinHistoryEntries,
     normalizeManualGames: normalizeGames,
-    setManualGames,
+    manualRecords,
+    setManualRecords,
     sanitizeSteamImport: (raw) => sanitizeSteamImport(raw as StoredSteamImport | null),
     setSteamId,
     setSteamImportGames,
     sanitizeExclusions: (raw) => sanitizeExclusions(raw as StoredExclusions | null),
+    migrateExclusions: migrateLegacyManualExclusions,
     setExcludePlayed,
     setExcludeCompleted,
     setPlayedGames,
     setCompletedGames,
+    setPlayedRecords,
+    setCompletedRecords,
     sanitizeNotifications: (raw) => sanitizeNotifications(raw as StoredNotificationSettings | null),
     setNotificationsEnabled,
     setTrendNotifications,

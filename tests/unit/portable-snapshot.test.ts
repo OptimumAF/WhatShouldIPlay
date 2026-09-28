@@ -4,6 +4,7 @@ import test from "node:test";
 import { sanitizeCloudRestorePoints } from "../../src/lib/appConfig";
 import { cloudSyncSnapshotSchema } from "../../src/lib/appSchemas";
 import { createSyncGist, updateSyncGist } from "../../src/lib/cloudSyncClient";
+import { serializePortableSnapshot } from "../../src/lib/portableSnapshot";
 
 const STEAM_CANARY = "synthetic-steam-key-never-export";
 const GIST_CANARY = "synthetic-gist-token-never-export";
@@ -25,6 +26,28 @@ test("legacy snapshot parsing keeps game data and drops credential fields recurs
   assert.equal(parsed.steamImport?.steamId, "synthetic-steam-id");
   assert.equal(parsed.steamImport?.steamImportGames[0]?.appId, 42);
   assert.equal(parsed.profiles?.items[0]?.settings.weightedMode, true);
+});
+
+test("portable snapshots retain manual identity while excluding credentials and unexpected fields", () => {
+  const snapshot = serializePortableSnapshot({
+    version: 1,
+    manualGames: ["Renamed Game"],
+    manualRecords: [{ id: "manual:synthetic-one", name: "Renamed Game", gistToken: GIST_CANARY }],
+    spinHistory: [{ id: "manual:synthetic-one", name: "Old Game", sources: ["manual"], odds: 1,
+      spunAt: "2026-01-01T00:00:00.000Z", steamApiKey: STEAM_CANARY }],
+    exclusions: {
+      excludePlayed: true, excludeCompleted: true,
+      playedGames: ["Old Game"], completedGames: [],
+      playedRecords: [{ id: "manual:synthetic-one", name: "Renamed Game", gistToken: GIST_CANARY }],
+      completedRecords: [],
+    },
+    steamImport: { steamId: "synthetic-id", steamImportGames: [], steamApiKey: STEAM_CANARY },
+  });
+  assertCredentialFree(snapshot);
+  assert.deepEqual(snapshot.manualRecords, [{ id: "manual:synthetic-one", name: "Renamed Game" }]);
+  assert.equal(snapshot.spinHistory?.[0]?.id, "manual:synthetic-one");
+  assert.deepEqual(snapshot.exclusions?.playedRecords, [{ id: "manual:synthetic-one", name: "Renamed Game" }]);
+  assert.deepEqual(cloudSyncSnapshotSchema.parse(snapshot), snapshot);
 });
 
 test("Gist create and update strip credentials at the outgoing transport boundary", async () => {

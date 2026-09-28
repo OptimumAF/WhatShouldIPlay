@@ -8,7 +8,7 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { CloudSyncPanel } from "./CloudSyncPanel";
 import { SourceCatalogPanel } from "./SourceCatalogPanel";
 import { SelectionRulesPanel } from "./SelectionRulesPanel";
-import type { AdvancedFilters, SourceToggleKey, SpinSpeedProfile } from "../../lib/appConfig";
+import type { AdvancedFilters, GameStatusRecord, SourceToggleKey, SpinSpeedProfile } from "../../lib/appConfig";
 import { useTranslation } from "react-i18next";
 
 interface PresetCard {
@@ -105,6 +105,8 @@ export interface SettingsContentProps {
   exclusionInput: string;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
   onExcludePlayedChange: (value: boolean) => void;
   onExcludeCompletedChange: (value: boolean) => void;
   onExclusionInputChange: (value: string) => void;
@@ -112,6 +114,8 @@ export interface SettingsContentProps {
   onAddCompleted: () => void;
   onRemovePlayed: (name: string) => void;
   onRemoveCompleted: (name: string) => void;
+  onRemovePlayedRecord: (id: string) => void;
+  onRemoveCompletedRecord: (id: string) => void;
   onClearPlayed: () => void;
   onClearCompleted: () => void;
   notificationsEnabled: boolean;
@@ -200,6 +204,8 @@ export function SettingsContent({
   exclusionInput,
   playedGames,
   completedGames,
+  playedRecords,
+  completedRecords,
   onExcludePlayedChange,
   onExcludeCompletedChange,
   onExclusionInputChange,
@@ -207,6 +213,8 @@ export function SettingsContent({
   onAddCompleted,
   onRemovePlayed,
   onRemoveCompleted,
+  onRemovePlayedRecord,
+  onRemoveCompletedRecord,
   onClearPlayed,
   onClearCompleted,
   notificationsEnabled,
@@ -350,6 +358,8 @@ export function SettingsContent({
               exclusionInput={exclusionInput}
               playedGames={playedGames}
               completedGames={completedGames}
+              playedRecords={playedRecords}
+              completedRecords={completedRecords}
               onExcludePlayedChange={onExcludePlayedChange}
               onExcludeCompletedChange={onExcludeCompletedChange}
               onExclusionInputChange={onExclusionInputChange}
@@ -357,6 +367,8 @@ export function SettingsContent({
               onAddCompleted={onAddCompleted}
               onRemovePlayed={onRemovePlayed}
               onRemoveCompleted={onRemoveCompleted}
+              onRemovePlayedRecord={onRemovePlayedRecord}
+              onRemoveCompletedRecord={onRemoveCompletedRecord}
               onClearPlayed={onClearPlayed}
               onClearCompleted={onClearCompleted}
             />

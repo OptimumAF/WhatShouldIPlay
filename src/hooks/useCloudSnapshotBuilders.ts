@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { serializePortableSnapshot } from "../lib/portableSnapshot";
 import type { CloudSyncSnapshot } from "../lib/appSchemas";
+import type { ManualGameRecord } from "../lib/manualIdentity";
+import type { GameStatusRecord } from "../lib/appConfig";
 
 interface SpinHistoryLike {
   sources: string[];
@@ -24,12 +26,15 @@ interface UseCloudSnapshotBuildersInput<TSettings, TGameEntry, TSpinHistory exte
   currentSettingsSnapshot: () => TSettings;
   spinHistory: TSpinHistory[];
   manualGames: string[];
+  manualRecords: ManualGameRecord[];
   steamId: string;
   steamImportGames: TGameEntry[];
   excludePlayed: boolean;
   excludeCompleted: boolean;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
   notificationsEnabled: boolean;
   trendNotifications: boolean;
   reminderNotifications: boolean;
@@ -51,12 +56,15 @@ export const useCloudSnapshotBuilders = <
   currentSettingsSnapshot,
   spinHistory,
   manualGames,
+  manualRecords,
   steamId,
   steamImportGames,
   excludePlayed,
   excludeCompleted,
   playedGames,
   completedGames,
+  playedRecords,
+  completedRecords,
   notificationsEnabled,
   trendNotifications,
   reminderNotifications,
@@ -73,6 +81,7 @@ export const useCloudSnapshotBuilders = <
       settings: currentSettingsSnapshot(),
       spinHistory: spinHistory.slice(0, 50),
       manualGames,
+      manualRecords,
       steamImport: {
         steamId,
         steamImportGames,
@@ -82,6 +91,8 @@ export const useCloudSnapshotBuilders = <
         excludeCompleted,
         playedGames,
         completedGames,
+        playedRecords,
+        completedRecords,
       },
       notifications: {
         notificationsEnabled,
@@ -103,12 +114,15 @@ export const useCloudSnapshotBuilders = <
       accountProfiles,
       activeAccountProfileId,
       completedGames,
+      completedRecords,
       currentSettingsSnapshot,
       excludeCompleted,
       excludePlayed,
       manualGames,
+      manualRecords,
       notificationsEnabled,
       playedGames,
+      playedRecords,
       reminderIntervalMinutes,
       reminderNotifications,
       spinHistory,

@@ -1,6 +1,7 @@
 import { Ban, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HelpTip } from "../../components/HelpTip";
+import type { GameStatusRecord } from "../../lib/appConfig";
 
 interface ExclusionsPanelProps {
   excludePlayed: boolean;
@@ -8,6 +9,8 @@ interface ExclusionsPanelProps {
   exclusionInput: string;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
   onExcludePlayedChange: (value: boolean) => void;
   onExcludeCompletedChange: (value: boolean) => void;
   onExclusionInputChange: (value: string) => void;
@@ -15,6 +18,8 @@ interface ExclusionsPanelProps {
   onAddCompleted: () => void;
   onRemovePlayed: (name: string) => void;
   onRemoveCompleted: (name: string) => void;
+  onRemovePlayedRecord: (id: string) => void;
+  onRemoveCompletedRecord: (id: string) => void;
   onClearPlayed: () => void;
   onClearCompleted: () => void;
 }
@@ -25,6 +30,8 @@ export function ExclusionsPanel({
   exclusionInput,
   playedGames,
   completedGames,
+  playedRecords,
+  completedRecords,
   onExcludePlayedChange,
   onExcludeCompletedChange,
   onExclusionInputChange,
@@ -32,6 +39,8 @@ export function ExclusionsPanel({
   onAddCompleted,
   onRemovePlayed,
   onRemoveCompleted,
+  onRemovePlayedRecord,
+  onRemoveCompletedRecord,
   onClearPlayed,
   onClearCompleted,
 }: ExclusionsPanelProps) {
@@ -86,8 +95,8 @@ export function ExclusionsPanel({
       </div>
       <div className="exclude-grid">
         <div className="exclude-list">
-          <strong>{t("playedCount", { count: playedGames.length })}</strong>
-          {playedGames.length === 0 ? (
+          <strong>{t("playedCount", { count: playedGames.length + playedRecords.length })}</strong>
+          {playedGames.length + playedRecords.length === 0 ? (
             <p className="muted">{t("noPlayedTracked")}</p>
           ) : (
             <ul>
@@ -99,17 +108,25 @@ export function ExclusionsPanel({
                   </button>
                 </li>
               ))}
+              {playedRecords.slice(0, 30).map((record) => (
+                <li key={`played-id-${record.id}`}>
+                  <span>{record.name}</span>
+                  <button type="button" className="ghost compact" onClick={() => onRemovePlayedRecord(record.id)}>
+                    {t("remove")}
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
-          {playedGames.length > 0 ? (
+          {playedGames.length + playedRecords.length > 0 ? (
             <button type="button" className="ghost compact" onClick={onClearPlayed}>
               {t("clearPlayed")}
             </button>
           ) : null}
         </div>
         <div className="exclude-list">
-          <strong>{t("completedCount", { count: completedGames.length })}</strong>
-          {completedGames.length === 0 ? (
+          <strong>{t("completedCount", { count: completedGames.length + completedRecords.length })}</strong>
+          {completedGames.length + completedRecords.length === 0 ? (
             <p className="muted">{t("noCompletedTracked")}</p>
           ) : (
             <ul>
@@ -121,9 +138,17 @@ export function ExclusionsPanel({
                   </button>
                 </li>
               ))}
+              {completedRecords.slice(0, 30).map((record) => (
+                <li key={`completed-id-${record.id}`}>
+                  <span>{record.name}</span>
+                  <button type="button" className="ghost compact" onClick={() => onRemoveCompletedRecord(record.id)}>
+                    {t("remove")}
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
-          {completedGames.length > 0 ? (
+          {completedGames.length + completedRecords.length > 0 ? (
             <button type="button" className="ghost compact" onClick={onClearCompleted}>
               {t("clearCompleted")}
             </button>

@@ -41,6 +41,8 @@ export const storedExclusionsSchema = z.object({
   excludeCompleted: z.boolean().default(true),
   playedGames: z.array(z.string()).default([]),
   completedGames: z.array(z.string()).default([]),
+  playedRecords: z.array(z.object({ id: z.string(), name: z.string() })).default([]),
+  completedRecords: z.array(z.object({ id: z.string(), name: z.string() })).default([]),
 });
 
 export const storedNotificationSettingsSchema = z.object({
@@ -103,6 +105,7 @@ export const cloudSyncSnapshotSchema = z.object({
   settings: cloudSettingsSchema.optional(),
   spinHistory: spinHistorySchema.optional(),
   manualGames: z.array(z.string()).optional(),
+  manualRecords: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
   steamImport: portableSteamImportSchema.optional(),
   exclusions: storedExclusionsSchema.optional(),
   notifications: storedNotificationSettingsSchema.optional(),

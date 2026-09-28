@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { type CloudSyncSnapshot } from "../lib/appSchemas";
 import { readStorage } from "../lib/appUtils";
 import {
@@ -6,6 +6,7 @@ import {
   sanitizeCloudRestorePoints,
   sanitizeCloudSync,
   sanitizeExclusions,
+  migrateLegacyManualExclusions,
   sanitizeFilters,
   sanitizeNotificationSettings,
   sanitizeSettings,
@@ -16,6 +17,7 @@ import {
   type BeforeInstallPromptEvent,
   type CloudRestorePoint,
   type EnabledSources,
+  type GameStatusRecord,
   type SourceWeights,
   type SpinHistoryItem,
   type SpinSpeedProfile,
@@ -28,6 +30,7 @@ import {
   type WorkspaceTab,
 } from "../lib/appConfig";
 import { normalizeGames } from "../lib/wheel";
+import { attachLegacyManualHistoryIds, reconcileManualNames, sanitizeManualRecords, type ManualGameRecord } from "../lib/manualIdentity";
 import {
   ACTIVE_ACCOUNT_PROFILE_STORAGE_KEY,
   ACCOUNT_PROFILES_STORAGE_KEY,
@@ -37,6 +40,7 @@ import {
   EXCLUSION_STORAGE_KEY,
   HISTORY_STORAGE_KEY,
   MANUAL_GAMES_STORAGE_KEY,
+  MANUAL_RECORDS_STORAGE_KEY,
   NOTIFICATION_STORAGE_KEY,
   ONBOARDING_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
@@ -47,10 +51,23 @@ import type { GameEntry } from "../types";
 
 export const useAppState = () => {
   const initialSettings = sanitizeSettings(readStorage<StoredSettings | null>(SETTINGS_STORAGE_KEY, null));
-  const initialHistory = readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []);
   const initialManualGames = normalizeGames(readStorage<string[]>(MANUAL_GAMES_STORAGE_KEY, []));
+  const [manualRecords, setManualRecords] = useState<ManualGameRecord[]>(() =>
+    sanitizeManualRecords(readStorage<unknown>(MANUAL_RECORDS_STORAGE_KEY, null), initialManualGames));
+  const manualGames = useMemo(() => manualRecords.map((record) => record.name), [manualRecords]);
+  const setManualGames = useCallback<Dispatch<SetStateAction<string[]>>>((next) => {
+    setManualRecords((current) => {
+      const currentNames = current.map((record) => record.name);
+      const names = typeof next === "function" ? next(currentNames) : next;
+      return reconcileManualNames(current, names);
+    });
+  }, []);
+  const initialHistory = attachLegacyManualHistoryIds(
+    readStorage<SpinHistoryItem[]>(HISTORY_STORAGE_KEY, []), manualRecords);
   const initialSteamImport = sanitizeSteamImport(readStorage<StoredSteamImport | null>(STEAM_IMPORT_STORAGE_KEY, null));
-  const initialExclusions = sanitizeExclusions(readStorage<StoredExclusions | null>(EXCLUSION_STORAGE_KEY, null));
+  const rawExclusions = readStorage<StoredExclusions | null>(EXCLUSION_STORAGE_KEY, null);
+  const initialExclusions = migrateLegacyManualExclusions(
+    sanitizeExclusions(rawExclusions), manualRecords, rawExclusions);
   const initialNotifications = sanitizeNotificationSettings(
     readStorage<StoredNotificationSettings | null>(NOTIFICATION_STORAGE_KEY, null),
   );
@@ -80,7 +97,6 @@ export const useAppState = () => {
   const [filters, setFilters] = useState<AdvancedFilters>(sanitizeFilters(initialSettings.filters));
 
   const [manualInput, setManualInput] = useState("");
-  const [manualGames, setManualGames] = useState<string[]>(initialManualGames);
   const [steamImportGames, setSteamImportGames] = useState<GameEntry[]>(initialSteamImport.steamImportGames);
   // Legacy stored credentials are intentionally not loaded into a new browser session.
   const [steamApiKey, setSteamApiKey] = useState("");
@@ -91,6 +107,8 @@ export const useAppState = () => {
   const [excludeCompleted, setExcludeCompleted] = useState(initialExclusions.excludeCompleted);
   const [playedGames, setPlayedGames] = useState<string[]>(initialExclusions.playedGames);
   const [completedGames, setCompletedGames] = useState<string[]>(initialExclusions.completedGames);
+  const [playedRecords, setPlayedRecords] = useState<GameStatusRecord[]>(initialExclusions.playedRecords);
+  const [completedRecords, setCompletedRecords] = useState<GameStatusRecord[]>(initialExclusions.completedRecords);
   const [exclusionInput, setExclusionInput] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(initialNotifications.notificationsEnabled);
   const [trendNotifications, setTrendNotifications] = useState(initialNotifications.trendNotifications);
@@ -148,6 +166,8 @@ export const useAppState = () => {
       setManualInput,
       manualGames,
       setManualGames,
+      manualRecords,
+      setManualRecords,
       steamImportGames,
       setSteamImportGames,
       steamApiKey,
@@ -168,6 +188,10 @@ export const useAppState = () => {
       setPlayedGames,
       completedGames,
       setCompletedGames,
+      playedRecords,
+      setPlayedRecords,
+      completedRecords,
+      setCompletedRecords,
       exclusionInput,
       setExclusionInput,
     },

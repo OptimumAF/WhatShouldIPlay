@@ -5,6 +5,7 @@ import type {
   CloudRestorePoint,
   EnabledSources,
   SourceWeights,
+  GameStatusRecord,
   SpinHistoryItem,
   SpinSpeedProfile,
   StoredCloudSync,
@@ -15,6 +16,7 @@ import type {
   ThemeMode,
 } from "../lib/appConfig";
 import type { GameEntry } from "../types";
+import type { ManualGameRecord } from "../lib/manualIdentity";
 import { useAppPersistence } from "./useAppPersistence";
 
 interface UsePersistenceBridgeInput {
@@ -29,12 +31,15 @@ interface UsePersistenceBridgeInput {
   filters: AdvancedFilters;
   spinHistory: SpinHistoryItem[];
   manualGames: string[];
+  manualRecords: ManualGameRecord[];
   steamId: string;
   steamImportGames: GameEntry[];
   excludePlayed: boolean;
   excludeCompleted: boolean;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
   notificationsEnabled: boolean;
   trendNotifications: boolean;
   reminderNotifications: boolean;
@@ -60,12 +65,15 @@ export const usePersistenceBridge = ({
   filters,
   spinHistory,
   manualGames,
+  manualRecords,
   steamId,
   steamImportGames,
   excludePlayed,
   excludeCompleted,
   playedGames,
   completedGames,
+  playedRecords,
+  completedRecords,
   notificationsEnabled,
   trendNotifications,
   reminderNotifications,
@@ -115,8 +123,10 @@ export const usePersistenceBridge = ({
       excludeCompleted,
       playedGames,
       completedGames,
+      playedRecords,
+      completedRecords,
     }),
-    [completedGames, excludeCompleted, excludePlayed, playedGames],
+    [completedGames, completedRecords, excludeCompleted, excludePlayed, playedGames, playedRecords],
   );
   const persistedNotifications = useMemo<StoredNotificationSettings>(
     () => ({
@@ -139,6 +149,7 @@ export const usePersistenceBridge = ({
     settings: persistedSettings,
     spinHistory,
     manualGames,
+    manualRecords,
     steamImport: persistedSteamImport,
     exclusions: persistedExclusions,
     notifications: persistedNotifications,

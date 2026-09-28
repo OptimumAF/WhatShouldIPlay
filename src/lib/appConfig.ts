@@ -11,6 +11,7 @@ import {
 } from "./appSchemas";
 import type { GameEntry, GameLength, GamePlatform, SourceId } from "../types";
 import { gameIdentity } from "./gameIdentity";
+import { uniqueManualIdForName, type ManualGameRecord } from "./manualIdentity";
 
 export const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 export type SourceToggleKey = (typeof sourceKeys)[number];
@@ -95,6 +96,13 @@ export interface StoredExclusions {
   excludeCompleted: boolean;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
+}
+
+export interface GameStatusRecord {
+  id: string;
+  name: string;
 }
 
 export interface StoredNotificationSettings {
@@ -293,6 +301,8 @@ export const fallbackExclusions: StoredExclusions = {
   excludeCompleted: true,
   playedGames: [],
   completedGames: [],
+  playedRecords: [],
+  completedRecords: [],
 };
 
 export const fallbackNotificationSettings: StoredNotificationSettings = {
@@ -455,11 +465,59 @@ export const sanitizeExclusions = (input: StoredExclusions | null): StoredExclus
   const completedSet = new Set(completedGames.map((name) => name.toLowerCase()));
   const playedGames = normalizeGames(parsed.data.playedGames).filter((name) => !completedSet.has(name.toLowerCase()));
 
+  const normalizeRecords = (entries: GameStatusRecord[]) => {
+    const byId = new Map<string, GameStatusRecord>();
+    entries.forEach((entry) => {
+      const id = entry.id.trim();
+      const name = entry.name.trim();
+      if (id && name) byId.set(id, { id, name });
+    });
+    return [...byId.values()];
+  };
+  const completedRecords = normalizeRecords(parsed.data.completedRecords);
+  const completedIds = new Set(completedRecords.map((entry) => entry.id));
+  const playedRecords = normalizeRecords(parsed.data.playedRecords).filter((entry) => !completedIds.has(entry.id));
+
   return {
     excludePlayed: parsed.data.excludePlayed,
     excludeCompleted: parsed.data.excludeCompleted,
     playedGames,
     completedGames,
+    playedRecords,
+    completedRecords,
+  };
+};
+
+export const migrateLegacyManualExclusions = (
+  exclusions: StoredExclusions,
+  manualRecords: ManualGameRecord[],
+  rawExclusions: unknown,
+): StoredExclusions => {
+  const raw = rawExclusions && typeof rawExclusions === "object" && !Array.isArray(rawExclusions)
+    ? rawExclusions as Record<string, unknown>
+    : {};
+  const migrate = (names: string[], existing: GameStatusRecord[], recordField: string) => {
+    const identified = [...existing];
+    // Once a snapshot has the ID field, an empty array may be an intentional
+    // removal. Only attach IDs while first reading a name-only legacy shape.
+    if (Object.prototype.hasOwnProperty.call(raw, recordField)) return identified;
+    names.forEach((name) => {
+      const id = uniqueManualIdForName(manualRecords, name);
+      if (id) {
+        if (!identified.some((record) => record.id === id)) identified.push({ id, name });
+      }
+    });
+    return identified;
+  };
+  const completed = migrate(exclusions.completedGames, exclusions.completedRecords, "completedRecords");
+  const played = migrate(exclusions.playedGames, exclusions.playedRecords, "playedRecords");
+  const completedIds = new Set(completed.map((record) => record.id));
+  return {
+    ...exclusions,
+    // A legacy name may also describe a Steam or trend entry. Keep the original
+    // name exclusion while adding the manual ID so renames cannot discard it.
+    completedRecords: completed,
+    playedRecords: played.filter((record) => !completedIds.has(record.id)),
   };
 };
 

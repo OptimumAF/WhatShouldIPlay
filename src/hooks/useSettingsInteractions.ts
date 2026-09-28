@@ -4,6 +4,7 @@ import {
   modePresets,
   type AdvancedFilters,
   type EnabledSources,
+  type GameStatusRecord,
   type LengthFilter,
   type PlatformFilter,
   type SourceToggleKey,
@@ -25,6 +26,8 @@ interface UseSettingsInteractionsInput {
   addExclusionFromInput: (target: "played" | "completed") => void;
   setPlayedGames: Dispatch<SetStateAction<string[]>>;
   setCompletedGames: Dispatch<SetStateAction<string[]>>;
+  setPlayedRecords: Dispatch<SetStateAction<GameStatusRecord[]>>;
+  setCompletedRecords: Dispatch<SetStateAction<GameStatusRecord[]>>;
   setNotificationsEnabledWithPermission: (value: boolean) => Promise<void>;
 }
 
@@ -42,6 +45,8 @@ export const useSettingsInteractions = ({
   addExclusionFromInput,
   setPlayedGames,
   setCompletedGames,
+  setPlayedRecords,
+  setCompletedRecords,
   setNotificationsEnabledWithPermission,
 }: UseSettingsInteractionsInput) => {
   const onApplyPreset = useCallback(
@@ -186,11 +191,13 @@ export const useSettingsInteractions = ({
 
   const onClearPlayed = useCallback(() => {
     setPlayedGames([]);
-  }, [setPlayedGames]);
+    setPlayedRecords([]);
+  }, [setPlayedGames, setPlayedRecords]);
 
   const onClearCompleted = useCallback(() => {
     setCompletedGames([]);
-  }, [setCompletedGames]);
+    setCompletedRecords([]);
+  }, [setCompletedGames, setCompletedRecords]);
 
   const onNotificationsEnabledChange = useCallback(
     (value: boolean) => {

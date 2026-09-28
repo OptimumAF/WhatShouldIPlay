@@ -1,6 +1,7 @@
 export const HISTORY_STORAGE_KEY = "pickagame.spin-history.v1";
 export const SETTINGS_STORAGE_KEY = "pickagame.settings.v1";
 export const MANUAL_GAMES_STORAGE_KEY = "pickagame.manual-games.v1";
+export const MANUAL_RECORDS_STORAGE_KEY = "pickagame.manual-records.v1";
 export const STEAM_IMPORT_STORAGE_KEY = "pickagame.steam-import.v1";
 export const EXCLUSION_STORAGE_KEY = "pickagame.exclusions.v1";
 export const NOTIFICATION_STORAGE_KEY = "pickagame.notifications.v1";

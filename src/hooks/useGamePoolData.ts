@@ -7,22 +7,26 @@ import {
   type AdvancedFilters,
   type EnabledSources,
   type PoolGame,
+  type GameStatusRecord,
   type SourceToggleKey,
   type SourceWeights,
   type SpinHistoryItem,
 } from "../lib/appConfig";
 import type { GameEntry, TopGamesPayload } from "../types";
 import { gameIdentity } from "../lib/gameIdentity";
+import type { ManualGameRecord } from "../lib/manualIdentity";
 
 interface UseGamePoolDataInput {
   topGames: TopGamesPayload | undefined;
-  manualGames: string[];
+  manualRecords: ManualGameRecord[];
   steamImportGames: GameEntry[];
   enabledSources: EnabledSources;
   sourceWeights: SourceWeights;
   weightedMode: boolean;
   playedGames: string[];
   completedGames: string[];
+  playedRecords: GameStatusRecord[];
+  completedRecords: GameStatusRecord[];
   spinHistory: SpinHistoryItem[];
   adaptiveRecommendations: boolean;
   filters: AdvancedFilters;
@@ -34,13 +38,15 @@ interface UseGamePoolDataInput {
 
 export const useGamePoolData = ({
   topGames,
-  manualGames,
+  manualRecords,
   steamImportGames,
   enabledSources,
   sourceWeights,
   weightedMode,
   playedGames,
   completedGames,
+  playedRecords,
+  completedRecords,
   spinHistory,
   adaptiveRecommendations,
   filters,
@@ -51,12 +57,13 @@ export const useGamePoolData = ({
 }: UseGamePoolDataInput) => {
   const manualEntries = useMemo<GameEntry[]>(
     () =>
-      manualGames.map((name, index) => ({
-        name,
+      manualRecords.map((record, index) => ({
+        id: record.id,
+        name: record.name,
         source: "manual",
         rank: index + 1,
       })),
-    [manualGames],
+    [manualRecords],
   );
 
   const allEntries = useMemo<GameEntry[]>(() => {
@@ -155,6 +162,19 @@ export const useGamePoolData = ({
 
     addNamedSignal(playedGames, 1.4);
     addNamedSignal(completedGames, 2.2);
+    const sourcesById = new Map<string, Set<SourceToggleKey>>();
+    allEntries.forEach((entry) => {
+      const source = entry.source as SourceToggleKey;
+      if (!sourceKeys.includes(source)) return;
+      const id = gameIdentity(entry);
+      if (!sourcesById.has(id)) sourcesById.set(id, new Set());
+      sourcesById.get(id)?.add(source);
+    });
+    const addIdentifiedSignal = (records: GameStatusRecord[], scoreDelta: number) => {
+      records.forEach((record) => sourcesById.get(record.id)?.forEach((source) => { scores[source] += scoreDelta; }));
+    };
+    addIdentifiedSignal(playedRecords, 1.4);
+    addIdentifiedSignal(completedRecords, 2.2);
 
     spinHistory.slice(0, 20).forEach((entry, index) => {
       const recency = Math.max(0.22, 1 - index / 24);
@@ -181,9 +201,9 @@ export const useGamePoolData = ({
         [source]: Math.max(0.72, Math.min(1.45, multiplier)),
       };
     }, {} as SourceWeights);
-  }, [allEntries, completedGames, playedGames, spinHistory]);
+  }, [allEntries, completedGames, completedRecords, playedGames, playedRecords, spinHistory]);
 
-  const behaviorSignalsCount = playedGames.length + completedGames.length + Math.min(spinHistory.length, 20);
+  const behaviorSignalsCount = playedGames.length + completedGames.length + playedRecords.length + completedRecords.length + Math.min(spinHistory.length, 20);
 
   const suggestedSourceWeights = useMemo<SourceWeights>(
     () =>
@@ -248,20 +268,24 @@ export const useGamePoolData = ({
     [basePool, filters],
   );
 
-  const statusBlockedNames = useMemo(() => {
-    const blocked = new Set<string>();
+  const statusBlocked = useMemo(() => {
+    const names = new Set<string>();
+    const ids = new Set<string>();
     if (excludePlayed) {
-      playedGames.forEach((name) => blocked.add(name.toLowerCase()));
+      playedGames.forEach((name) => names.add(name.toLowerCase()));
+      playedRecords.forEach((record) => ids.add(record.id));
     }
     if (excludeCompleted) {
-      completedGames.forEach((name) => blocked.add(name.toLowerCase()));
+      completedGames.forEach((name) => names.add(name.toLowerCase()));
+      completedRecords.forEach((record) => ids.add(record.id));
     }
-    return blocked;
-  }, [completedGames, excludeCompleted, excludePlayed, playedGames]);
+    return { names, ids };
+  }, [completedGames, completedRecords, excludeCompleted, excludePlayed, playedGames, playedRecords]);
 
   const poolAfterStatusExclusions = useMemo(
-    () => poolAfterAdvancedFilters.filter((candidate) => !statusBlockedNames.has(candidate.name.toLowerCase())),
-    [poolAfterAdvancedFilters, statusBlockedNames],
+    () => poolAfterAdvancedFilters.filter((candidate) =>
+      !statusBlocked.ids.has(candidate.id) && !statusBlocked.names.has(candidate.name.toLowerCase())),
+    [poolAfterAdvancedFilters, statusBlocked],
   );
 
   const blockedHistory = useMemo(() => {
@@ -282,7 +306,8 @@ export const useGamePoolData = ({
 
   const cooldownSaturated = cooldownSpins > 0 && poolAfterStatusExclusions.length > 0 && poolAfterCooldown.length === 0;
   const statusExhausted =
-    poolAfterStatusExclusions.length === 0 && poolAfterAdvancedFilters.length > 0 && statusBlockedNames.size > 0;
+    poolAfterStatusExclusions.length === 0 && poolAfterAdvancedFilters.length > 0 &&
+    (statusBlocked.names.size > 0 || statusBlocked.ids.size > 0);
   const advancedFilterExhausted =
     poolAfterAdvancedFilters.length === 0 &&
     basePool.length > 0 &&

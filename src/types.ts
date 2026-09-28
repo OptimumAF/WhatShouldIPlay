@@ -6,6 +6,7 @@ import type {
 } from "./contracts/topGamesContract";
 
 export interface GameEntry {
+  id?: string;
   name: string;
   source: SourceId;
   rank?: number;

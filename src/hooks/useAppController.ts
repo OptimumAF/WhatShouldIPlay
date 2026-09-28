@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { normalizeGames } from "../lib/wheel";
@@ -58,13 +58,14 @@ export const useAppController = (): AppShellViewProps => {
     setSpinSpeedProfile, reducedSpinAnimation, setReducedSpinAnimation, activePreset, setActivePreset, filters, setFilters,
   } = settings;
   const {
-    manualInput, setManualInput, manualGames, setManualGames, steamImportGames, setSteamImportGames,
+    manualInput, setManualInput, manualGames, setManualGames, manualRecords, setManualRecords, steamImportGames, setSteamImportGames,
     steamApiKey, setSteamApiKey, steamId, setSteamId, steamImportStatus, setSteamImportStatus, steamImportLoading,
     setSteamImportLoading,
   } = library;
   const {
     excludePlayed, setExcludePlayed, excludeCompleted, setExcludeCompleted, playedGames, setPlayedGames,
-    completedGames, setCompletedGames, exclusionInput, setExclusionInput,
+    completedGames, setCompletedGames, playedRecords, setPlayedRecords, completedRecords, setCompletedRecords,
+    exclusionInput, setExclusionInput,
   } = exclusions;
   const {
     notificationsEnabled, setNotificationsEnabled, trendNotifications, setTrendNotifications, reminderNotifications,
@@ -145,13 +146,15 @@ export const useAppController = (): AppShellViewProps => {
     cooldownSaturated,
   } = useGamePoolData({
     topGames,
-    manualGames,
+    manualRecords,
     steamImportGames,
     enabledSources,
     sourceWeights,
     weightedMode,
     playedGames,
     completedGames,
+    playedRecords,
+    completedRecords,
     spinHistory,
     adaptiveRecommendations,
     filters,
@@ -173,12 +176,15 @@ export const useAppController = (): AppShellViewProps => {
     filters,
     spinHistory,
     manualGames,
+    manualRecords,
     steamId,
     steamImportGames,
     excludePlayed,
     excludeCompleted,
     playedGames,
     completedGames,
+    playedRecords,
+    completedRecords,
     notificationsEnabled,
     trendNotifications,
     reminderNotifications,
@@ -296,6 +302,27 @@ export const useAppController = (): AppShellViewProps => {
     setCompletedGames,
     setExclusionInput,
   });
+  const renameManualGame = useCallback((id: string, name: string) => {
+    const cleaned = name.trim();
+    if (!cleaned) return;
+    setManualRecords((current) => current.map((record) =>
+      record.id === id ? { ...record, name: cleaned } : record));
+    setPlayedRecords((current) => current.map((record) => record.id === id ? { ...record, name: cleaned } : record));
+    setCompletedRecords((current) => current.map((record) => record.id === id ? { ...record, name: cleaned } : record));
+    markCustom();
+  }, [markCustom, setCompletedRecords, setManualRecords, setPlayedRecords]);
+  const markResolvedPlayed = useCallback(() => {
+    if (!winnerMeta?.id) return markGamesPlayed([winner]);
+    const { id, name } = winnerMeta;
+    setPlayedRecords((current) => [...current.filter((record) => record.id !== id), { id, name }]);
+    setCompletedRecords((current) => current.filter((record) => record.id !== id));
+  }, [markGamesPlayed, setCompletedRecords, setPlayedRecords, winner, winnerMeta]);
+  const markResolvedCompleted = useCallback(() => {
+    if (!winnerMeta?.id) return markGamesCompleted([winner]);
+    const { id, name } = winnerMeta;
+    setCompletedRecords((current) => [...current.filter((record) => record.id !== id), { id, name }]);
+    setPlayedRecords((current) => current.filter((record) => record.id !== id));
+  }, [markGamesCompleted, setCompletedRecords, setPlayedRecords, winner, winnerMeta]);
   const { handleInstall, applyServiceWorkerUpdate, setNotificationsEnabledWithPermission } = useRuntimeActions({
     installPrompt,
     skipWaitingMessageType: SW_SKIP_WAITING_MESSAGE,
@@ -358,7 +385,8 @@ export const useAppController = (): AppShellViewProps => {
     spinHistory,
     setSpinHistory,
     manualGames,
-    setManualGames,
+    manualRecords,
+    setManualRecords,
     steamId,
     setSteamId,
     steamImportGames,
@@ -371,6 +399,10 @@ export const useAppController = (): AppShellViewProps => {
     setPlayedGames,
     completedGames,
     setCompletedGames,
+    playedRecords,
+    setPlayedRecords,
+    completedRecords,
+    setCompletedRecords,
     notificationsEnabled,
     setNotificationsEnabled,
     trendNotifications,
@@ -411,6 +443,10 @@ export const useAppController = (): AppShellViewProps => {
     setCloudSyncStatus(t("messages.cloudDisconnected"));
   }, [setCloudSyncReferenceAt, setCloudSyncStatus, setGistId, setGistToken, setPendingCloudConflictSnapshot, t]);
 
+  const displaySpinHistory = useMemo(() => {
+    const names = new Map(manualRecords.map((record) => [record.id, record.name]));
+    return spinHistory.map((item) => ({ ...item, name: item.id ? names.get(item.id) ?? item.name : item.name }));
+  }, [manualRecords, spinHistory]);
   const {
     showSettingsPane,
     showPlayPane,
@@ -434,7 +470,7 @@ export const useAppController = (): AppShellViewProps => {
     activeTab,
     isMobileLayout,
     sidebarOpen,
-    spinHistory,
+    spinHistory: displaySpinHistory,
     sourceLabelList,
     formatOdds,
     topGames,
@@ -489,6 +525,8 @@ export const useAppController = (): AppShellViewProps => {
     addExclusionFromInput,
     setPlayedGames,
     setCompletedGames,
+    setPlayedRecords,
+    setCompletedRecords,
     setNotificationsEnabledWithPermission,
   });
 
@@ -552,6 +590,8 @@ export const useAppController = (): AppShellViewProps => {
     exclusionInput,
     playedGames,
     completedGames,
+    playedRecords,
+    completedRecords,
     onExcludePlayedChange: setExcludePlayed,
     onExcludeCompletedChange: setExcludeCompleted,
     onExclusionInputChange: setExclusionInput,
@@ -559,6 +599,8 @@ export const useAppController = (): AppShellViewProps => {
     onAddCompleted,
     onRemovePlayed: removePlayedGame,
     onRemoveCompleted: removeCompletedGame,
+    onRemovePlayedRecord: (id) => setPlayedRecords((current) => current.filter((record) => record.id !== id)),
+    onRemoveCompletedRecord: (id) => setCompletedRecords((current) => current.filter((record) => record.id !== id)),
     onClearPlayed,
     onClearCompleted,
     notificationsEnabled,
@@ -625,12 +667,14 @@ export const useAppController = (): AppShellViewProps => {
     winnerMeta,
     formatSourceList: sourceLabelList,
     formatOdds,
-    onMarkPlayed: () => markGamesPlayed([winner]),
-    onMarkCompleted: () => markGamesCompleted([winner]),
+    onMarkPlayed: markResolvedPlayed,
+    onMarkCompleted: markResolvedCompleted,
     onOpenLibrary: () => handleHeaderTabChange("library"),
     onOpenSettings: () => handleHeaderTabChange("settings"),
     showLibraryPane,
     manualInput,
+    manualRecords,
+    onRenameManual: renameManualGame,
     onManualInputChange: setManualInput,
     onAddManual: addManualGames,
     onClearManual: clearManualGames,
@@ -684,8 +728,8 @@ export const useAppController = (): AppShellViewProps => {
     formatSourceList: sourceLabelList,
     formatOdds,
     onCloseWinner: () => setShowWinnerPopup(false),
-    onMarkWinnerPlayed: () => markGamesPlayed([winner]),
-    onMarkWinnerCompleted: () => markGamesCompleted([winner]),
+    onMarkWinnerPlayed: markResolvedPlayed,
+    onMarkWinnerCompleted: markResolvedCompleted,
   });
 
   return {

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { PlayPanel } from "../play/PlayPanel";
 import { SettingsGuidancePanel } from "./SettingsGuidancePanel";
 import type { SourceId } from "../../types";
+import type { ManualGameRecord } from "../../lib/manualIdentity";
 
 interface WinnerMeta {
   sources: SourceId[];
@@ -48,6 +49,8 @@ export interface MainContentPanelsProps {
   onOpenSettings: () => void;
   showLibraryPane: boolean;
   manualInput: string;
+  manualRecords: ManualGameRecord[];
+  onRenameManual: (id: string, name: string) => void;
   onManualInputChange: (value: string) => void;
   onAddManual: () => void;
   onClearManual: () => void;
@@ -85,6 +88,8 @@ export function MainContentPanels({
   onOpenSettings,
   showLibraryPane,
   manualInput,
+  manualRecords,
+  onRenameManual,
   onManualInputChange,
   onAddManual,
   onClearManual,
@@ -149,6 +154,10 @@ export function MainContentPanels({
             addLabel={t("addGames")}
             clearLabel={t("clearManual")}
             placeholder={t("manualListPlaceholder")}
+            records={manualRecords}
+            onRename={onRenameManual}
+            renameLabel={t("renameGame")}
+            saveNameLabel={t("saveName")}
           />
         </div>
       ) : null}

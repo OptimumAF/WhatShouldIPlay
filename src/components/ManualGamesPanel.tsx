@@ -1,4 +1,5 @@
 import { List, Plus, Trash2 } from "lucide-react";
+import type { ManualGameRecord } from "../lib/manualIdentity";
 
 interface ManualGamesPanelProps {
   title: string;
@@ -10,6 +11,10 @@ interface ManualGamesPanelProps {
   addLabel: string;
   clearLabel: string;
   placeholder: string;
+  records: ManualGameRecord[];
+  onRename: (id: string, name: string) => void;
+  renameLabel: string;
+  saveNameLabel: string;
 }
 
 export function ManualGamesPanel({
@@ -22,6 +27,10 @@ export function ManualGamesPanel({
   addLabel,
   clearLabel,
   placeholder,
+  records,
+  onRename,
+  renameLabel,
+  saveNameLabel,
 }: ManualGamesPanelProps) {
   return (
     <section className="panel secondary-panel" aria-labelledby="manual-heading">
@@ -56,6 +65,28 @@ export function ManualGamesPanel({
           </span>
         </button>
       </div>
+      {records.length > 0 ? (
+        <ul className="manual-record-list">
+          {records.map((record) => (
+            <li key={record.id}>
+              <form onSubmit={(event) => {
+                event.preventDefault();
+                const name = new FormData(event.currentTarget).get("name");
+                if (typeof name === "string") onRename(record.id, name);
+              }}>
+                <input
+                  key={`${record.id}:${record.name}`}
+                  name="name"
+                  type="text"
+                  defaultValue={record.name}
+                  aria-label={`${renameLabel} ${record.name}`}
+                />
+                <button type="submit" className="ghost compact">{saveNameLabel}</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

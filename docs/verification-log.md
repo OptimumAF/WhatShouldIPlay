@@ -79,4 +79,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `npm run typecheck`: passed. `npm run test:unit`: **6 passed / 6**. `npm run build`: passed with committed data.
 - `npx playwright test tests/e2e/spin-lifecycle.spec.ts tests/e2e/wheel-landing.spec.ts --project=chromium`: **3 passed / 3** after rebuilding; the two lifecycle regressions and repeat-spin pointer/result/history check passed. A further synchronous repeat-activation test passed **3 / 3** targeted lifecycle tests, measuring one pair of random draws and one history item.
 
-**Limits:** The desktop UI still uses live derived labels and has no fallback finalizer, so M01.05 remains unchecked. Entry keys are provisional for manual games until M02.01 introduces persistent IDs. The web test did not use live data refresh or a real account.
+**Limits at this checkpoint:** The desktop UI still used live derived labels and had no fallback finalizer; the next chunk addresses those paths. Entry keys are provisional for manual games until M02.01 introduces persistent IDs. The web test did not use live data refresh or a real account.
+
+## 2026-09-28 — M01.05 desktop spin lifecycle
+
+**Task:** M01.05 (VERIFY).
+**Implementation:** A desktop `SpinOperation` now copies the selected pool, effective weights, winner, labels, gradient, and transition before rotation. The Dioxus wheel renders that snapshot through the result; new settings or derived cooldown data cannot replace its labels mid-spin. A duration-based fallback and the transition handler both consume the pending operation by ID, so a duplicate or stale completion cannot write another history item. Child label/hub transition events stop propagation. A previous popup timeout cannot hide a newer spin's popup.
+
+- `cargo check --manifest-path apps/desktop/Cargo.toml`: passed.
+- `cargo test --manifest-path apps/desktop/Cargo.toml`: **2 passed / 2**. The new test mutates the original pool after snapshot creation, verifies preserved winner/weights/labels, rejects an old completion ID, consumes the matching ID once, and rejects a duplicate. The earlier varied-sector landing test also passes.
+- `cargo run --manifest-path apps/desktop/Cargo.toml`: built and launched on Windows. `Get-Process pick-a-game-desktop` reported a responding `Dioxus App` main window. A temp screenshot of that window showed the masthead, pool summary, and wheel rendering; the run was then stopped.
+
+**Limits:** The desktop startup screenshot did not exercise a spin, result, history, profile change, or fallback. No desktop automation or manual interaction has verified pointer/result/history identity. M01.05 stays unchecked. Current desktop entries have names and source lists but no persistent cross-client IDs; M02.01 owns that identity migration.

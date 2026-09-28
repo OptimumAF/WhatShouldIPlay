@@ -23,6 +23,60 @@ pub(crate) struct DerivedWheelData {
     pub(crate) adaptive_spin_weights: Vec<f64>,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct SpinOperation {
+    pub(crate) id: u64,
+    pub(crate) eligible: Vec<WeightedPoolGame>,
+    pub(crate) effective_weights: Vec<f64>,
+    pub(crate) winner_index: usize,
+    pub(crate) winner: SpinHistoryItem,
+    pub(crate) wheel_labels: Vec<(f64, f64, String)>,
+    pub(crate) wheel_background: String,
+    pub(crate) transition: String,
+}
+
+impl SpinOperation {
+    pub(crate) fn new(
+        id: u64,
+        eligible: &[WeightedPoolGame],
+        effective_weights: &[f64],
+        winner_index: usize,
+        wheel_labels: &[(f64, f64, String)],
+        wheel_background: &str,
+        transition: &str,
+    ) -> Self {
+        assert!(!eligible.is_empty() && winner_index < eligible.len());
+        assert_eq!(eligible.len(), effective_weights.len());
+        let selected = &eligible[winner_index];
+        let total = effective_weights.iter().sum::<f64>().max(0.0001);
+        Self {
+            id,
+            eligible: eligible.to_vec(),
+            effective_weights: effective_weights.to_vec(),
+            winner_index,
+            winner: SpinHistoryItem {
+                name: selected.name.clone(),
+                sources: selected.sources.join(" + "),
+                odds: effective_weights[winner_index] / total,
+            },
+            wheel_labels: wheel_labels.to_vec(),
+            wheel_background: wheel_background.to_string(),
+            transition: transition.to_string(),
+        }
+    }
+}
+
+pub(crate) fn take_spin_result(
+    pending: &mut Option<SpinOperation>,
+    expected_id: u64,
+) -> Option<SpinOperation> {
+    if pending.as_ref().is_some_and(|operation| operation.id == expected_id) {
+        pending.take()
+    } else {
+        None
+    }
+}
+
 pub(crate) fn build_weighted_pool(
     include_steamcharts: bool,
     include_steamdb: bool,
@@ -246,7 +300,8 @@ pub(crate) fn spin_target_rotation(
 
 #[cfg(test)]
 mod tests {
-    use super::spin_target_rotation;
+    use super::{spin_target_rotation, take_spin_result, SpinOperation};
+    use crate::WeightedPoolGame;
 
     fn index_at_top_pointer(count: usize, rotation: f64) -> usize {
         ((-rotation).rem_euclid(360.0) / (360.0 / count as f64)).floor() as usize
@@ -277,6 +332,29 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn spin_operation_freezes_pool_and_can_be_consumed_only_once() {
+        let mut pool = vec![
+            WeightedPoolGame { name: "Alpha".into(), sources: vec!["Manual".into()], weight: 1.0 },
+            WeightedPoolGame { name: "Beta".into(), sources: vec!["Steam Import".into()], weight: 2.0 },
+        ];
+        let labels = vec![(90.0, 0.0, "Alpha".to_string()), (270.0, 180.0, "Beta".to_string())];
+        let mut pending = Some(SpinOperation::new(
+            7, &pool, &[1.0, 2.0], 1, &labels, "frozen-gradient", "transform 760ms ease",
+        ));
+        pool[1].name = "Changed".into();
+        assert_eq!(pending.as_ref().unwrap().eligible[1].name, "Beta");
+        assert_eq!(pending.as_ref().unwrap().winner.name, "Beta");
+        assert_eq!(pending.as_ref().unwrap().effective_weights, [1.0, 2.0]);
+        assert!(take_spin_result(&mut pending, 6).is_none());
+        let finished = take_spin_result(&mut pending, 7).unwrap();
+        assert_eq!(finished.winner_index, 1);
+        assert_eq!(finished.wheel_labels, labels);
+        assert_eq!(finished.wheel_background, "frozen-gradient");
+        assert_eq!(finished.transition, "transform 760ms ease");
+        assert!(take_spin_result(&mut pending, 7).is_none());
     }
 }
 

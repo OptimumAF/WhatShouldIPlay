@@ -9,7 +9,7 @@ mod engine;
 mod ui;
 use contracts::TopGamesPayloadContract;
 use data::refresh_scanned_games;
-use engine::{build_weighted_pool, derive_wheel_data};
+use engine::{build_weighted_pool, derive_wheel_data, SpinOperation};
 use ui::settings::render_settings_sidebar;
 use ui::{render_hero_masthead, render_spin_history_panel, render_wheel_panel, render_winner_overlay};
 
@@ -115,9 +115,9 @@ struct DesktopSpinState {
     winner: Signal<String>,
     winner_sources: Signal<String>,
     winner_odds: Signal<f64>,
-    pending_winner: Signal<String>,
-    pending_winner_sources: Signal<String>,
-    pending_winner_odds: Signal<f64>,
+    display_spin: Signal<Option<SpinOperation>>,
+    pending_spin: Signal<Option<SpinOperation>>,
+    next_spin_id: Signal<u64>,
     spin_history: Signal<Vec<SpinHistoryItem>>,
     show_winner_popup: Signal<bool>,
 }
@@ -229,9 +229,9 @@ fn App() -> Element {
         winner: use_signal(String::new),
         winner_sources: use_signal(String::new),
         winner_odds: use_signal(|| 0.0_f64),
-        pending_winner: use_signal(String::new),
-        pending_winner_sources: use_signal(String::new),
-        pending_winner_odds: use_signal(|| 0.0_f64),
+        display_spin: use_signal(|| None::<SpinOperation>),
+        pending_spin: use_signal(|| None::<SpinOperation>),
+        next_spin_id: use_signal(|| 0_u64),
         spin_history: use_signal(Vec::<SpinHistoryItem>::new),
         show_winner_popup: use_signal(|| false),
     };
@@ -401,15 +401,16 @@ fn App() -> Element {
                         spin.wheel_rotation,
                         spin.spinning,
                         &spin_transition,
+                        spin_duration_ms,
                         &derived_wheel.wheel_background,
                         settings.weighted_mode,
                         settings.adaptive_recommendations,
                         derived_wheel.adaptive_spin_weights.clone(),
                         spin_jitter_ratio,
                         spin_revolutions,
-                        spin.pending_winner,
-                        spin.pending_winner_sources,
-                        spin.pending_winner_odds,
+                        spin.display_spin,
+                        spin.pending_spin,
+                        spin.next_spin_id,
                         spin.winner,
                         spin.winner_sources,
                         spin.winner_odds,

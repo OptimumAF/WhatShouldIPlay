@@ -6,7 +6,7 @@ pub(crate) mod settings;
 
 use crate::{
     data::refresh_scanned_games,
-    engine::{pick_weighted_index, spin_target_rotation}, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
+    engine::{pick_weighted_index, spin_target_rotation, take_spin_result, SpinOperation}, format_odds, localize_source_chain, parse_ui_lang, tr, SpinHistoryItem,
     UiLang, WeightedPoolGame,
 };
 
@@ -58,15 +58,16 @@ pub(crate) fn render_wheel_panel(
     wheel_rotation: Signal<f64>,
     spinning: Signal<bool>,
     spin_transition: &str,
+    spin_duration_ms: f64,
     wheel_background: &str,
     weighted_mode: Signal<bool>,
     adaptive_recommendations: Signal<bool>,
     adaptive_spin_weights: Vec<f64>,
     spin_jitter_ratio: f64,
     spin_revolutions: f64,
-    pending_winner: Signal<String>,
-    pending_winner_sources: Signal<String>,
-    pending_winner_odds: Signal<f64>,
+    display_spin: Signal<Option<SpinOperation>>,
+    pending_spin: Signal<Option<SpinOperation>>,
+    next_spin_id: Signal<u64>,
     winner: Signal<String>,
     winner_sources: Signal<String>,
     winner_odds: Signal<f64>,
@@ -80,10 +81,17 @@ pub(crate) fn render_wheel_panel(
     spin_button_label: &'static str,
     you_should_play_label: &'static str,
 ) -> Element {
+    let display = display_spin();
+    let visible_count = display.as_ref().map_or(spin_pool.len(), |operation| operation.eligible.len());
+    let visible_labels = display.as_ref().map_or_else(|| wheel_labels.clone(), |operation| operation.wheel_labels.clone());
+    let visible_background = display.as_ref().map_or_else(|| wheel_background.to_string(), |operation| operation.wheel_background.clone());
+    let visible_transition = display.as_ref().map_or_else(|| spin_transition.to_string(), |operation| operation.transition.clone());
+    let start_background = wheel_background.to_string();
+    let start_transition = spin_transition.to_string();
     rsx! {
         section { class: "panel panel-primary",
             h2 { "{tr(lang, \"Wheel\", \"Ruleta\")}" }
-            p { class: "muted", "{tr(lang, \"Current pool\", \"Pool actual\")}: {spin_pool.len()} {tr(lang, \"unique games\", \"juegos unicos\")}" }
+            p { class: "muted", "{tr(lang, \"Current pool\", \"Pool actual\")}: {visible_count} {tr(lang, \"unique games\", \"juegos unicos\")}" }
             if cooldown_exhausted {
                 p { class: "muted", "{tr(lang, \"Cooldown saturated the pool, so all entries were temporarily re-enabled.\", \"El enfriamiento agoto el pool, asi que todas las entradas se reactivaron temporalmente.\")}" }
             }
@@ -136,31 +144,32 @@ pub(crate) fn render_wheel_panel(
                         style: format!(
                             "--rotation:{}deg;--transition:{};--wheel-bg:{};",
                             wheel_rotation(),
-                            if spinning() { spin_transition } else { "none" },
-                            wheel_background
+                            if spinning() { &visible_transition } else { "none" },
+                            visible_background
                         ),
                         ontransitionend: move |_| {
-                            if spinning() {
+                            if let Some(operation) = pending_spin() {
                                 finalize_spin_result(
+                                    operation.id,
                                     spinning,
-                                    pending_winner,
-                                    pending_winner_sources,
-                                    pending_winner_odds,
+                                    pending_spin,
                                     winner,
                                     winner_sources,
                                     winner_odds,
                                     spin_history,
                                     show_winner_popup,
+                                    next_spin_id,
                                 );
                             }
                         },
-                        div { class: "wheel-hub" }
-                        if spin_pool.is_empty() {
+                        div { class: "wheel-hub", ontransitionend: move |event| event.stop_propagation() }
+                        if visible_count == 0 {
                             div { class: "wheel-empty", "{tr(lang, \"Add or load games first\", \"Agrega o carga juegos primero\")}" }
                         } else {
-                            for (label_angle, label_flip, game_name) in wheel_labels.iter() {
+                            for (label_angle, label_flip, game_name) in visible_labels.iter() {
                                 div {
                                     class: "wheel-label",
+                                    ontransitionend: move |event| event.stop_propagation(),
                                     style: format!(
                                         "--label-angle:{}deg;--label-flip:{}deg;",
                                         label_angle,
@@ -183,16 +192,22 @@ pub(crate) fn render_wheel_panel(
                             weighted_mode(),
                             adaptive_recommendations(),
                             &adaptive_spin_weights,
+                            &wheel_labels,
+                            &start_background,
+                            &start_transition,
+                            spin_duration_ms,
                             spin_jitter_ratio,
                             spin_revolutions,
                             wheel_rotation,
                             spinning,
-                            pending_winner,
-                            pending_winner_sources,
-                            pending_winner_odds,
+                            display_spin,
+                            pending_spin,
+                            next_spin_id,
                             winner,
                             winner_sources,
                             winner_odds,
+                            spin_history,
+                            show_winner_popup,
                         );
                     },
                     "{spin_button_label}"
@@ -318,16 +333,22 @@ fn start_spin(
     weighted_mode: bool,
     adaptive_recommendations: bool,
     adaptive_spin_weights: &[f64],
+    wheel_labels: &[(f64, f64, String)],
+    wheel_background: &str,
+    spin_transition: &str,
+    spin_duration_ms: f64,
     spin_jitter_ratio: f64,
     spin_revolutions: f64,
     mut wheel_rotation: Signal<f64>,
     mut spinning: Signal<bool>,
-    mut pending_winner: Signal<String>,
-    mut pending_winner_sources: Signal<String>,
-    mut pending_winner_odds: Signal<f64>,
+    mut display_spin: Signal<Option<SpinOperation>>,
+    mut pending_spin: Signal<Option<SpinOperation>>,
+    mut next_spin_id: Signal<u64>,
     mut winner: Signal<String>,
     mut winner_sources: Signal<String>,
     mut winner_odds: Signal<f64>,
+    spin_history: Signal<Vec<SpinHistoryItem>>,
+    show_winner_popup: Signal<bool>,
 ) {
     if spinning() || spin_pool.is_empty() {
         return;
@@ -335,8 +356,18 @@ fn start_spin(
 
     let mut rng = rand::rng();
     let behavior_weighted = weighted_mode || adaptive_recommendations;
+    let candidate_weights = if behavior_weighted && adaptive_spin_weights.len() == spin_pool.len() {
+        adaptive_spin_weights.iter().map(|weight| if weight.is_finite() { weight.max(0.0) } else { 0.0 }).collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let effective_weights = if candidate_weights.iter().sum::<f64>() > 0.0 {
+        candidate_weights
+    } else {
+        vec![1.0; spin_pool.len()]
+    };
     let winner_index = if behavior_weighted {
-        pick_weighted_index(adaptive_spin_weights, &mut rng)
+        pick_weighted_index(&effective_weights, &mut rng)
     } else {
         rng.random_range(0..spin_pool.len())
     };
@@ -348,67 +379,78 @@ fn start_spin(
         spin_jitter_ratio,
         rng.random_range(0.0..1.0),
     );
-    let selected = &spin_pool[winner_index];
-    let total_weight = if behavior_weighted {
-        adaptive_spin_weights.iter().sum::<f64>().max(0.0001)
-    } else {
-        spin_pool.len() as f64
-    };
-    let odds = if behavior_weighted {
-        adaptive_spin_weights[winner_index] / total_weight
-    } else {
-        1.0 / spin_pool.len() as f64
-    };
-
-    pending_winner.set(selected.name.clone());
-    pending_winner_sources.set(selected.sources.join(" + "));
-    pending_winner_odds.set(odds);
+    let operation_id = next_spin_id().wrapping_add(1);
+    next_spin_id.set(operation_id);
+    let operation = SpinOperation::new(
+        operation_id,
+        spin_pool,
+        &effective_weights,
+        winner_index,
+        wheel_labels,
+        wheel_background,
+        spin_transition,
+    );
+    pending_spin.set(Some(operation.clone()));
+    display_spin.set(Some(operation));
     winner.set(String::new());
     winner_sources.set(String::new());
     winner_odds.set(0.0);
     spinning.set(true);
     wheel_rotation.set(next);
+    spawn(async move {
+        let delay = spin_duration_ms.max(1200.0) as u64 + 450;
+        sleep(Duration::from_millis(delay)).await;
+        finalize_spin_result(
+            operation_id,
+            spinning,
+            pending_spin,
+            winner,
+            winner_sources,
+            winner_odds,
+            spin_history,
+            show_winner_popup,
+            next_spin_id,
+        );
+    });
 }
 
 fn finalize_spin_result(
+    expected_id: u64,
     mut spinning: Signal<bool>,
-    pending_winner: Signal<String>,
-    pending_winner_sources: Signal<String>,
-    pending_winner_odds: Signal<f64>,
+    mut pending_spin: Signal<Option<SpinOperation>>,
     mut winner: Signal<String>,
     mut winner_sources: Signal<String>,
     mut winner_odds: Signal<f64>,
     mut spin_history: Signal<Vec<SpinHistoryItem>>,
     mut show_winner_popup: Signal<bool>,
+    next_spin_id: Signal<u64>,
 ) {
-    let selected_name = pending_winner();
-    let selected_sources = pending_winner_sources();
-    let selected_odds = pending_winner_odds();
+    let operation = {
+        let mut pending = pending_spin.write();
+        take_spin_result(&mut pending, expected_id)
+    };
+    let Some(operation) = operation else { return; };
+    debug_assert!(operation.winner_index < operation.eligible.len());
+    debug_assert_eq!(operation.effective_weights.len(), operation.eligible.len());
+    let selected = operation.winner;
 
     spinning.set(false);
-    winner.set(selected_name.clone());
-    winner_sources.set(selected_sources.clone());
-    winner_odds.set(selected_odds);
+    winner.set(selected.name.clone());
+    winner_sources.set(selected.sources.clone());
+    winner_odds.set(selected.odds);
 
-    if !selected_name.is_empty() {
-        let mut history = spin_history();
-        history.insert(
-            0,
-            SpinHistoryItem {
-                name: selected_name,
-                sources: selected_sources,
-                odds: selected_odds,
-            },
-        );
-        if history.len() > 30 {
-            history.truncate(30);
-        }
-        spin_history.set(history);
+    let mut history = spin_history();
+    history.insert(0, selected);
+    if history.len() > 30 {
+        history.truncate(30);
     }
+    spin_history.set(history);
 
     show_winner_popup.set(true);
     spawn(async move {
         sleep(Duration::from_millis(3600)).await;
-        show_winner_popup.set(false);
+        if next_spin_id() == expected_id {
+            show_winner_popup.set(false);
+        }
     });
 }

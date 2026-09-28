@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as cheerio from "cheerio";
+import { dedupeFeedGames } from "./lib/feedIdentity.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,18 +63,6 @@ function normalizeName(name) {
     .replace(/Â/g, "")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function dedupeByName(games) {
-  const seen = new Set();
-  const output = [];
-  for (const game of games) {
-    const key = game.name.toLowerCase();
-    if (seen.has(key) || !game.name) continue;
-    seen.add(key);
-    output.push(game);
-  }
-  return output;
 }
 
 function dedupeStrings(values) {
@@ -190,7 +179,7 @@ function parseSteamCharts(html) {
     });
   });
 
-  return dedupeByName(games);
+  return dedupeFeedGames(games);
 }
 
 function parseTwitchMetrics(html) {
@@ -213,7 +202,7 @@ function parseTwitchMetrics(html) {
     });
   });
 
-  return dedupeByName(games).slice(0, TOP_N);
+  return dedupeFeedGames(games).slice(0, TOP_N);
 }
 
 function parseItchioTopRated(html) {
@@ -254,7 +243,7 @@ function parseItchioTopRated(html) {
     });
   });
 
-  return dedupeByName(games).slice(0, TOP_N);
+  return dedupeFeedGames(games).slice(0, TOP_N);
 }
 
 function parseSteamDbPage(html) {
@@ -296,7 +285,7 @@ function parseSteamDbPage(html) {
     throw new Error("SteamDB parsing selectors returned no rows");
   }
 
-  return dedupeByName(games).slice(0, TOP_N);
+  return dedupeFeedGames(games).slice(0, TOP_N);
 }
 
 async function fetchSteamAppName(appId) {
@@ -358,7 +347,7 @@ async function fetchSteamDbGames() {
   } catch (error) {
     const fallback = await fetchSteamDbFallbackFromSteamApi();
     return {
-      games: dedupeByName(fallback).slice(0, TOP_N),
+      games: dedupeFeedGames(fallback).slice(0, TOP_N),
       note: `SteamDB blocked scraping; used Steam charts API fallback. (${error.message})`,
     };
   }

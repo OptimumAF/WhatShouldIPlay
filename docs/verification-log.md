@@ -196,3 +196,14 @@ Record actual checks against the committed dataset and note environmental limits
 **Limits and dependency impact:** Gist round-trip behavior used a local HTTP interception with a synthetic token; no live GitHub credential check was run, so M01.03 remains VERIFY. The manual-ID format and additive migration keep version-1 snapshots compatible. M02.01c still must preserve identity in ingestion and the Rust/Dioxus path before the aggregate M02.01 or dependent M01.05 can be completed. The frozen last-spin wheel can show a sector count different from the newly eligible pool until another spin; address this when reviewing M01.05 presentation without changing an active operation.
 
 **Follow-up correction:** Diff review found that migrating legacy names on every load would recreate an ID rule the user explicitly removed. Migration now runs only when the corresponding record field is absent from the stored or incoming snapshot shape. Unit and Chromium regressions verify that an empty modern ID list remains empty while its legacy name rule persists. The first targeted Chromium runs after this fix served the previous `dist` bundle because the preview configuration reads the built assets; the test failed until `npm run build` was rerun. The rebuilt focused run passed **4/4**, followed by the full gate above.
+
+## 2026-09-28 — M02.01c1 feed identity
+
+**Task:** M02.01c1 (DONE); M02.01c and M02.01 remain IN_PROGRESS.
+**Reason and dependency:** The producer's `dedupeByName` dropped distinct Steam App IDs before either client could see them. The feed and desktop paths were split into c1/c2 because the producer can be verified with synthetic data while desktop needs adapter, pool, cooldown, history, and interactive evidence. The original M02.01c acceptance and downstream dependencies remain intact.
+**Implementation:** All five feed deduplication call sites now use a small pure helper. A valid positive Steam App ID is the deduplication key; an observation without one uses its normalized name. First observation wins for a repeated key. No live sources were fetched and the committed feed was not regenerated.
+
+- Before the fix, the new shared-fixture unit test **1 failed, 1 passed / 2**: App ID 20202 disappeared behind equal-title App ID 10101. After the fix, focused unit tests passed **2/2**.
+- Pinned Node 22.23.3/npm 10.9.9 `npm run ci:web` passed typecheck, **19/19** unit tests, production build, and **22/22** Chromium tests. `node --check scripts/fetch-top-games.mjs` passed. `git diff --check` passed.
+
+**Limits:** The helper and call sites were checked without network access to live providers; this does not establish published feed freshness or provider reliability. The desktop shared-feed adapter and name-keyed pool remain M02.01c2 work. No desktop interaction was performed in this chunk.

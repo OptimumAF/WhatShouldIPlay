@@ -14,3 +14,5 @@ This directory contains language-neutral schemas for payloads used across the we
   - `apps/desktop/src/contracts.rs`
 
 Both implementations intentionally mirror this schema so the payload format is unified across targets.
+
+Portable source IDs use `steamcharts`, `steamdb`, `twitchmetrics`, `itchio`, `manual`, `scan`, and `steamImport`. Display labels such as “Steam Library” are UI text, not wire values. Portable spin history and source settings are validated against those IDs before a snapshot is applied. The feed's trend IDs report popularity observations; `steamImport` reports that a game appeared in a user's imported Steam library. Neither observation establishes a local installation. The web client represents installation as unknown. Desktop scan evidence and any launcher paths must stay local; its structured observation migration remains M02.02b.

@@ -201,12 +201,12 @@ export const useCloudWorkspace = ({
   });
 
   const mapSnapshotSpinHistory = useCallback(
-    (entries: Array<{ sources: string[] } & Record<string, unknown>>, records: ManualGameRecord[]): SpinHistoryItem[] =>
+    (entries: Array<{ sources: SourceId[] } & Record<string, unknown>>, records: ManualGameRecord[]): SpinHistoryItem[] =>
       attachLegacyManualHistoryIds(entries.map(
         (entry) =>
           ({
             ...entry,
-            sources: entry.sources as SourceId[],
+            sources: entry.sources,
           }) as SpinHistoryItem,
       ), records),
     [],

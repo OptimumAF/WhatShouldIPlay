@@ -15,6 +15,7 @@ import {
 import type { GameEntry, TopGamesPayload } from "../types";
 import { gameIdentity } from "../lib/gameIdentity";
 import type { ManualGameRecord } from "../lib/manualIdentity";
+import { observeGameSources } from "../lib/gameObservations";
 
 interface UseGamePoolDataInput {
   topGames: TopGamesPayload | undefined;
@@ -80,7 +81,7 @@ export const useGamePoolData = ({
   }, [manualEntries, steamImportGames, topGames]);
 
   const basePool = useMemo<PoolGame[]>(() => {
-    const byId = new Map<string, PoolGame>();
+    const byId = new Map<string, Omit<PoolGame, "observations">>();
 
     for (const entry of allEntries) {
       const source = entry.source as SourceToggleKey;
@@ -127,7 +128,10 @@ export const useGamePoolData = ({
       }
     }
 
-    return [...byId.values()];
+    return [...byId.values()].map((entry) => ({
+      ...entry,
+      observations: observeGameSources(entry.sources),
+    }));
   }, [allEntries, enabledSources, sourceWeights, weightedMode]);
 
   const sourceBehaviorMultipliers = useMemo<SourceWeights>(() => {

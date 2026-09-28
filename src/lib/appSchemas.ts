@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
   gameMetadataSchema,
+  sourceIdSchema,
+  topGameSourceIds,
   topGamesPayloadSchema,
 } from "../contracts/topGamesContract";
 import type { TopGamesPayload } from "../types";
@@ -62,7 +64,7 @@ const spinHistorySchema = z.array(
   z.object({
     id: z.string().optional(),
     name: z.string(),
-    sources: z.array(z.string()),
+    sources: z.array(sourceIdSchema),
     odds: z.number(),
     appId: z.number().optional(),
     url: z.string().optional(),
@@ -70,9 +72,10 @@ const spinHistorySchema = z.array(
   }),
 );
 
+const sourceToggleIdSchema = z.enum([...topGameSourceIds, "manual", "steamImport"]);
 const cloudSettingsSchema = z.object({
-  enabledSources: z.record(z.string(), z.boolean()).optional(),
-  sourceWeights: z.record(z.string(), z.number()).optional(),
+  enabledSources: z.partialRecord(sourceToggleIdSchema, z.boolean()).optional(),
+  sourceWeights: z.partialRecord(sourceToggleIdSchema, z.number()).optional(),
   weightedMode: z.boolean().optional(),
   adaptiveRecommendations: z.boolean().optional(),
   cooldownSpins: z.number().optional(),

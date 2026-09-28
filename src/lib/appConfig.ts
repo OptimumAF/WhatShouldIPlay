@@ -11,6 +11,7 @@ import {
 } from "./appSchemas";
 import type { GameEntry, GameLength, GamePlatform, SourceId } from "../types";
 import { gameIdentity } from "./gameIdentity";
+import type { GameObservations } from "./gameObservations";
 import { uniqueManualIdForName, type ManualGameRecord } from "./manualIdentity";
 
 export const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
@@ -26,6 +27,7 @@ export interface PoolGame {
   id: string;
   name: string;
   sources: SourceId[];
+  observations: GameObservations;
   weight: number;
   appId?: number;
   url?: string;

@@ -124,6 +124,11 @@ const resources = {
       winner: "Winner",
       spinOdds: "Spin Odds",
       sourceLabel: "Sources",
+      availability: {
+        steamImported: "In imported Steam library; installation has not been checked.",
+        trendOnly: "Trend listing only; ownership and installation have not been checked.",
+        unknown: "Ownership and installation have not been checked.",
+      },
       commitNow: "Commit to it. Queue it up now.",
       openSteam: "Open Steam",
       viewSource: "View Source",
@@ -479,6 +484,11 @@ const resources = {
       winner: "Ganador",
       spinOdds: "Probabilidad",
       sourceLabel: "Fuentes",
+      availability: {
+        steamImported: "Figura en la biblioteca de Steam importada; no se ha comprobado la instalacion.",
+        trendOnly: "Solo figura en tendencias; no se han comprobado la propiedad ni la instalacion.",
+        unknown: "No se han comprobado la propiedad ni la instalacion.",
+      },
       commitNow: "Comprometete. Abre el juego ahora.",
       openSteam: "Abrir Steam",
       viewSource: "Ver fuente",

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const topGameSourceIds = ["steamcharts", "steamdb", "twitchmetrics", "itchio"] as const;
 export const topGameSourceSchema = z.enum(topGameSourceIds);
+export const sourceIdSchema = z.enum([...topGameSourceIds, "manual", "scan", "steamImport"]);
 
 export const gamePlatformSchema = z.enum(["windows", "mac", "linux"]);
 export const gameLengthSchema = z.enum(["short", "medium", "long"]);

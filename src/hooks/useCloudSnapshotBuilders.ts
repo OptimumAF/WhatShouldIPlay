@@ -3,9 +3,10 @@ import { serializePortableSnapshot } from "../lib/portableSnapshot";
 import type { CloudSyncSnapshot } from "../lib/appSchemas";
 import type { ManualGameRecord } from "../lib/manualIdentity";
 import type { GameStatusRecord } from "../lib/appConfig";
+import type { SourceId } from "../types";
 
 interface SpinHistoryLike {
-  sources: string[];
+  sources: SourceId[];
 }
 
 interface AccountProfileLike<TSettings> {

@@ -1,6 +1,7 @@
 import { Trophy } from "lucide-react";
 import type { SourceId } from "../types";
 import { SourceAccentChips } from "./SourceAccentChips";
+import { AvailabilityNote } from "./AvailabilityNote";
 
 interface WinnerSummaryCardProps {
   prompt: string;
@@ -43,6 +44,7 @@ export function WinnerSummaryCard({
           {oddsLabel}: {oddsValue}
         </span>
       </div>
+      <AvailabilityNote sources={sources} />
       <div className="button-row">
         <button type="button" className="ghost" onClick={onMarkPlayed}>
           {playedLabel}

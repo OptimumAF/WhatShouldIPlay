@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 import { sanitizeManualRecords, type ManualGameRecord } from "../lib/manualIdentity";
 import type { GameStatusRecord } from "../lib/appConfig";
+import type { SourceId } from "../types";
 
 interface SnapshotSpinHistoryEntry {
-  sources: string[];
+  sources: SourceId[];
   [key: string]: unknown;
 }
 

@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@10.9.9",
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,7 +18,7 @@
     "test:e2e:headed": "playwright test --headed --project=chromium",
     "fetch:data": "node ./scripts/fetch-top-games.mjs",
     "build:all": "npm run fetch:data && npm run build",
-    "ci:web": "npm run typecheck && npm run build && npm run test:e2e:ci"
+    "ci:web": "npm run typecheck && npm run test:unit && npm run build && npm run test:e2e:ci"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

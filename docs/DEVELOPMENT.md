@@ -2,19 +2,18 @@
 
 ## Prerequisites
 
-- Node.js 20+
-- npm 10+
+- Node.js 22.23.3 from `.nvmrc` and npm 10.9.9
 - Rust stable toolchain
 
 ## Install
 
 ```bash
-npm install
+npm ci
 ```
 
 ## Common Tasks
 
-### Refresh source data
+### Refresh source data (uses live providers and rewrites the dataset)
 
 ```bash
 npm run fetch:data
@@ -26,25 +25,27 @@ npm run fetch:data
 npm run dev
 ```
 
-### Web quality checks
+### Web quality checks (use the committed dataset)
 
 ```bash
 npm run ci:web
 ```
 
+`ci:web` includes typecheck, unit tests, a build from committed data, and Chromium E2E. Run `npm run test:unit` alone for focused checks.
+
 ### Run desktop app
 
 ```bash
 cd apps/desktop
-cargo run
+cargo run --locked
 ```
 
 ## CI Expectations
 
 Before opening a pull request:
 
-- Run `npm run ci:web`
-- If desktop code changed, run `cargo build` in `apps/desktop`
+- Run `npm run ci:web` against the committed dataset
+- If desktop code changed, run `cargo fmt --check`, `cargo test --locked`, and `cargo build --locked` in `apps/desktop`
 
 ## Troubleshooting
 
@@ -53,4 +54,3 @@ Before opening a pull request:
   - Script automatically falls back to Steam charts API.
 - Stale data:
   - Re-run `npm run fetch:data` locally or trigger refresh workflow.
-

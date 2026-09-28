@@ -148,7 +148,7 @@ Default release scope includes M00–M10, with M11 as the release process. Any s
 
 - [ ] **M00.03 — Reconcile documentation with implementation.** Map each README/roadmap capability to code, UI reachability, client support, tests, and known limitations. Review available issues, PRs, and recent workflow outcomes to avoid duplicating work. Replace obsolete March–June 2026 target dates with an evidence-based status rather than invented new deadlines. **Done when:** a capability/parity matrix distinguishes implemented-and-verified, partial, absent, and unverified behavior.
 
-- [ ] **M00.04 — Make toolchains and checks reproducible.** Align the documented Node version with the locked Vite release; pin a compatible toolchain instead of blindly upgrading frameworks. Confirm Cargo lockfile policy and commit an application lockfile if absent. Add a small unit-test harness suitable for existing TypeScript pure functions and Rust engine tests. **Done when:** clean-checkout instructions are precise, lockfiles are intentional, and new unit commands actually run tests.
+- [x] **M00.04 — Make toolchains and checks reproducible.** Align the documented Node version with the locked Vite release; pin a compatible toolchain instead of blindly upgrading frameworks. Confirm Cargo lockfile policy and commit an application lockfile if absent. Add a small unit-test harness suitable for existing TypeScript pure functions and Rust engine tests. **Done when:** clean-checkout instructions are precise, lockfiles are intentional, and new unit commands actually run tests. **Evidence:** [verification-log.md](verification-log.md#2026-09-28--m0004-toolchains-and-lockfiles). `.nvmrc` pins Node 22.23.3 and package metadata pins npm 10.9.9; web workflows use that file. The desktop app's `Cargo.lock` is tracked, desktop build jobs use `--locked`, and existing Rust formatting was normalized. A clean `npm ci` plus `ci:web` passed under the pinned Node/npm pair, and Cargo fmt/check/test/build passed with the lockfile.
 
 - [ ] **M00.05 — Create reusable synthetic fixtures.** Add small fixtures for duplicate names with distinct IDs, the same game from several sources, manual games, absent metadata, source failure, old snapshots, and unusual weights. Never use actual user credentials or libraries. **Done when:** fixtures can drive repeatable tests without live APIs and a recorded first failure can be reproduced deterministically.
 
@@ -365,12 +365,13 @@ Run from the repository root after selecting the compatible toolchain and inspec
 ```bash
 npm ci
 npm run typecheck
+npm run test:unit
 npm run build
 npx playwright install chromium
 npm run test:e2e:ci
 ```
 
-`npm run ci:web` currently combines typecheck, build, and Chromium E2E. It does not represent every accessibility check in the GitHub workflow. `npm run fetch:data` accesses live providers and updates the dataset; run it deliberately for ingestion verification, not as a prerequisite for every local build. `npm run build:all` includes that live refresh and is not the deterministic build path. [S04, S16]
+`npm run ci:web` now combines typecheck, unit tests, build, and Chromium E2E. It does not represent every accessibility check in the GitHub workflow. `npm run fetch:data` accesses live providers and updates the dataset; run it deliberately for ingestion verification, not as a prerequisite for every local build. `npm run build:all` includes that live refresh and is not the deterministic build path. [S04, S16]
 
 Browser downloads or system libraries may require an environment-specific setup step. Record unavailable dependencies instead of repeatedly retrying without a new hypothesis.
 
@@ -380,12 +381,12 @@ Inspect the manifest, Cargo toolchain, and OS dependencies first:
 
 ```bash
 cargo fmt --manifest-path apps/desktop/Cargo.toml --check
-cargo check --manifest-path apps/desktop/Cargo.toml
-cargo test --manifest-path apps/desktop/Cargo.toml
-cargo check --manifest-path apps/desktop/Cargo.toml --features deep-shortcut-scan
+cargo check --manifest-path apps/desktop/Cargo.toml --locked
+cargo test --manifest-path apps/desktop/Cargo.toml --locked
+cargo check --manifest-path apps/desktop/Cargo.toml --locked --features deep-shortcut-scan
 ```
 
-Once the application's Cargo lockfile is deliberately established, use `--locked` for reproducible check/test/build jobs. Add appropriate lint and feature-test jobs after establishing the baseline. A command reporting zero tests is not proof of domain correctness. Compilation on one operating system does not establish GUI or scanning support on the others.
+The desktop application's Cargo lockfile is tracked; use `--locked` for reproducible check/test/build jobs. Add appropriate lint and feature-test jobs after establishing the baseline. A command reporting zero tests is not proof of domain correctness. Compilation on one operating system does not establish GUI or scanning support on the others.
 
 ### Required scenario coverage
 

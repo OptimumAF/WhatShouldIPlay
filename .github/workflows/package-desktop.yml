@@ -51,6 +51,11 @@ jobs:
       - name: Install cargo-bundle
         run: cargo install cargo-bundle --locked
 
+      - name: Build locked desktop binary (Linux/macOS)
+        if: ${{ matrix.platform != 'windows' }}
+        run: cargo build --release --locked
+        working-directory: apps/desktop
+
       - name: Build installer package (Linux/macOS)
         if: ${{ matrix.platform != 'windows' }}
         run: cargo bundle --release --format ${{ matrix.bundle_format }}
@@ -58,7 +63,7 @@ jobs:
 
       - name: Build Windows package (portable exe)
         if: ${{ matrix.platform == 'windows' }}
-        run: cargo build --release
+        run: cargo build --release --locked
         working-directory: apps/desktop
 
       - name: Zip macOS app bundle
@@ -142,4 +147,3 @@ jobs:
           files: |
             apps/desktop/target/release/bundle/osx/*.app.zip
             apps/desktop/target/release/bundle/SHA256SUMS-${{ matrix.platform }}.txt
-

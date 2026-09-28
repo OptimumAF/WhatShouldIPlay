@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -29,6 +29,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Build
         run: npm run build
@@ -85,5 +88,3 @@ jobs:
           fi
 
           npx -y @axe-core/cli@4.10.2 http://127.0.0.1:4173 --chromedriver-path "$CHROMEDRIVER_TEST_PATH" --exit
-
-

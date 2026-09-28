@@ -29,7 +29,7 @@ jobs:
           workspaces: apps/desktop
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --locked
         working-directory: apps/desktop
 
       - name: Sign executable (optional)
@@ -79,4 +79,3 @@ jobs:
           files: |
             apps/desktop/target/release/*.exe
             apps/desktop/target/release/SHA256SUMS.txt
-

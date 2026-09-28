@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -45,4 +45,3 @@ jobs:
         if: always()
         run: |
           echo "Data refresh completed. If PR creation is blocked by repository policy, use branch chore/refresh-top-games to open a PR manually."
-

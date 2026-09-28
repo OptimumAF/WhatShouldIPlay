@@ -52,7 +52,7 @@ jobs:
           workspaces: apps/desktop
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --locked
         working-directory: apps/desktop
 
       - name: Sign executable (optional)
@@ -103,4 +103,3 @@ jobs:
           path: |
             apps/desktop/target/release/${{ matrix.binary_glob }}
             apps/desktop/target/release/SHA256SUMS.txt
-

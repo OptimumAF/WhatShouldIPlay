@@ -124,3 +124,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `npm run build`: passed with committed data. `npx playwright test --project=chromium --workers=4`: **16 passed / 16**. `npm run test:e2e:ci` at its default ten local workers: **16 passed / 16**. Before the fix, two full-suite runs had **13 passed / 15** and **12 passed / 15**, respectively, with navigation-context resets or settings waits; those failures are not treated as passing evidence.
 
 **Limits:** The replacement behavior was tested with synthetic controller objects, not by installing a second production worker. Full browser runs still use local preview rather than a deployed GitHub Pages scope.
+
+## 2026-09-28 — M00.04 toolchains and lockfiles
+
+**Task:** M00.04 (DONE).
+**Implementation:** `.nvmrc` pins Node 22.23.3, and package metadata names npm 10.9.9 and the supported Node 22 range. All three web workflows read `.nvmrc`; README and development instructions now use `npm ci` and the committed dataset for ordinary builds. `ci:web` and web CI run the TypeScript unit suite. The desktop application `Cargo.lock` is tracked; desktop build jobs use `--locked`, and the bundling job first builds the binary with `--locked`. Pre-existing Rust formatting differences were normalized without changing behavior.
+
+- The installed Vite 7.3.1 manifest requires Node `^20.19.0 || >=22.12.0`. Official Node distribution metadata showed 22.23.3 with npm 10.9.9 on the current LTS line. `npx -y -p node@22.23.3 -p npm@10.9.9 -c "node --version"` printed `v22.23.3`; the corresponding npm command printed `10.9.9`.
+- `npx -y -p node@22.23.3 -p npm@10.9.9 -c "npm ci"`: passed, installed 129 packages, and reported the same 9 audit findings (2 low, 1 moderate, 6 high) tracked under M10.04.
+- `npx -y -p node@22.23.3 -p npm@10.9.9 -c "npm run ci:web"`: passed typecheck, **9/9** unit tests, build from committed data, and **16/16** Chromium E2E tests.
+- `cargo fmt --manifest-path apps/desktop/Cargo.toml --check`: passed after normalization. `cargo check --manifest-path apps/desktop/Cargo.toml --locked`: passed. `cargo test --manifest-path apps/desktop/Cargo.toml --locked`: **2 passed / 2**. `cargo build --manifest-path apps/desktop/Cargo.toml --locked`: passed. `cargo check --manifest-path apps/desktop/Cargo.toml --locked --features deep-shortcut-scan`: passed on Windows.
+
+**Limits:** Local Rust verification used Windows only; macOS/Linux and the `cargo-bundle` packaging step were not run. The bundler does not expose a documented `--locked` flag, so its workflow performs a locked binary build first. The 9 npm audit findings remain M10.04 work; no dependency versions were upgraded here.

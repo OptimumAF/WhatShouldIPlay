@@ -59,36 +59,35 @@ Live site:
 
 ### Prerequisites
 
-- Node.js 20+
-- npm 10+
+- Node.js 22.23.3 (see `.nvmrc`; Vite 7 requires at least Node 22.12 on this line)
+- npm 10.9.9 (bundled with the pinned Node release)
 - Rust toolchain (for desktop app only)
 
 ### Web App
 
 ```bash
-npm install
-npm run fetch:data
+npm ci
 npm run dev
 ```
 
 Build for production:
 
 ```bash
-npm run build:all
+npm run build
 ```
 
 ### Desktop App
 
 ```bash
 cd apps/desktop
-cargo run
+cargo run --locked
 ```
 
 Enable optional shortcut crawling scan:
 
 ```bash
 cd apps/desktop
-cargo run --features deep-shortcut-scan
+cargo run --locked --features deep-shortcut-scan
 ```
 
 Configure Windows code-signing secrets for CI (requires a `.pfx` code-signing cert):
@@ -101,7 +100,7 @@ Release build:
 
 ```bash
 cd apps/desktop
-cargo build --release
+cargo build --locked --release
 ```
 
 ## NPM Scripts
@@ -111,7 +110,11 @@ cargo build --release
 - `npm run build`: Build web app
 - `npm run fetch:data`: Refresh source data JSON
 - `npm run build:all`: Refresh data and build web app
+- `npm run test:unit`: Run pure TypeScript regression tests
+- `npm run test:e2e:ci`: Run Chromium browser tests against a built `dist`
 - `npm run ci:web`: Run web CI checks locally
+
+`npm run fetch:data` and `npm run build:all` access live providers and rewrite the dataset. Use `npm run build` for a deterministic build from the committed `public/data/top-games.json`.
 
 ## Automation
 

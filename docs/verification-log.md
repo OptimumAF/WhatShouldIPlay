@@ -102,3 +102,25 @@ Record actual checks against the committed dataset and note environmental limits
 - `npx playwright test tests/e2e/service-worker-cache.spec.ts --project=chromium`: **1 passed / 1**. In a fresh browser context, it seeded a sibling sentinel cache, the old unscoped cache name, and an obsolete cache for the app scope before registration. Activation preserved the first two, deleted only the scoped obsolete name, and stored the fetched top-games response in this scope's data cache.
 
 **Limits:** The browser test used the local preview root scope; the unit test exercised a `/WhatShouldIPlay/` deployment scope. Cross-version upgrade of an existing installed user's worker was not exercised. Retaining legacy unscoped caches may consume storage until browser eviction or user cleanup, but avoids deleting data whose owner cannot be proven.
+
+## 2026-09-28 — M00.02 fresh profile and suite recovery
+
+**Task:** M00.02 (VERIFY); M01.05 (additional browser journey).
+**Implementation:** Updated three pre-existing Chromium assertions to navigate the current History, Rules, Advanced, and Sources tabs. Added a fresh-profile journey that completes onboarding, configures an account-free manual-only pool, spins twice, checks two history entries, reloads, and checks retained source, animation, manual-library, and history settings. The first run found a genuine repeat-spin click failure: a transformed decorative wheel label intercepted the button. Both clients' wheel CSS now ignores pointer events so the control remains clickable.
+
+- Initial `npx playwright test tests/e2e/critical-flows.spec.ts tests/e2e/storage-migration.spec.ts --project=chromium` after tab-navigation updates: **4 passed / 4**; the untouched-base run had **1 passed, 3 failed / 4** because the old assertions targeted hidden panels.
+- Fresh-profile Chromium test before the wheel pointer-events fix: **1 failed / 1** after the first spin; the second button click was intercepted by `.wheel-label`. After the CSS fix and a correction to the test's preset expectation (changing reduced motion correctly marks the preset custom): **1 passed / 1**. The test uses ordinary clicks without force.
+- `cargo check --manifest-path apps/desktop/Cargo.toml`: passed after the matching decorative-wheel CSS change. No desktop repeat-spin click was exercised.
+
+**Limits:** The unchanged base's original web checks are recorded in the baseline entry. The fresh-profile journey and desktop startup happened later on this branch, so they do not prove the same journey at the untouched base SHA. M00.02 remains unchecked. No live provider credentials or fresh data download were used.
+
+## 2026-09-28 — M01.07 first-claim reload
+
+**Task:** M01.07 (DONE).
+**Reason and dependency:** Two full Chromium runs lost page contexts or timed out while the first service worker claimed a page. `useRuntimeEffects` reloaded on every `controllerchange`. M01.07 was added after M01.06 because the activation check made this path visible; the reload race blocked reliable M00.02 journeys and credential regression runs.
+**Implementation:** The runtime effect now remembers the previous controller. Initial claim updates that reference without reloading. Replacement of an existing controller still reloads to apply a confirmed update.
+
+- A deterministic Chromium test stubs worker registration and dispatches controller changes: before the fix, the first synthetic claim navigated twice (**1 failed / 1**); after the fix, first claim stays on the page and replacement causes one reload (**1 passed / 1**).
+- `npm run build`: passed with committed data. `npx playwright test --project=chromium --workers=4`: **16 passed / 16**. `npm run test:e2e:ci` at its default ten local workers: **16 passed / 16**. Before the fix, two full-suite runs had **13 passed / 15** and **12 passed / 15**, respectively, with navigation-context resets or settings waits; those failures are not treated as passing evidence.
+
+**Limits:** The replacement behavior was tested with synthetic controller objects, not by installing a second production worker. Full browser runs still use local preview rather than a deployed GitHub Pages scope.

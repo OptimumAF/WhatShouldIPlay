@@ -446,6 +446,7 @@ button:disabled {
 .wheel {
   width: 100%;
   height: 100%;
+  pointer-events: none;
   border-radius: 50%;
   border: 10px solid #10263a;
   background: var(--wheel-bg, #f4f0e6);

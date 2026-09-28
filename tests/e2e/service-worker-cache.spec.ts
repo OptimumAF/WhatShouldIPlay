@@ -36,3 +36,41 @@ test("activation preserves sibling caches and caches this app's data under its s
   expect(result.responseOk).toBe(true);
   expect(result.cached).toBe(true);
 });
+
+test("first service-worker claim does not reload the active app page", async ({ page }) => {
+  await page.addInitScript(() => {
+    const serviceWorker = navigator.serviceWorker;
+    const addListener = serviceWorker.addEventListener.bind(serviceWorker);
+    let controller: object | null = null;
+    Object.defineProperty(serviceWorker, "controller", { configurable: true, get: () => controller });
+    (window as any).__setTestController = (id: number) => { controller = { id }; };
+    (window as any).__controllerListenerCount = 0;
+    serviceWorker.addEventListener = ((type: string, listener: EventListener) => {
+      if (type === "controllerchange") (window as any).__controllerListenerCount += 1;
+      addListener(type, listener);
+    }) as typeof serviceWorker.addEventListener;
+    serviceWorker.register = (() => new Promise(() => undefined)) as typeof serviceWorker.register;
+  });
+  let appNavigations = 0;
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame() && new URL(frame.url()).pathname === "/") {
+      appNavigations += 1;
+    }
+  });
+  await page.goto("/");
+  await page.waitForFunction(() => (window as any).__controllerListenerCount > 0);
+  await page.evaluate(() => {
+    (window as any).__setTestController(1);
+    navigator.serviceWorker.dispatchEvent(new Event("controllerchange"));
+  });
+  await page.waitForTimeout(300);
+  expect(appNavigations).toBe(1);
+
+  const replacementNavigation = page.waitForEvent("framenavigated", (frame) => frame === page.mainFrame());
+  await page.evaluate(() => {
+    (window as any).__setTestController(2);
+    navigator.serviceWorker.dispatchEvent(new Event("controllerchange"));
+  });
+  await replacementNavigation;
+  expect(appNavigations).toBe(2);
+});

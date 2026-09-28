@@ -67,6 +67,7 @@ test("spins and records a winner in history", async ({ page }) => {
   const winnerName = (await winnerCard.locator("strong").textContent())?.trim();
   expect(winnerName && winnerName.length > 0).toBeTruthy();
 
+  await page.getByRole("tab", { name: "History" }).click();
   const historyItems = page.locator(".history-list li");
   await expect(historyItems.first()).toBeVisible();
   await expect(historyItems.first()).toContainText(winnerName ?? "");
@@ -79,8 +80,10 @@ test("keeps settings hidden by default and reveals advanced options on demand", 
   await expect(showSettingsButton).toBeVisible();
   await showSettingsButton.click();
 
-  await expect(page.getByRole("heading", { name: "Mode Presets" })).toBeVisible();
+  await page.locator(".settings-section-switcher").getByRole("tab", { name: "Rules" }).click();
+  await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();
 
+  await page.locator(".settings-section-switcher").getByRole("tab", { name: "Advanced" }).click();
   const showAdvancedButton = page.getByRole("button", { name: "Show Advanced Options" });
   await showAdvancedButton.click();
 

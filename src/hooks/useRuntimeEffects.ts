@@ -152,8 +152,14 @@ export const useRuntimeEffects = ({
       void refreshUpdateState();
     };
 
+    let previousController = navigator.serviceWorker.controller;
     const onControllerChange = () => {
-      window.location.reload();
+      const nextController = navigator.serviceWorker.controller;
+      const replacedActiveWorker = Boolean(previousController && nextController && previousController !== nextController);
+      previousController = nextController;
+      if (replacedActiveWorker) {
+        window.location.reload();
+      }
     };
 
     window.addEventListener(updateReadyEventName, onUpdateReady);

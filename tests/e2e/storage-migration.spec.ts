@@ -41,11 +41,13 @@ test("sanitizes legacy localStorage settings into stable defaults", async ({ pag
 
   await page.goto("/");
   await page.getByRole("button", { name: "Show Settings" }).click();
+  await page.locator(".settings-section-switcher").getByRole("tab", { name: "Rules" }).click();
 
   await expect(page.getByLabel("Spin Speed Profile")).toHaveValue("balanced");
   await expect(page.getByLabel("Cooldown spins")).toHaveValue("20");
   await expect(page.getByLabel("Reduced spin animation")).not.toBeChecked();
 
+  await page.locator(".settings-section-switcher").getByRole("tab", { name: "Sources" }).click();
   await expect(page.getByRole("checkbox", { name: /^Manual\b/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /^itch\.io\b/ })).not.toBeChecked();
 });

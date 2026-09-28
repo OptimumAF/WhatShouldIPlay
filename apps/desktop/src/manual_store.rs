@@ -8,10 +8,14 @@ use std::{
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
-use crate::{normalize_name, DesktopLocalState, ManualGameRecord};
+use crate::{
+    normalize_name, provenance::ids_from_legacy_labels, DesktopLocalState, ManualGameRecord,
+    SpinHistoryItem,
+};
 
 const MANUAL_STORE_VERSION: u32 = 1;
-const DESKTOP_STATE_VERSION: u32 = 2;
+const LEGACY_DESKTOP_STATE_VERSION: u32 = 2;
+const DESKTOP_STATE_VERSION: u32 = 3;
 
 #[derive(Deserialize, Serialize)]
 struct ManualStore {
@@ -24,6 +28,32 @@ struct ManualStore {
 struct DesktopStateFile {
     version: u32,
     state: DesktopLocalState,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacyDesktopStateFile {
+    version: u32,
+    state: LegacyDesktopLocalState,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacyDesktopLocalState {
+    manual_records: Vec<ManualGameRecord>,
+    history: Vec<LegacySpinHistoryItem>,
+    played_ids: Vec<String>,
+    completed_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacySpinHistoryItem {
+    id: Option<String>,
+    name: String,
+    display_name: String,
+    sources: String,
+    odds: f64,
 }
 
 fn storage_path() -> io::Result<PathBuf> {
@@ -47,11 +77,27 @@ fn current_storage_path() -> io::Result<PathBuf> {
     })?;
     Ok(app_data
         .join("WhatShouldIPlay")
+        .join("desktop-state.v3.json"))
+}
+
+fn legacy_desktop_state_path() -> io::Result<PathBuf> {
+    let app_data = dirs::data_local_dir().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "local app-data directory unavailable",
+        )
+    })?;
+    Ok(app_data
+        .join("WhatShouldIPlay")
         .join("desktop-state.v2.json"))
 }
 
 pub(crate) fn load_desktop_state() -> io::Result<DesktopLocalState> {
-    load_desktop_state_at(&current_storage_path()?, &storage_path()?)
+    load_desktop_state_at(
+        &current_storage_path()?,
+        &legacy_desktop_state_path()?,
+        &storage_path()?,
+    )
 }
 
 pub(crate) fn save_desktop_state(state: &DesktopLocalState) -> io::Result<()> {
@@ -204,6 +250,10 @@ fn validate_desktop_state(state: &DesktopLocalState) -> io::Result<()> {
         {
             return Err(invalid_data("invalid spin history entry"));
         }
+        let mut sources_seen = HashSet::new();
+        if !item.source_ids.iter().all(|id| sources_seen.insert(*id)) {
+            return Err(invalid_data("duplicate spin history source ID"));
+        }
     }
     Ok(())
 }
@@ -233,14 +283,15 @@ fn save_at(path: &Path, records: &[ManualGameRecord]) -> io::Result<()> {
     write_atomically(path, &payload)
 }
 
-fn load_desktop_state_at(current: &Path, legacy: &Path) -> io::Result<DesktopLocalState> {
+fn load_desktop_state_at(
+    current: &Path,
+    legacy_state: &Path,
+    legacy_manual: &Path,
+) -> io::Result<DesktopLocalState> {
     let content = match fs::read_to_string(current) {
         Ok(content) => content,
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            return Ok(DesktopLocalState {
-                manual_records: load_at(legacy)?,
-                ..DesktopLocalState::default()
-            });
+            return load_legacy_desktop_state_at(legacy_state, legacy_manual);
         }
         Err(error) => return Err(error),
     };
@@ -250,6 +301,47 @@ fn load_desktop_state_at(current: &Path, legacy: &Path) -> io::Result<DesktopLoc
     }
     validate_desktop_state(&stored.state)?;
     Ok(stored.state)
+}
+
+fn load_legacy_desktop_state_at(
+    legacy_state: &Path,
+    legacy_manual: &Path,
+) -> io::Result<DesktopLocalState> {
+    let content = match fs::read_to_string(legacy_state) {
+        Ok(content) => content,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return Ok(DesktopLocalState {
+                manual_records: load_at(legacy_manual)?,
+                ..DesktopLocalState::default()
+            });
+        }
+        Err(error) => return Err(error),
+    };
+    let stored: LegacyDesktopStateFile =
+        serde_json::from_str(&content).map_err(io::Error::other)?;
+    if stored.version != LEGACY_DESKTOP_STATE_VERSION {
+        return Err(invalid_data("unsupported legacy desktop state version"));
+    }
+    let state = DesktopLocalState {
+        manual_records: stored.state.manual_records,
+        history: stored
+            .state
+            .history
+            .into_iter()
+            .map(|item| SpinHistoryItem {
+                id: item.id,
+                name: item.name,
+                display_name: item.display_name,
+                source_ids: ids_from_legacy_labels(&item.sources),
+                sources: item.sources,
+                odds: item.odds,
+            })
+            .collect(),
+        played_ids: stored.state.played_ids,
+        completed_ids: stored.state.completed_ids,
+    };
+    validate_desktop_state(&state)?;
+    Ok(state)
 }
 
 fn save_desktop_state_at(path: &Path, state: &DesktopLocalState) -> io::Result<()> {
@@ -302,13 +394,92 @@ mod tests {
         append_manual_records, load_at, load_desktop_state_at, manual_record_label,
         rename_manual_record, save_at, save_desktop_state_at, set_manual_status, ManualStatus,
     };
-    use crate::{ManualGameRecord, SpinHistoryItem};
+    use crate::{provenance::SourceId, ManualGameRecord, SpinHistoryItem};
+
+    #[test]
+    fn version_two_history_labels_migrate_to_canonical_sources_without_overwrite() {
+        let directory = tempfile::tempdir().unwrap();
+        let current_path = directory.path().join("desktop-state.v3.json");
+        let version_two_path = directory.path().join("desktop-state.v2.json");
+        let manual_path = directory.path().join("manual-games.v1.json");
+        let version_two = serde_json::json!({
+            "version": 2,
+            "state": {
+                "manual_records": [],
+                "history": [
+                    {"id":"steam:10101","name":"Echo Harbor","display_name":"Echo Harbor",
+                     "sources":"SteamCharts + Steam Import","odds":0.5},
+                    {"id":null,"name":"Unknown Adventure","display_name":"Unknown Adventure",
+                     "sources":"Unknown Provider","odds":0.5}
+                ],
+                "played_ids": [],
+                "completed_ids": []
+            }
+        });
+        let original = serde_json::to_vec(&version_two).unwrap();
+        std::fs::write(&version_two_path, &original).unwrap();
+
+        let migrated =
+            load_desktop_state_at(&current_path, &version_two_path, &manual_path).unwrap();
+        assert_eq!(
+            migrated.history[0].source_ids,
+            [SourceId::Steamcharts, SourceId::SteamImport]
+        );
+        assert_eq!(migrated.history[0].sources, "SteamCharts + Steam Import");
+        assert!(migrated.history[1].source_ids.is_empty());
+        assert_eq!(migrated.history[1].sources, "Unknown Provider");
+        assert!(!current_path.exists());
+        assert_eq!(std::fs::read(&version_two_path).unwrap(), original);
+
+        save_desktop_state_at(&current_path, &migrated).unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&current_path).unwrap()).unwrap();
+        assert_eq!(saved["version"], 3);
+        assert_eq!(
+            saved["state"]["history"][0]["source_ids"],
+            serde_json::json!(["steamcharts", "steamImport"]),
+        );
+        assert_eq!(
+            load_desktop_state_at(&current_path, &version_two_path, &manual_path).unwrap(),
+            migrated,
+        );
+        assert_eq!(std::fs::read(&version_two_path).unwrap(), original);
+    }
+
+    #[test]
+    fn malformed_or_unsupported_version_two_state_blocks_fallback_without_replacement() {
+        let directory = tempfile::tempdir().unwrap();
+        let current_path = directory.path().join("desktop-state.v3.json");
+        let version_two_path = directory.path().join("desktop-state.v2.json");
+        let manual_path = directory.path().join("manual-games.v1.json");
+        let legacy_records = vec![ManualGameRecord {
+            id: "manual:synthetic-one".into(),
+            name: "Echo Harbor".into(),
+        }];
+        save_at(&manual_path, &legacy_records).unwrap();
+        let original_manual = std::fs::read(&manual_path).unwrap();
+
+        for content in [
+            "{broken".to_string(),
+            serde_json::json!({"version": 99, "state": {
+                "manual_records": [], "history": [], "played_ids": [], "completed_ids": []
+            }})
+            .to_string(),
+        ] {
+            std::fs::write(&version_two_path, &content).unwrap();
+            assert!(load_desktop_state_at(&current_path, &version_two_path, &manual_path).is_err());
+            assert_eq!(std::fs::read_to_string(&version_two_path).unwrap(), content);
+            assert_eq!(std::fs::read(&manual_path).unwrap(), original_manual);
+            assert!(!current_path.exists());
+        }
+    }
 
     #[test]
     fn version_one_manual_data_migrates_with_id_status_and_history_round_trip() {
         let directory = tempfile::tempdir().unwrap();
         let legacy_path = directory.path().join("manual-games.v1.json");
-        let current_path = directory.path().join("desktop-state.v2.json");
+        let legacy_state_path = directory.path().join("desktop-state.v2.json");
+        let current_path = directory.path().join("desktop-state.v3.json");
         let fixture: serde_json::Value = serde_json::from_str(include_str!(
             "../../../tests/fixtures/selection-edge-cases.json"
         ))
@@ -316,7 +487,8 @@ mod tests {
         let records: Vec<ManualGameRecord> =
             serde_json::from_value(fixture["manualGames"].clone()).unwrap();
         save_at(&legacy_path, &records).unwrap();
-        let mut state = load_desktop_state_at(&current_path, &legacy_path).unwrap();
+        let mut state =
+            load_desktop_state_at(&current_path, &legacy_state_path, &legacy_path).unwrap();
         assert_eq!(state.manual_records, records);
         assert!(state.played_ids.is_empty());
         assert!(state.completed_ids.is_empty());
@@ -334,13 +506,15 @@ mod tests {
             name: "Echo Harbor".into(),
             display_name: "Echo Harbor (1)".into(),
             sources: "Manual".into(),
+            source_ids: vec![SourceId::Manual],
             odds: 0.5,
         });
         state.manual_records =
             rename_manual_record(&state.manual_records, "manual:synthetic-one", "New Harbor")
                 .unwrap();
         save_desktop_state_at(&current_path, &state).unwrap();
-        let restored = load_desktop_state_at(&current_path, &legacy_path).unwrap();
+        let restored =
+            load_desktop_state_at(&current_path, &legacy_state_path, &legacy_path).unwrap();
         assert_eq!(restored, state);
         assert_eq!(
             load_at(&legacy_path).unwrap(),
@@ -355,13 +529,13 @@ mod tests {
         assert_eq!(std::fs::read(&current_path).unwrap(), valid_current);
 
         std::fs::write(&current_path, b"{broken").unwrap();
-        assert!(load_desktop_state_at(&current_path, &legacy_path).is_err());
+        assert!(load_desktop_state_at(&current_path, &legacy_state_path, &legacy_path).is_err());
         assert_eq!(std::fs::read(&current_path).unwrap(), b"{broken");
         assert_eq!(load_at(&legacy_path).unwrap(), records);
 
         let unsupported = serde_json::json!({"version": 99, "state": state}).to_string();
         std::fs::write(&current_path, &unsupported).unwrap();
-        assert!(load_desktop_state_at(&current_path, &legacy_path).is_err());
+        assert!(load_desktop_state_at(&current_path, &legacy_state_path, &legacy_path).is_err());
         assert_eq!(std::fs::read_to_string(&current_path).unwrap(), unsupported);
         assert_eq!(load_at(&legacy_path).unwrap(), records);
     }

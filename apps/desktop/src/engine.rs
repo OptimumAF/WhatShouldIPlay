@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem, WeightedPoolGame,
+    provenance::SourceId, source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem,
+    WeightedPoolGame,
 };
 
 #[derive(Clone, Debug)]
@@ -61,6 +62,7 @@ impl SpinOperation {
                 name: selected.name.clone(),
                 display_name: selected.display_name.clone(),
                 sources: selected.sources.join(" + "),
+                source_ids: selected.source_ids.clone(),
                 odds: effective_weights[winner_index] / total,
             },
             wheel_labels: wheel_labels.to_vec(),
@@ -108,7 +110,7 @@ pub(crate) fn build_weighted_pool(
     let mut pool = HashMap::<String, WeightedPoolGame>::new();
 
     let mut insert = |name: &str,
-                      source: &str,
+                      source: SourceId,
                       id: Option<String>,
                       base_weight: f64,
                       rank: Option<usize>,
@@ -117,16 +119,9 @@ pub(crate) fn build_weighted_pool(
         if trimmed.is_empty() {
             return;
         }
-        let source_id = match source {
-            "SteamCharts" => "steamcharts",
-            "SteamDB" => "steamdb",
-            "TwitchMetrics" => "twitchmetrics",
-            "Steam Import" => "steamImport",
-            "Manual" => "manual",
-            "Scanned" => "scan",
-            _ => "unknown",
-        };
-        let key = id.unwrap_or_else(|| format!("source:{source_id}:{}", trimmed.to_lowercase()));
+        let label = source.display_label();
+        let key =
+            id.unwrap_or_else(|| format!("source:{}:{}", source.as_str(), trimmed.to_lowercase()));
         let score_weight = if weighted_mode {
             compute_weight(base_weight, rank, score)
         } else {
@@ -134,8 +129,9 @@ pub(crate) fn build_weighted_pool(
         };
         if let Some(existing) = pool.get_mut(&key) {
             existing.weight += score_weight;
-            if !existing.sources.iter().any(|entry| entry == source) {
-                existing.sources.push(source.to_string());
+            if !existing.source_ids.contains(&source) {
+                existing.sources.push(label.to_string());
+                existing.source_ids.push(source);
             }
         } else {
             pool.insert(
@@ -144,7 +140,8 @@ pub(crate) fn build_weighted_pool(
                     id: key,
                     display_name: trimmed.clone(),
                     name: trimmed,
-                    sources: vec![source.to_string()],
+                    sources: vec![label.to_string()],
+                    source_ids: vec![source],
                     weight: score_weight,
                 },
             );
@@ -155,7 +152,7 @@ pub(crate) fn build_weighted_pool(
         for game in steamcharts {
             insert(
                 &game.name,
-                "SteamCharts",
+                SourceId::Steamcharts,
                 game.app_id
                     .filter(|id| *id > 0)
                     .map(|id| format!("steam:{id}")),
@@ -169,7 +166,7 @@ pub(crate) fn build_weighted_pool(
         for game in steamdb {
             insert(
                 &game.name,
-                "SteamDB",
+                SourceId::Steamdb,
                 game.app_id
                     .filter(|id| *id > 0)
                     .map(|id| format!("steam:{id}")),
@@ -183,7 +180,7 @@ pub(crate) fn build_weighted_pool(
         for game in twitch {
             insert(
                 &game.name,
-                "TwitchMetrics",
+                SourceId::Twitchmetrics,
                 game.app_id
                     .filter(|id| *id > 0)
                     .map(|id| format!("steam:{id}")),
@@ -197,7 +194,7 @@ pub(crate) fn build_weighted_pool(
         for game in steam_import {
             insert(
                 &game.name,
-                "Steam Import",
+                SourceId::SteamImport,
                 game.app_id
                     .filter(|id| *id > 0)
                     .map(|id| format!("steam:{id}")),
@@ -211,7 +208,7 @@ pub(crate) fn build_weighted_pool(
         for game in manual {
             insert(
                 &game.name,
-                "Manual",
+                SourceId::Manual,
                 Some(game.id.clone()),
                 manual_weight,
                 None,
@@ -221,7 +218,7 @@ pub(crate) fn build_weighted_pool(
     }
     if include_scanned {
         for game in scanned {
-            insert(game, "Scanned", None, scanned_weight, None, None);
+            insert(game, SourceId::Scan, None, scanned_weight, None, None);
         }
     }
 
@@ -392,6 +389,7 @@ mod tests {
         build_weighted_pool, derive_wheel_data, exclude_statused_games, spin_target_rotation,
         take_spin_result, SpinOperation,
     };
+    use crate::provenance::SourceId;
     use crate::{
         online_data_from_contract, ManualGameRecord, SpinHistoryItem, TopGamesPayloadContract,
         WeightedPoolGame,
@@ -440,6 +438,10 @@ mod tests {
             vec!["steam:10101", "steam:20202"]
         );
         assert_eq!(pool[0].sources, ["SteamCharts", "SteamDB"]);
+        assert_eq!(
+            pool[0].source_ids,
+            [SourceId::Steamcharts, SourceId::Steamdb]
+        );
         let operation = SpinOperation::new(
             10,
             &pool,
@@ -463,6 +465,7 @@ mod tests {
             name: "Echo Harbor".into(),
             display_name: "Echo Harbor".into(),
             sources: "SteamDB".into(),
+            source_ids: vec![SourceId::Steamdb],
             odds: 0.5,
         };
         let legacy_next = derive_wheel_data(&pool, &[legacy], 1, false);
@@ -545,6 +548,7 @@ mod tests {
             name: "Echo Harbor".into(),
             display_name: "Echo Harbor (1)".into(),
             sources: "Manual".into(),
+            source_ids: vec![SourceId::Manual],
             odds: 0.5,
         };
         let after_rename = derive_wheel_data(&renamed_pool, &[prior_history], 1, false);
@@ -608,6 +612,7 @@ mod tests {
                 name: "Alpha".into(),
                 display_name: "Alpha".into(),
                 sources: vec!["Manual".into()],
+                source_ids: vec![SourceId::Manual],
                 weight: 1.0,
             },
             WeightedPoolGame {
@@ -615,6 +620,7 @@ mod tests {
                 name: "Beta".into(),
                 display_name: "Beta".into(),
                 sources: vec!["Steam Import".into()],
+                source_ids: vec![SourceId::SteamImport],
                 weight: 2.0,
             },
         ];

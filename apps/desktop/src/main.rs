@@ -7,6 +7,7 @@ mod contracts;
 mod data;
 mod engine;
 mod manual_store;
+mod provenance;
 mod ui;
 use contracts::TopGamesPayloadContract;
 use data::refresh_scanned_games;
@@ -50,6 +51,7 @@ struct WeightedPoolGame {
     name: String,
     display_name: String,
     sources: Vec<String>,
+    source_ids: Vec<provenance::SourceId>,
     weight: f64,
 }
 
@@ -60,6 +62,7 @@ struct SpinHistoryItem {
     name: String,
     display_name: String,
     sources: String,
+    source_ids: Vec<provenance::SourceId>,
     odds: f64,
 }
 

@@ -207,3 +207,14 @@ Record actual checks against the committed dataset and note environmental limits
 - Pinned Node 22.23.3/npm 10.9.9 `npm run ci:web` passed typecheck, **19/19** unit tests, production build, and **22/22** Chromium tests. `node --check scripts/fetch-top-games.mjs` passed. `git diff --check` passed.
 
 **Limits:** The helper and call sites were checked without network access to live providers; this does not establish published feed freshness or provider reliability. The desktop shared-feed adapter and name-keyed pool remain M02.01c2 work. No desktop interaction was performed in this chunk.
+
+## 2026-09-28 — M02.01c2a desktop provider identity
+
+**Task:** M02.01c2a (DONE); M02.01c2, M02.01c, and M02.01 remain IN_PROGRESS.
+**Reason and dependency:** The desktop feed contract parsed App IDs but `map_contract_games` discarded them, `dedupe_game_items` and the wheel pool merged equal titles, and Steam import explicitly ignored `appid`. Provider IDs can be carried without changing the currently absent manual-library persistence. c2a/c2b separate these checks while retaining the full c2 interactive and manual identity acceptance.
+**Implementation:** `GameItem` now carries optional App ID. Shared-feed mapping, direct Steam source links, Steam API fallback, and Steam import preserve it. Deduplication uses `steam:<id>` when known and a scoped name key otherwise. `WeightedPoolGame` carries the key into the immutable spin result; new history stores it and cooldown matches IDs, while old name-only history still blocks by title. The pool sorts equal names by ID for deterministic display order.
+
+- Before the fix, the new Rust fixture regression failed **1/4** because SteamDB App ID 20202 was dropped by the adapter (`left: 1, right: 2`). The fixture now reaches a two-entry pool: App ID 10101 merges across SteamCharts and SteamDB, while 20202 stays separate. The test also checks the winner's ID, the next eligible ID under one-spin cooldown, and legacy name-only cooldown behavior.
+- `cargo test --manifest-path apps/desktop/Cargo.toml --locked`: **6 passed / 6**, including synthetic Steam import and direct-link App ID tests. `cargo fmt --manifest-path apps/desktop/Cargo.toml --check`: passed after formatting. `cargo check --manifest-path apps/desktop/Cargo.toml --locked --features deep-shortcut-scan`: passed. `cargo build --manifest-path apps/desktop/Cargo.toml --locked`: passed. `git diff --check`: passed.
+
+**Limits:** This is engine and build evidence, not an interactive desktop wheel check. The manual library remains a name-only session list; it has neither durable IDs nor persistence, so c2b and the parent stay unchecked. Live provider responses, other operating systems, and packaging were not checked in this chunk.

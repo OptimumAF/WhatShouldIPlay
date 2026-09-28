@@ -34,10 +34,12 @@ struct GameItem {
     name: String,
     rank: Option<usize>,
     score: Option<u64>,
+    app_id: Option<u64>,
 }
 
 #[derive(Clone, Debug, Default)]
 struct WeightedPoolGame {
+    id: String,
     name: String,
     sources: Vec<String>,
     weight: f64,
@@ -45,6 +47,7 @@ struct WeightedPoolGame {
 
 #[derive(Clone, Debug, Default)]
 struct SpinHistoryItem {
+    id: Option<String>,
     name: String,
     sources: String,
     odds: f64,
@@ -558,6 +561,7 @@ fn map_contract_games(items: Vec<contracts::GameContract>) -> Vec<GameItem> {
             name,
             rank: entry.rank.or(Some(index + 1)),
             score: entry.score,
+            app_id: entry.app_id,
         });
     }
     dedupe_game_items(mapped)
@@ -591,7 +595,11 @@ fn dedupe_game_items(items: Vec<GameItem>) -> Vec<GameItem> {
     let mut seen = HashSet::<String>::new();
     let mut out = Vec::new();
     for item in items {
-        let key = item.name.to_lowercase();
+        let key = item
+            .app_id
+            .filter(|id| *id > 0)
+            .map(|id| format!("steam:{id}"))
+            .unwrap_or_else(|| format!("name:{}", item.name.to_lowercase()));
         if item.name.is_empty() || seen.contains(&key) {
             continue;
         }

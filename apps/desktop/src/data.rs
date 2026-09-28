@@ -153,9 +153,9 @@ fn parse_steamcharts(html: &str) -> Result<Vec<GameItem>> {
             break;
         }
 
-        let name = row
-            .select(&name_selector)
-            .next()
+        let link = row.select(&name_selector).next();
+        let name = link
+            .as_ref()
             .map(|n| n.text().collect::<String>())
             .map(|n| normalize_name(&n))
             .unwrap_or_default();
@@ -178,7 +178,16 @@ fn parse_steamcharts(html: &str) -> Result<Vec<GameItem>> {
             .map(|txt| txt.replace(',', ""))
             .and_then(|txt| txt.trim().parse::<u64>().ok());
 
-        items.push(GameItem { name, rank, score });
+        let app_id = link
+            .as_ref()
+            .and_then(|node| node.value().attr("href"))
+            .and_then(steam_app_id_from_href);
+        items.push(GameItem {
+            name,
+            rank,
+            score,
+            app_id,
+        });
     }
 
     Ok(dedupe_game_items(items))
@@ -226,7 +235,12 @@ fn parse_twitchmetrics(html: &str) -> Result<Vec<GameItem>> {
             .and_then(|txt| txt.trim().parse::<u64>().ok());
         let rank = Some(items.len() + 1);
 
-        items.push(GameItem { name, rank, score });
+        items.push(GameItem {
+            name,
+            rank,
+            score,
+            app_id: None,
+        });
     }
 
     Ok(dedupe_game_items(items))
@@ -250,9 +264,9 @@ fn parse_steamdb_html(html: &str) -> Result<Vec<GameItem>> {
             if results.len() >= TOP_N {
                 break;
             }
-            let name = row
-                .select(&link_selector)
-                .next()
+            let link = row.select(&link_selector).next();
+            let name = link
+                .as_ref()
                 .map(|n| n.text().collect::<String>())
                 .map(|n| normalize_name(&n))
                 .unwrap_or_default();
@@ -268,7 +282,16 @@ fn parse_steamdb_html(html: &str) -> Result<Vec<GameItem>> {
                 .and_then(|txt| txt.trim().parse::<u64>().ok());
 
             let rank = Some(results.len() + 1);
-            results.push(GameItem { name, rank, score });
+            let app_id = link
+                .as_ref()
+                .and_then(|node| node.value().attr("href"))
+                .and_then(steam_app_id_from_href);
+            results.push(GameItem {
+                name,
+                rank,
+                score,
+                app_id,
+            });
         }
         if !results.is_empty() {
             break;
@@ -327,6 +350,7 @@ async fn fetch_steam_api_top(client: &Client) -> Result<Vec<GameItem>> {
             name,
             rank: Some(entry.rank),
             score: entry.peak_in_game,
+            app_id: Some(u64::from(entry.appid)),
         });
         sleep(Duration::from_millis(60)).await;
     }
@@ -405,14 +429,14 @@ pub(crate) async fn fetch_steam_owned_games(
         .await
         .context("steam owned-games parse failed")?;
 
+    Ok(map_steam_owned_games(
+        response.response.games.unwrap_or_default(),
+    ))
+}
+
+fn map_steam_owned_games(games: Vec<SteamOwnedGame>) -> Vec<GameItem> {
     let mut items = Vec::new();
-    for (index, game) in response
-        .response
-        .games
-        .unwrap_or_default()
-        .into_iter()
-        .enumerate()
-    {
+    for (index, game) in games.into_iter().enumerate() {
         let name = normalize_name(&game.name);
         if name.is_empty() {
             continue;
@@ -421,11 +445,53 @@ pub(crate) async fn fetch_steam_owned_games(
             name,
             rank: Some(index + 1),
             score: game.playtime_forever,
+            app_id: Some(u64::from(game.appid)),
         });
-        let _ = game.appid;
     }
 
-    Ok(dedupe_game_items(items))
+    dedupe_game_items(items)
+}
+
+fn steam_app_id_from_href(href: &str) -> Option<u64> {
+    let tail = href.split("/app/").nth(1)?;
+    let digits = tail
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .collect::<String>();
+    digits.parse::<u64>().ok().filter(|id| *id > 0)
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::{map_steam_owned_games, steam_app_id_from_href, SteamOwnedGamesResponse};
+
+    #[test]
+    fn steam_import_keeps_equal_titles_with_distinct_app_ids() {
+        let response: SteamOwnedGamesResponse = serde_json::from_str(
+            r#"{"response":{"games":[
+              {"appid":10101,"name":"Echo Harbor"},
+              {"appid":20202,"name":"Echo Harbor"},
+              {"appid":10101,"name":"ECHO HARBOR"}
+            ]}}"#,
+        )
+        .expect("synthetic import response must parse");
+        let games = map_steam_owned_games(response.response.games.unwrap_or_default());
+        assert_eq!(
+            games.iter().map(|game| game.app_id).collect::<Vec<_>>(),
+            [Some(10101), Some(20202)]
+        );
+    }
+
+    #[test]
+    fn direct_source_links_keep_positive_steam_app_ids() {
+        assert_eq!(
+            steam_app_id_from_href("https://store.steampowered.com/app/10101/Echo_Harbor"),
+            Some(10101)
+        );
+        assert_eq!(steam_app_id_from_href("/app/20202/"), Some(20202));
+        assert_eq!(steam_app_id_from_href("/app/not-an-id/"), None);
+        assert_eq!(steam_app_id_from_href("/game/10101"), None);
+    }
 }
 
 fn scan_installed_games() -> Vec<String> {

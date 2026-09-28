@@ -58,6 +58,7 @@ export const storedCloudSyncSchema = z.object({
 
 const spinHistorySchema = z.array(
   z.object({
+    id: z.string().optional(),
     name: z.string(),
     sources: z.array(z.string()),
     odds: z.number(),

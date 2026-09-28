@@ -12,6 +12,7 @@ import {
   type SpinHistoryItem,
 } from "../lib/appConfig";
 import type { GameEntry, TopGamesPayload } from "../types";
+import { gameIdentity } from "../lib/gameIdentity";
 
 interface UseGamePoolDataInput {
   topGames: TopGamesPayload | undefined;
@@ -72,16 +73,16 @@ export const useGamePoolData = ({
   }, [manualEntries, steamImportGames, topGames]);
 
   const basePool = useMemo<PoolGame[]>(() => {
-    const byName = new Map<string, PoolGame>();
+    const byId = new Map<string, PoolGame>();
 
     for (const entry of allEntries) {
       const source = entry.source as SourceToggleKey;
       if (!sourceKeys.includes(source) || !enabledSources[source]) continue;
       const cleaned = entry.name.trim();
       if (!cleaned) continue;
-      const key = cleaned.toLowerCase();
+      const key = gameIdentity({ ...entry, name: cleaned });
       const computedWeight = gameWeight(entry, sourceWeights, weightedMode);
-      const current = byName.get(key);
+      const current = byId.get(key);
       if (current) {
         current.weight += computedWeight;
         if (!current.sources.includes(entry.source)) {
@@ -102,7 +103,8 @@ export const useGamePoolData = ({
         }
         current.estimatedLength ||= entry.estimatedLength;
       } else {
-        byName.set(key, {
+        byId.set(key, {
+          id: key,
           name: cleaned,
           sources: [entry.source],
           weight: computedWeight,
@@ -118,7 +120,7 @@ export const useGamePoolData = ({
       }
     }
 
-    return [...byName.values()];
+    return [...byId.values()];
   }, [allEntries, enabledSources, sourceWeights, weightedMode]);
 
   const sourceBehaviorMultipliers = useMemo<SourceWeights>(() => {
@@ -262,14 +264,20 @@ export const useGamePoolData = ({
     [poolAfterAdvancedFilters, statusBlockedNames],
   );
 
-  const blockedNames = useMemo(
-    () => new Set(spinHistory.slice(0, cooldownSpins).map((item) => item.name.toLowerCase())),
-    [spinHistory, cooldownSpins],
-  );
+  const blockedHistory = useMemo(() => {
+    const ids = new Set<string>();
+    const legacyNames = new Set<string>();
+    spinHistory.slice(0, cooldownSpins).forEach((item) => {
+      if (item.id) ids.add(item.id);
+      else legacyNames.add(item.name.toLowerCase());
+    });
+    return { ids, legacyNames };
+  }, [spinHistory, cooldownSpins]);
 
   const poolAfterCooldown = useMemo(
-    () => poolAfterStatusExclusions.filter((candidate) => !blockedNames.has(candidate.name.toLowerCase())),
-    [blockedNames, poolAfterStatusExclusions],
+    () => poolAfterStatusExclusions.filter((candidate) =>
+      !blockedHistory.ids.has(candidate.id) && !blockedHistory.legacyNames.has(candidate.name.toLowerCase())),
+    [blockedHistory, poolAfterStatusExclusions],
   );
 
   const cooldownSaturated = cooldownSpins > 0 && poolAfterStatusExclusions.length > 0 && poolAfterCooldown.length === 0;

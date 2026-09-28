@@ -159,3 +159,15 @@ Record actual checks against the committed dataset and note environmental limits
 - `cargo fmt --manifest-path apps/desktop/Cargo.toml --check`: first failed on one new line wrap, then passed after `cargo fmt`. Pinned `npm run typecheck`: passed. `git diff --check`: passed.
 
 **Recorded first failure:** [M01.04's red test](verification-log.md#2026-09-28--m0104-wheel-landing) observed the four-sector case from 90° start with eight turns land at the wrong pointer sector before the fix. `selection-edge-cases.json` now makes its inputs reusable and deterministic; the passing current wheel test is not presented as a newly discovered failure. Current name-keyed pool merging of distinct App IDs remains open for M02.01; these fixtures do not mark that task complete.
+
+## 2026-09-28 — M02.01a web provider identity
+
+**Task:** M02.01a (DONE); M02.01 aggregate remains IN_PROGRESS.
+**Reason and dependency:** The web pool, Steam import, feed ingestion, desktop pool, and manual/status records each merge by name. M02.01 was split into provider web, manual migration, and ingestion/desktop children so identity changes can be checked without silently treating their untouched paths as complete. M01.05 still waits for the full identity and desktop interaction gates.
+**Implementation:** Web entries with a valid Steam App ID now use `steam:<id>` as their pool key. Name-only observations are scoped by source rather than merged solely on title. Steam import sanitization and the live import handler retain distinct same-title App IDs. New spin history records the chosen key, which cooldown uses; older history without IDs still blocks by name. The portable history schema accepts the optional ID without changing version 1 compatibility.
+
+- Regression before fix: pinned `npm run test:unit` **11 passed, 1 failed / 12**; the import dropped App ID 20202. Targeted Chromium **0 passed, 1 failed / 1**; the synthetic feed produced two wheel labels where three were expected.
+- After fix: pinned `npm run ci:web` passed typecheck, **12/12** unit tests, committed-data production build, and **18/18** Chromium tests. The two new browser checks verify that App ID 10101 merges across sources, App ID 20202 stays separate despite the same title, and two spins under one-spin cooldown persist distinct provider IDs in history. Targeted identity browser run passed **2/2**.
+- `git diff --check`: passed. No live Steam credentials or provider calls were used.
+
+**Limits:** Existing manual games remain name strings, played/completed exclusions still use names, and the data ingester's `dedupeByName` and desktop pool still merge by name. The browser fixture intercepts the feed after ingestion; it does not validate published feed preservation. M02.01b/c own these gaps, and the parent stays unchecked.

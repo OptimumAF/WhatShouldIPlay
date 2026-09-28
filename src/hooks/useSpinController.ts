@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, use
 import { pickSpinWithWeights } from "../lib/wheel";
 
 interface PoolEntry<TSource extends string> {
+  id?: string;
   name: string;
   sources: TSource[];
   appId?: number;
@@ -9,6 +10,7 @@ interface PoolEntry<TSource extends string> {
 }
 
 interface WinnerInfo<TSource extends string> {
+  id?: string;
   name: string;
   sources: TSource[];
   odds: number;
@@ -99,10 +101,10 @@ export const useSpinController = <TSource extends string>({
       return;
     }
     const behaviorWeighted = weightedMode || adaptiveRecommendations;
-    const entries = activePool.map((entry, index) => ({
+    const entries = activePool.map((entry) => ({
       ...entry,
       sources: [...entry.sources],
-      key: entry.appId ? `steam:${entry.appId}` : `local:${entry.name.toLowerCase()}:${index}`,
+      key: entry.id ?? (entry.appId ? `steam:${entry.appId}` : `source:${entry.sources[0] ?? "manual"}:${entry.name.toLowerCase()}`),
     }));
     const candidateWeights = behaviorWeighted && adaptivePoolWeights.length === entries.length
       ? adaptivePoolWeights.map((weight) => Number.isFinite(weight) ? Math.max(0, weight) : 0)
@@ -118,6 +120,7 @@ export const useSpinController = <TSource extends string>({
     const totalWeight = effectiveWeights.reduce((sum, value) => sum + value, 0);
     const odds = selectedWeight / Math.max(totalWeight, 0.0001);
     const winnerInfo: WinnerInfo<TSource> = {
+      id: selected.key,
       name: selected.name,
       sources: [...selected.sources],
       odds,

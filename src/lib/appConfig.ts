@@ -10,6 +10,7 @@ import {
   type CloudSyncSnapshot,
 } from "./appSchemas";
 import type { GameEntry, GameLength, GamePlatform, SourceId } from "../types";
+import { gameIdentity } from "./gameIdentity";
 
 export const sourceKeys = ["steamcharts", "steamdb", "twitchmetrics", "itchio", "manual", "steamImport"] as const;
 export type SourceToggleKey = (typeof sourceKeys)[number];
@@ -21,6 +22,7 @@ export type WorkspaceTab = "play" | "library" | "history" | "settings";
 export type SpinSpeedProfile = "cinematic" | "balanced" | "rapid";
 
 export interface PoolGame {
+  id: string;
   name: string;
   sources: SourceId[];
   weight: number;
@@ -35,6 +37,7 @@ export interface PoolGame {
 }
 
 export interface WinnerInfo {
+  id?: string;
   name: string;
   sources: SourceId[];
   odds: number;
@@ -418,7 +421,7 @@ export const sanitizeSteamImport = (input: StoredSteamImport | null): StoredStea
   parsed.data.steamImportGames.forEach((entry, index) => {
     const cleaned = entry.name.trim();
     if (!cleaned) return;
-    const key = cleaned.toLowerCase();
+    const key = gameIdentity({ ...entry, name: cleaned, source: "steamImport" });
     if (deduped.has(key)) return;
     deduped.set(key, {
       name: cleaned,

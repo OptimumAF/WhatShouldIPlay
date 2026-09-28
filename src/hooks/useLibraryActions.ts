@@ -1,5 +1,6 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import type { GameEntry } from "../types";
+import { gameIdentity } from "../lib/gameIdentity";
 
 interface ModePresetLike<TEnabledSources, TSourceWeights> {
   id: string;
@@ -197,7 +198,7 @@ export const useLibraryActions = <TEnabledSources extends { steamImport: boolean
       games.forEach((game, index) => {
         const cleaned = game.name.trim();
         if (!cleaned) return;
-        const keyName = cleaned.toLowerCase();
+        const keyName = gameIdentity({ name: cleaned, source: "steamImport", appId: game.appid });
         if (deduped.has(keyName)) return;
         deduped.set(keyName, {
           name: cleaned,

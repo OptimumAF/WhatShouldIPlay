@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-01-02T04:00:00.000Z",
+  "sources": {
+    "steamcharts": {
+      "id": "steamcharts",
+      "label": "Synthetic SteamCharts",
+      "fetchedAt": "2026-01-02T01:00:00.000Z",
+      "games": [
+        {
+          "name": "USD Paid",
+          "source": "steamcharts",
+          "appId": 10101,
+          "providerId": "10101",
+          "url": "https://steamcharts.com/app/10101",
+          "platforms": ["windows", "linux"],
+          "tags": ["RPG", "Single-player"],
+          "releaseDate": "2025-01-02",
+          "price": { "amount": 12.99, "currency": "USD" },
+          "isFree": false,
+          "lengthEstimate": { "value": "long", "method": "genreHeuristic", "confidence": "low" },
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        }
+      ]
+    },
+    "steamdb": {
+      "id": "steamdb",
+      "label": "Synthetic SteamDB",
+      "fetchedAt": "2026-01-02T02:00:00.000Z",
+      "games": [
+        {
+          "name": "EUR Paid",
+          "source": "steamdb",
+          "appId": 20202,
+          "providerId": "20202",
+          "url": "https://steamdb.info/app/20202/",
+          "platforms": ["windows"],
+          "tags": ["Puzzle"],
+          "price": { "amount": 9.5, "currency": "EUR" },
+          "isFree": false,
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        }
+      ]
+    },
+    "twitchmetrics": {
+      "id": "twitchmetrics",
+      "label": "Synthetic TwitchMetrics",
+      "fetchedAt": "2026-01-02T04:00:00.000Z",
+      "games": []
+    },
+    "itchio": {
+      "id": "itchio",
+      "label": "Synthetic itch.io",
+      "fetchedAt": "2026-01-02T03:00:00.000Z",
+      "games": [
+        {
+          "name": "Paper Lantern",
+          "source": "itchio",
+          "rank": 1,
+          "url": "https://example.itch.io/paper-lantern",
+          "tags": ["RPG"],
+          "price": { "amount": 4, "currency": "USD" },
+          "isFree": false,
+          "lengthEstimate": { "value": "long", "method": "genreHeuristic", "confidence": "low" },
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        },
+        {
+          "name": "Blue Window",
+          "source": "itchio",
+          "rank": 2,
+          "url": "https://example.itch.io/blue-window",
+          "price": { "amount": 9.5, "currency": "EUR" },
+          "isFree": false,
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        },
+        {
+          "name": "Open Garden",
+          "source": "itchio",
+          "rank": 3,
+          "url": "https://example.itch.io/open-garden",
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        },
+        {
+          "name": "Hidden Price",
+          "source": "itchio",
+          "rank": 4,
+          "url": "https://example.itch.io/hidden-price",
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        },
+        {
+          "name": "Free Meadow",
+          "source": "itchio",
+          "rank": 5,
+          "url": "https://example.itch.io/free-meadow",
+          "isFree": true,
+          "metadataObservedAt": "2026-01-02T03:00:00.000Z"
+        }
+      ]
+    }
+  }
+}

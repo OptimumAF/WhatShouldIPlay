@@ -115,6 +115,7 @@ pub(crate) async fn fetch_online_sources() -> Result<OnlineData> {
         steamcharts,
         steamdb,
         twitchmetrics,
+        itchio: Vec::new(),
         steamdb_note,
     })
 }

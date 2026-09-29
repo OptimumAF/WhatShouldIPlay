@@ -126,6 +126,52 @@ test("web pool keeps versioned feed metadata and does not treat EUR as USD", () 
   assert.equal(selected?.priceUsd, undefined);
 });
 
+test("web pool retains offline producer prices and leaves donation or missing values unknown", () => {
+  const feed = topGamesPayloadSchema.parse(fixture("top-games-producer-v1.json"));
+  let games: PoolGame[] = [];
+  function Probe() {
+    games = useGamePoolData({
+      topGames: feed,
+      manualRecords: [],
+      steamImportGames: [],
+      enabledSources: { ...defaultEnabledSources, itchio: true },
+      sourceWeights: defaultSourceWeights,
+      weightedMode: false,
+      playedGames: [],
+      completedGames: [],
+      playedRecords: [],
+      completedRecords: [],
+      spinHistory: [],
+      adaptiveRecommendations: false,
+      filters: defaultFilters,
+      setFilters: () => {},
+      excludePlayed: false,
+      excludeCompleted: false,
+      cooldownSpins: 0,
+    }).activePool;
+    return null;
+  }
+  renderToStaticMarkup(createElement(Probe));
+  const byName = (name: string) => games.find((game) => game.name === name);
+  assert.equal(games.length, 7);
+  assert.equal(byName("USD Paid")?.priceUsd, 12.99);
+  assert.equal(byName("USD Paid")?.url, "https://steamcharts.com/app/10101");
+  assert.deepEqual(byName("USD Paid")?.lengthEstimate, {
+    value: "long", method: "genreHeuristic", confidence: "low",
+  });
+  assert.equal(byName("USD Paid")?.sourceObservations[0].fetchedAt, "2026-01-02T01:00:00.000Z");
+  assert.equal(byName("USD Paid")?.sourceObservations[0].metadataObservedAt, "2026-01-02T03:00:00.000Z");
+  assert.deepEqual(byName("EUR Paid")?.price, { amount: 9.5, currency: "EUR" });
+  assert.equal(byName("EUR Paid")?.priceUsd, undefined);
+  for (const name of ["Open Garden", "Hidden Price"]) {
+    assert.equal(byName(name)?.price, undefined);
+    assert.equal(byName(name)?.isFree, undefined);
+    assert.equal(byName(name)?.lengthEstimate, undefined);
+  }
+  assert.equal(byName("Free Meadow")?.isFree, true);
+  assert.equal(byName("Blue Window")?.priceUsd, undefined);
+});
+
 test("edge fixture supplies distinct manual IDs and deterministic extreme-weight selection", () => {
   const edge = fixture("selection-edge-cases.json") as {
     manualGames: Array<{ id: string; name: string }>;

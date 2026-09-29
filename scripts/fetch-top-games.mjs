@@ -3,6 +3,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as cheerio from "cheerio";
 import { dedupeFeedGames } from "./lib/feedIdentity.mjs";
+import {
+  createVersionedPayload,
+  mapSteamAppMetadata,
+  normalizeName,
+  parseItchioTopRated,
+  sanitizeCachedSource,
+} from "./lib/feedMetadata.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,43 +61,6 @@ async function fetchJson(url) {
   return response.json();
 }
 
-function normalizeName(name) {
-  return name
-    .replace(/Â®/g, "®")
-    .replace(/Â™/g, "™")
-    .replace(/â€™/g, "’")
-    .replace(/â€“/g, "–")
-    .replace(/Â/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function dedupeStrings(values) {
-  return [...new Set(values.filter(Boolean).map((value) => normalizeName(value)))];
-}
-
-function parseReleaseDate(rawValue) {
-  if (!rawValue || /coming soon|tba|to be announced/i.test(rawValue)) {
-    return undefined;
-  }
-  const parsed = new Date(rawValue);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-  return parsed.toISOString().slice(0, 10);
-}
-
-function inferEstimatedLength(tags) {
-  if (!Array.isArray(tags) || tags.length === 0) return undefined;
-  const joined = tags.join(" ").toLowerCase();
-  const longSignals = ["rpg", "strategy", "simulation", "open world", "mmo", "grand strategy", "4x"];
-  const shortSignals = ["fps", "shooter", "battle royale", "moba", "racing", "sports", "fighting", "arena"];
-
-  if (longSignals.some((signal) => joined.includes(signal))) return "long";
-  if (shortSignals.some((signal) => joined.includes(signal))) return "short";
-  return "medium";
-}
-
 async function fetchSteamAppMetadata(appId) {
   const data = await fetchJson(
     `https://store.steampowered.com/api/appdetails?appids=${appId}&filters=basic,genres,categories,release_date,price_overview,is_free`,
@@ -98,28 +68,7 @@ async function fetchSteamAppMetadata(appId) {
   const appData = data?.[appId]?.success ? data[appId]?.data : null;
   if (!appData) return null;
 
-  const tags = dedupeStrings([
-    ...(Array.isArray(appData.genres) ? appData.genres.map((genre) => genre.description ?? "") : []),
-    ...(Array.isArray(appData.categories) ? appData.categories.map((category) => category.description ?? "") : []),
-  ]);
-  const releaseDate = parseReleaseDate(appData.release_date?.date ?? "");
-  const priceUsd =
-    typeof appData.price_overview?.final === "number"
-      ? appData.price_overview.final / 100
-      : appData.is_free
-        ? 0
-        : undefined;
-
-  const platforms = ["windows", "mac", "linux"].filter((key) => appData.platforms?.[key]);
-
-  return {
-    platforms: platforms.length > 0 ? platforms : undefined,
-    tags: tags.length > 0 ? tags : undefined,
-    releaseDate,
-    priceUsd,
-    isFree: appData.is_free === true || priceUsd === 0,
-    estimatedLength: inferEstimatedLength(tags),
-  };
+  return mapSteamAppMetadata(appData, new Date().toISOString());
 }
 
 async function buildAppMetadataMap(appIds) {
@@ -166,7 +115,10 @@ function parseSteamCharts(html) {
     const rankText = normalizeName($(row).find("td").first().text()).replace(".", "");
     const currentPlayersText = normalizeName($(row).find("td.num").first().text()).replace(/,/g, "");
     const urlPath = $(row).find("td.game-name a").attr("href");
-    const appId = urlPath?.split("/").pop();
+    const appId = urlPath?.match(/\/app\/(\d+)(?:\/|$)/)?.[1];
+    const parsedAppId = appId && Number.isSafeInteger(Number(appId)) && Number(appId) > 0
+      ? Number(appId)
+      : undefined;
 
     if (!name) return;
     games.push({
@@ -174,7 +126,8 @@ function parseSteamCharts(html) {
       source: "steamcharts",
       rank: Number.parseInt(rankText, 10) || index + 1,
       score: Number.parseInt(currentPlayersText, 10) || undefined,
-      appId: appId ? Number.parseInt(appId, 10) || undefined : undefined,
+      appId: parsedAppId,
+      providerId: parsedAppId ? String(parsedAppId) : undefined,
       url: urlPath ? `https://steamcharts.com${urlPath}` : undefined,
     });
   });
@@ -205,47 +158,6 @@ function parseTwitchMetrics(html) {
   return dedupeFeedGames(games).slice(0, TOP_N);
 }
 
-function parseItchioTopRated(html) {
-  const $ = cheerio.load(html);
-  const games = [];
-
-  $(".game_cell").each((index, element) => {
-    if (games.length >= TOP_N) return;
-    const name = normalizeName($(element).find(".game_title a.title").first().text());
-    if (!name) return;
-
-    const href = $(element).find(".game_title a.title").first().attr("href");
-    const genre = normalizeName($(element).find(".game_genre").first().text());
-    const priceText = normalizeName($(element).find(".price_value").first().text()).replace(/[$,]/g, "");
-    const ratingCountText = normalizeName($(element).find(".rating_count").first().text()).replace(/[(),]/g, "");
-
-    const platforms = [];
-    if ($(element).find(".game_platform .icon-windows8").length > 0) platforms.push("windows");
-    if ($(element).find(".game_platform .icon-apple").length > 0) platforms.push("mac");
-    if ($(element).find(".game_platform .icon-tux").length > 0) platforms.push("linux");
-
-    const parsedPrice = Number.parseFloat(priceText);
-    const hasPrice = Number.isFinite(parsedPrice);
-    const score = Number.parseInt(ratingCountText, 10) || undefined;
-    const tags = genre ? [genre] : undefined;
-
-    games.push({
-      name,
-      source: "itchio",
-      rank: index + 1,
-      score,
-      url: href?.startsWith("http") ? href : href ? `https://itch.io${href}` : undefined,
-      platforms: platforms.length > 0 ? platforms : undefined,
-      tags,
-      priceUsd: hasPrice ? parsedPrice : 0,
-      isFree: !hasPrice || parsedPrice === 0,
-      estimatedLength: inferEstimatedLength(tags ?? []),
-    });
-  });
-
-  return dedupeFeedGames(games).slice(0, TOP_N);
-}
-
 function parseSteamDbPage(html) {
   if (/cf_chl_opt|Enable JavaScript and cookies to continue|Just a moment/i.test(html)) {
     throw new Error("SteamDB blocked request with Cloudflare challenge");
@@ -266,13 +178,17 @@ function parseSteamDbPage(html) {
       if (!candidate) return;
       const href = $(row).find("a[href*='/app/']").first().attr("href") ?? "";
       const scoreText = normalizeName($(row).find("td").eq(3).text()).replace(/,/g, "");
-      const appId = href.split("/").filter(Boolean).pop();
+      const appId = href.match(/\/app\/(\d+)(?:\/|$)/)?.[1];
+      const parsedAppId = appId && Number.isSafeInteger(Number(appId)) && Number(appId) > 0
+        ? Number(appId)
+        : undefined;
       games.push({
         name: candidate,
         source: "steamdb",
         rank: index + 1,
         score: Number.parseInt(scoreText, 10) || undefined,
-        appId: appId ? Number.parseInt(appId, 10) || undefined : undefined,
+        appId: parsedAppId,
+        providerId: parsedAppId ? String(parsedAppId) : undefined,
         url: href ? `https://steamdb.info${href}` : undefined,
       });
     });
@@ -332,6 +248,7 @@ async function fetchSteamDbFallbackFromSteamApi() {
     rank: Number(entry.rank) || index + 1,
     score: Number(entry.peak_in_game) || undefined,
     appId: Number(entry.appid),
+    providerId: String(entry.appid),
     url: `https://steamdb.info/app/${entry.appid}/`,
   }));
 }
@@ -353,24 +270,24 @@ async function fetchSteamDbGames() {
   }
 }
 
-async function readExistingData() {
+async function readExistingData(destinationPath) {
   try {
-    const raw = await readFile(outputPath, "utf8");
+    const raw = await readFile(destinationPath, "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 
-async function run() {
+export async function run({ destinationPath = outputPath, log = console.log } = {}) {
   const now = new Date().toISOString();
-  const existing = await readExistingData();
+  const existing = await readExistingData(destinationPath);
 
   const fallbackSource = (id, label, error) => {
     const previous = existing?.sources?.[id];
     if (previous && Array.isArray(previous.games) && previous.games.length > 0) {
       return {
-        ...previous,
+        ...sanitizeCachedSource(previous, existing?.schemaVersion),
         note: `Using cached data from ${previous.fetchedAt} because refresh failed: ${error.message}`,
       };
     }
@@ -394,7 +311,7 @@ async function run() {
     steamchartsSource = {
       id: "steamcharts",
       label: "SteamCharts",
-      fetchedAt: now,
+      fetchedAt: new Date().toISOString(),
       games: parseSteamCharts(steamchartsHtml),
     };
   } catch (error) {
@@ -406,7 +323,7 @@ async function run() {
     steamdbSource = {
       id: "steamdb",
       label: "SteamDB",
-      fetchedAt: now,
+      fetchedAt: new Date().toISOString(),
       note: steamdbResult.note,
       games: steamdbResult.games,
     };
@@ -419,7 +336,7 @@ async function run() {
     twitchmetricsSource = {
       id: "twitchmetrics",
       label: "TwitchMetrics",
-      fetchedAt: now,
+      fetchedAt: new Date().toISOString(),
       games: parseTwitchMetrics(twitchHtml),
     };
   } catch (error) {
@@ -428,39 +345,37 @@ async function run() {
 
   try {
     const itchioHtml = await fetchText("https://itch.io/games/top-rated");
+    const observedAt = new Date().toISOString();
     itchioSource = {
       id: "itchio",
       label: "itch.io",
-      fetchedAt: now,
-      games: parseItchioTopRated(itchioHtml),
+      fetchedAt: observedAt,
+      games: parseItchioTopRated(itchioHtml, observedAt),
     };
   } catch (error) {
     itchioSource = fallbackSource("itchio", "itch.io", error);
   }
-
-  const payload = {
-    generatedAt: now,
-    sources: {
-      steamcharts: steamchartsSource,
-      steamdb: steamdbSource,
-      twitchmetrics: twitchmetricsSource,
-      itchio: itchioSource,
-    },
-  };
 
   const appIds = [
     ...steamchartsSource.games.map((game) => game.appId),
     ...steamdbSource.games.map((game) => game.appId),
   ];
   const metadataByAppId = await buildAppMetadataMap(appIds);
-  payload.sources.steamcharts = enrichSourceWithMetadata(payload.sources.steamcharts, metadataByAppId);
-  payload.sources.steamdb = enrichSourceWithMetadata(payload.sources.steamdb, metadataByAppId);
+  const payload = createVersionedPayload(new Date().toISOString(), {
+    steamcharts: enrichSourceWithMetadata(steamchartsSource, metadataByAppId),
+    steamdb: enrichSourceWithMetadata(steamdbSource, metadataByAppId),
+    twitchmetrics: twitchmetricsSource,
+    itchio: itchioSource,
+  });
 
-  await writeFile(outputPath, JSON.stringify(payload, null, 2), "utf8");
-  console.log(`Wrote ${outputPath}`);
+  await writeFile(destinationPath, JSON.stringify(payload, null, 2), "utf8");
+  log(`Wrote ${destinationPath}`);
+  return payload;
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

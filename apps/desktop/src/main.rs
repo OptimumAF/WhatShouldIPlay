@@ -28,6 +28,9 @@ struct OnlineData {
     steamcharts: Vec<GameItem>,
     steamdb: Vec<GameItem>,
     twitchmetrics: Vec<GameItem>,
+    // Shared-feed metadata is retained here; desktop source selection is M06.05.
+    #[allow(dead_code)]
+    itchio: Vec<GameItem>,
     steamdb_note: String,
 }
 
@@ -661,6 +664,7 @@ fn online_data_from_contract(payload: TopGamesPayloadContract) -> OnlineData {
     let charts = payload.sources.steamcharts;
     let db = payload.sources.steamdb;
     let twitch = payload.sources.twitchmetrics;
+    let itch = payload.sources.itchio;
     let steamdb_note = db
         .note
         .unwrap_or_else(|| "Shared top-games contract feed.".to_string());
@@ -669,6 +673,7 @@ fn online_data_from_contract(payload: TopGamesPayloadContract) -> OnlineData {
         steamcharts: map_contract_games(charts.games, &charts.fetched_at),
         steamdb: map_contract_games(db.games, &db.fetched_at),
         twitchmetrics: map_contract_games(twitch.games, &twitch.fetched_at),
+        itchio: map_contract_games(itch.games, &itch.fetched_at),
         steamdb_note,
     }
 }
@@ -775,6 +780,94 @@ mod metadata_adapter_tests {
                 .as_deref(),
             Some("2026-01-01T13:00:00.000Z")
         );
+    }
+
+    #[test]
+    fn offline_producer_fixture_keeps_supported_desktop_source_metadata() {
+        let feed: TopGamesPayloadContract = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/top-games-producer-v1.json"
+        ))
+        .unwrap();
+        assert_eq!(feed.schema_version, Some(1));
+        assert!(feed.sources.itchio.games[2].price.is_none());
+        assert!(feed.sources.itchio.games[2].is_free.is_none());
+        let online = online_data_from_contract(feed);
+        assert_eq!(online.itchio.len(), 5);
+        assert_eq!(
+            online.itchio[1]
+                .metadata
+                .price
+                .as_ref()
+                .map(|price| price.currency.as_str()),
+            Some("EUR")
+        );
+        assert!(online.itchio[2].metadata.price.is_none());
+        assert!(online.itchio[2].metadata.is_free.is_none());
+        assert_eq!(
+            online.itchio[2].metadata.source_fetched_at.as_deref(),
+            Some("2026-01-02T03:00:00.000Z")
+        );
+        let pool = build_weighted_pool(
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &online.steamcharts,
+            &online.steamdb,
+            &[],
+            &[],
+            &[],
+            &[],
+        );
+        let usd = pool.iter().find(|game| game.id == "steam:10101").unwrap();
+        let usd_metadata = &usd.metadata_observations[0].metadata;
+        assert_eq!(usd_metadata.provider_id.as_deref(), Some("10101"));
+        assert_eq!(
+            usd_metadata.url.as_deref(),
+            Some("https://steamcharts.com/app/10101")
+        );
+        assert_eq!(
+            usd_metadata.price.as_ref().map(|price| price.amount),
+            Some(12.99)
+        );
+        assert_eq!(
+            usd_metadata
+                .price
+                .as_ref()
+                .map(|price| price.currency.as_str()),
+            Some("USD")
+        );
+        assert_eq!(
+            usd_metadata.source_fetched_at.as_deref(),
+            Some("2026-01-02T01:00:00.000Z")
+        );
+        assert_eq!(
+            usd_metadata.metadata_observed_at.as_deref(),
+            Some("2026-01-02T03:00:00.000Z")
+        );
+        assert!(usd_metadata.length_estimate.is_some());
+        let eur = pool.iter().find(|game| game.id == "steam:20202").unwrap();
+        assert_eq!(
+            eur.metadata_observations[0]
+                .metadata
+                .price
+                .as_ref()
+                .map(|price| price.currency.as_str()),
+            Some("EUR")
+        );
+        assert!(eur.metadata_observations[0]
+            .metadata
+            .length_estimate
+            .is_none());
     }
 }
 

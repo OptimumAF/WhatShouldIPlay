@@ -1,0 +1,28 @@
+{
+  "usdPaid": {
+    "genres": [{ "description": "RPG" }],
+    "categories": [{ "description": "Single-player" }],
+    "platforms": { "windows": true, "mac": false, "linux": true },
+    "release_date": { "date": "Jan 2, 2025" },
+    "price_overview": { "currency": "USD", "final": 1299, "final_formatted": "$12.99" },
+    "is_free": false
+  },
+  "eurPaid": {
+    "genres": [{ "description": "Puzzle" }],
+    "platforms": { "windows": true },
+    "price_overview": { "currency": "EUR", "final": 950, "final_formatted": "9,50€" },
+    "is_free": false
+  },
+  "free": {
+    "genres": [],
+    "is_free": true
+  },
+  "missingPrice": {
+    "genres": [],
+    "is_free": false
+  },
+  "unsupportedCurrency": {
+    "price_overview": { "currency": "JPY", "final": 1200, "final_formatted": "¥1200" },
+    "is_free": false
+  }
+}

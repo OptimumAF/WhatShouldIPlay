@@ -9,12 +9,44 @@ const fixture = (name: string): unknown =>
 
 test("synthetic feed preserves same-provider observations and distinct same-title IDs", () => {
   const feed = topGamesPayloadSchema.parse(fixture("top-games-identity.json"));
+  assert.equal(feed.schemaVersion, undefined);
   const observations = [...feed.sources.steamcharts.games, ...feed.sources.steamdb.games];
   assert.deepEqual(observations.map((game) => game.appId), [10101, 10101, 20202]);
   assert.equal(new Set(observations.map((game) => game.appId)).size, 2);
   assert.match(feed.sources.twitchmetrics.note ?? "", /fetch failure/);
   assert.equal(feed.sources.twitchmetrics.games[0].priceUsd, undefined);
   assert.equal(feed.sources.itchio.games[0].isFree, undefined);
+});
+
+test("versioned metadata fixture retains currency, timestamps, estimate provenance, and unknown values", () => {
+  const feed = topGamesPayloadSchema.parse(fixture("top-games-metadata-v1.json"));
+  const game = feed.sources.steamcharts.games[0];
+  assert.equal(feed.schemaVersion, 1);
+  assert.equal(feed.sources.steamcharts.fetchedAt, "2026-01-01T12:00:00.000Z");
+  assert.equal(game.appId, 10101);
+  assert.equal(game.providerId, "10101");
+  assert.equal(game.url, "https://example.invalid/games/echo-harbor");
+  assert.deepEqual(game.platforms, ["windows", "linux"]);
+  assert.deepEqual(game.price, { amount: 19.99, currency: "EUR" });
+  assert.deepEqual(game.lengthEstimate, {
+    value: "long", method: "genreHeuristic", confidence: "low",
+  });
+  assert.equal(game.metadataObservedAt, "2026-01-01T11:30:00.000Z");
+  assert.equal(feed.sources.itchio.games[0].price, undefined);
+  assert.equal(feed.sources.itchio.games[0].isFree, undefined);
+
+  const unsupported = fixture("top-games-metadata-v1.json") as Record<string, unknown>;
+  unsupported.schemaVersion = 99;
+  assert.throws(() => topGamesPayloadSchema.parse(unsupported), /schemaVersion|expected 1/i);
+
+  const wrongCurrency = fixture("top-games-metadata-v1.json") as {
+    sources: { steamcharts: { games: Array<{ price: { amount: number; currency: string } }> } };
+  };
+  wrongCurrency.sources.steamcharts.games[0].price.currency = "eur";
+  assert.equal(topGamesPayloadSchema.safeParse(wrongCurrency).success, false);
+  wrongCurrency.sources.steamcharts.games[0].price.currency = "EUR";
+  wrongCurrency.sources.steamcharts.games[0].price.amount = -1;
+  assert.equal(topGamesPayloadSchema.safeParse(wrongCurrency).success, false);
 });
 
 test("edge fixture supplies distinct manual IDs and deterministic extreme-weight selection", () => {

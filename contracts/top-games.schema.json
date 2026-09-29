@@ -5,6 +5,7 @@
   "type": "object",
   "required": ["generatedAt", "sources"],
   "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
     "generatedAt": {
       "type": "string"
     },
@@ -32,6 +33,25 @@
       "type": "string",
       "enum": ["short", "medium", "long"]
     },
+    "price": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      },
+      "additionalProperties": false
+    },
+    "lengthEstimate": {
+      "type": "object",
+      "required": ["value", "method", "confidence"],
+      "properties": {
+        "value": { "$ref": "#/$defs/gameLength" },
+        "method": { "type": "string", "enum": ["genreHeuristic", "provider", "user"] },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+      },
+      "additionalProperties": false
+    },
     "gamePayload": {
       "type": "object",
       "required": ["name", "source"],
@@ -41,6 +61,7 @@
         "rank": { "type": "number" },
         "score": { "type": "number" },
         "appId": { "type": "number" },
+        "providerId": { "type": "string", "minLength": 1 },
         "url": { "type": "string" },
         "platforms": {
           "type": "array",
@@ -52,8 +73,11 @@
         },
         "releaseDate": { "type": "string" },
         "priceUsd": { "type": "number" },
+        "price": { "$ref": "#/$defs/price" },
         "isFree": { "type": "boolean" },
-        "estimatedLength": { "$ref": "#/$defs/gameLength" }
+        "estimatedLength": { "$ref": "#/$defs/gameLength" },
+        "lengthEstimate": { "$ref": "#/$defs/lengthEstimate" },
+        "metadataObservedAt": { "type": "string" }
       },
       "additionalProperties": false
     },

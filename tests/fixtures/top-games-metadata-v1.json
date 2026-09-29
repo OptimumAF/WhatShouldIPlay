@@ -31,7 +31,16 @@
       "id": "steamdb",
       "label": "Synthetic SteamDB",
       "fetchedAt": "2026-01-01T13:00:00.000Z",
-      "games": []
+      "games": [
+        {
+          "name": "ECHO HARBOR",
+          "source": "steamdb",
+          "appId": 10101,
+          "providerId": "steamdb-10101",
+          "url": "https://example.invalid/games/echo-harbor-db",
+          "platforms": ["mac"]
+        }
+      ]
     },
     "twitchmetrics": {
       "id": "twitchmetrics",

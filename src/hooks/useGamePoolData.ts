@@ -7,12 +7,14 @@ import {
   type AdvancedFilters,
   type EnabledSources,
   type PoolGame,
+  type PoolSourceObservation,
   type GameStatusRecord,
   type SourceToggleKey,
   type SourceWeights,
   type SpinHistoryItem,
 } from "../lib/appConfig";
 import type { GameEntry, TopGamesPayload } from "../types";
+import { topGameSourceIds } from "../contracts/topGamesContract";
 import { gameIdentity } from "../lib/gameIdentity";
 import type { ManualGameRecord } from "../lib/manualIdentity";
 import { observeGameSources } from "../lib/gameObservations";
@@ -70,10 +72,10 @@ export const useGamePoolData = ({
   const allEntries = useMemo<GameEntry[]>(() => {
     const entries: GameEntry[] = [];
     if (topGames) {
-      entries.push(...topGames.sources.steamcharts.games);
-      entries.push(...topGames.sources.steamdb.games);
-      entries.push(...topGames.sources.twitchmetrics.games);
-      entries.push(...topGames.sources.itchio.games);
+      topGameSourceIds.forEach((source) => {
+        const payload = topGames.sources[source];
+        entries.push(...payload.games.map((game) => ({ ...game, sourceFetchedAt: payload.fetchedAt })));
+      });
     }
     entries.push(...manualEntries);
     entries.push(...steamImportGames);
@@ -90,6 +92,24 @@ export const useGamePoolData = ({
       if (!cleaned) continue;
       const key = gameIdentity({ ...entry, name: cleaned });
       const computedWeight = gameWeight(entry, sourceWeights, weightedMode);
+      const priceUsd = entry.price
+        ? entry.price.currency === "USD" ? entry.price.amount : undefined
+        : entry.priceUsd;
+      const sourceObservation: PoolSourceObservation = {
+        source: entry.source,
+        fetchedAt: entry.sourceFetchedAt,
+        providerId: entry.providerId,
+        url: entry.url,
+        platforms: entry.platforms,
+        tags: entry.tags,
+        releaseDate: entry.releaseDate,
+        priceUsd,
+        price: entry.price,
+        isFree: entry.isFree,
+        estimatedLength: entry.estimatedLength,
+        lengthEstimate: entry.lengthEstimate,
+        metadataObservedAt: entry.metadataObservedAt,
+      };
       const current = byId.get(key);
       if (current) {
         current.weight += computedWeight;
@@ -97,6 +117,7 @@ export const useGamePoolData = ({
           current.sources.push(entry.source);
         }
         current.appId ||= entry.appId;
+        current.providerId ||= entry.providerId;
         current.url ||= entry.url;
         if (entry.platforms?.length) {
           current.platforms = [...new Set([...(current.platforms ?? []), ...entry.platforms])];
@@ -105,11 +126,20 @@ export const useGamePoolData = ({
           current.tags = [...new Set([...(current.tags ?? []), ...entry.tags])];
         }
         current.releaseDate ||= entry.releaseDate;
-        current.priceUsd = current.priceUsd ?? entry.priceUsd;
+        current.price ||= entry.price;
+        const incompatibleCurrency = current.sourceObservations.some((observation) =>
+          observation.price && observation.price.currency !== "USD") ||
+          Boolean(entry.price && entry.price.currency !== "USD");
+        current.priceUsd = incompatibleCurrency
+          ? undefined
+          : current.priceUsd ?? priceUsd;
         if (typeof current.isFree !== "boolean") {
           current.isFree = entry.isFree;
         }
         current.estimatedLength ||= entry.estimatedLength;
+        current.lengthEstimate ||= entry.lengthEstimate;
+        current.metadataObservedAt ||= entry.metadataObservedAt;
+        current.sourceObservations.push(sourceObservation);
       } else {
         byId.set(key, {
           id: key,
@@ -117,13 +147,18 @@ export const useGamePoolData = ({
           sources: [entry.source],
           weight: computedWeight,
           appId: entry.appId,
+          providerId: entry.providerId,
           url: entry.url,
           platforms: entry.platforms,
           tags: entry.tags,
           releaseDate: entry.releaseDate,
-          priceUsd: entry.priceUsd,
+          priceUsd,
+          price: entry.price,
           isFree: entry.isFree,
           estimatedLength: entry.estimatedLength,
+          lengthEstimate: entry.lengthEstimate,
+          metadataObservedAt: entry.metadataObservedAt,
+          sourceObservations: [sourceObservation],
         });
       }
     }

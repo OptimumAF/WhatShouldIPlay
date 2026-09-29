@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { topGamesPayloadSchema } from "../../src/contracts/topGamesContract";
+import { defaultEnabledSources, defaultFilters, defaultSourceWeights, type PoolGame } from "../../src/lib/appConfig";
+import { useGamePoolData } from "../../src/hooks/useGamePoolData";
 import { pickSpinWithWeights } from "../../src/lib/wheel";
 
 const fixture = (name: string): unknown =>
@@ -47,6 +51,79 @@ test("versioned metadata fixture retains currency, timestamps, estimate provenan
   wrongCurrency.sources.steamcharts.games[0].price.currency = "EUR";
   wrongCurrency.sources.steamcharts.games[0].price.amount = -1;
   assert.equal(topGamesPayloadSchema.safeParse(wrongCurrency).success, false);
+});
+
+test("web pool keeps versioned feed metadata and does not treat EUR as USD", () => {
+  const raw = fixture("top-games-metadata-v1.json") as {
+    sources: {
+      steamcharts: { games: Array<{ priceUsd?: number; price: { amount: number; currency: string } }> };
+      steamdb: { games: Array<{ price?: { amount: number; currency: string } }> };
+    };
+  };
+  raw.sources.steamcharts.games[0].priceUsd = 19.99;
+  let feed = topGamesPayloadSchema.parse(raw);
+  let selected: PoolGame | undefined;
+  let filtered = false;
+  let filters = defaultFilters;
+  function Probe() {
+    const result = useGamePoolData({
+      topGames: feed,
+      manualRecords: [],
+      steamImportGames: [],
+      enabledSources: defaultEnabledSources,
+      sourceWeights: defaultSourceWeights,
+      weightedMode: false,
+      playedGames: [],
+      completedGames: [],
+      playedRecords: [],
+      completedRecords: [],
+      spinHistory: [],
+      adaptiveRecommendations: false,
+      filters,
+      setFilters: () => {},
+      excludePlayed: false,
+      excludeCompleted: false,
+      cooldownSpins: 0,
+    });
+    selected = result.activePool.find((game) => game.appId === 10101);
+    filtered = !result.activePool.some((game) => game.appId === 10101);
+    return null;
+  }
+  renderToStaticMarkup(createElement(Probe));
+  assert.ok(selected);
+  assert.equal(selected.providerId, "10101");
+  assert.equal(selected.url, "https://example.invalid/games/echo-harbor");
+  assert.deepEqual(selected.platforms, ["windows", "linux", "mac"]);
+  assert.deepEqual(selected.tags, ["Puzzle"]);
+  assert.equal(selected.releaseDate, "2025-12-01");
+  assert.equal(selected.isFree, false);
+  assert.deepEqual(selected.price, { amount: 19.99, currency: "EUR" });
+  assert.equal(selected.priceUsd, undefined);
+  assert.deepEqual(selected.lengthEstimate, {
+    value: "long", method: "genreHeuristic", confidence: "low",
+  });
+  assert.equal(selected.metadataObservedAt, "2026-01-01T11:30:00.000Z");
+  assert.deepEqual(selected.sourceObservations.map(({ source, fetchedAt }) => ({ source, fetchedAt })), [
+    { source: "steamcharts", fetchedAt: "2026-01-01T12:00:00.000Z" },
+    { source: "steamdb", fetchedAt: "2026-01-01T13:00:00.000Z" },
+  ]);
+  assert.equal(selected.sourceObservations[0].providerId, "10101");
+  assert.equal(selected.sourceObservations[1].providerId, "steamdb-10101");
+  assert.deepEqual(selected.sourceObservations[0].price, { amount: 19.99, currency: "EUR" });
+  assert.deepEqual(selected.sourceObservations[0].lengthEstimate, {
+    value: "long", method: "genreHeuristic", confidence: "low",
+  });
+  assert.deepEqual(selected.sourceObservations[1].platforms, ["mac"]);
+  filters = { ...defaultFilters, maxPriceUsd: 25 };
+  renderToStaticMarkup(createElement(Probe));
+  assert.equal(filtered, true);
+
+  raw.sources.steamcharts.games[0].price = { amount: 19.99, currency: "USD" };
+  raw.sources.steamdb.games[0].price = { amount: 17.99, currency: "EUR" };
+  feed = topGamesPayloadSchema.parse(raw);
+  filters = defaultFilters;
+  renderToStaticMarkup(createElement(Probe));
+  assert.equal(selected?.priceUsd, undefined);
 });
 
 test("edge fixture supplies distinct manual IDs and deterministic extreme-weight selection", () => {

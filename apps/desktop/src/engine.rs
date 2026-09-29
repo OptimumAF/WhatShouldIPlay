@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     provenance::{ScanCandidate, ScanEvidence, SourceId},
-    source_index_from_label, GameItem, ManualGameRecord, SpinHistoryItem, WeightedPoolGame,
+    source_index_from_label, GameItem, GameMetadata, ManualGameRecord, SourceMetadataObservation,
+    SpinHistoryItem, WeightedPoolGame,
 };
 
 #[derive(Clone, Debug)]
@@ -115,7 +116,8 @@ pub(crate) fn build_weighted_pool(
                       base_weight: f64,
                       rank: Option<usize>,
                       score: Option<u64>,
-                      scan_evidence: &[ScanEvidence]| {
+                      scan_evidence: &[ScanEvidence],
+                      metadata: Option<&GameMetadata>| {
         let trimmed = crate::normalize_name(name);
         if trimmed.is_empty() {
             return;
@@ -139,6 +141,14 @@ pub(crate) fn build_weighted_pool(
                     existing.scan_evidence.push(*evidence);
                 }
             }
+            if let Some(metadata) = metadata {
+                existing
+                    .metadata_observations
+                    .push(SourceMetadataObservation {
+                        source,
+                        metadata: metadata.clone(),
+                    });
+            }
         } else {
             pool.insert(
                 key.clone(),
@@ -149,6 +159,14 @@ pub(crate) fn build_weighted_pool(
                     sources: vec![label.to_string()],
                     source_ids: vec![source],
                     scan_evidence: scan_evidence.to_vec(),
+                    metadata_observations: metadata
+                        .map(|metadata| {
+                            vec![SourceMetadataObservation {
+                                source,
+                                metadata: metadata.clone(),
+                            }]
+                        })
+                        .unwrap_or_default(),
                     weight: score_weight,
                 },
             );
@@ -167,6 +185,7 @@ pub(crate) fn build_weighted_pool(
                 game.rank,
                 game.score,
                 &[],
+                Some(&game.metadata),
             );
         }
     }
@@ -182,6 +201,7 @@ pub(crate) fn build_weighted_pool(
                 game.rank,
                 game.score,
                 &[],
+                Some(&game.metadata),
             );
         }
     }
@@ -197,6 +217,7 @@ pub(crate) fn build_weighted_pool(
                 game.rank,
                 game.score,
                 &[],
+                Some(&game.metadata),
             );
         }
     }
@@ -212,6 +233,7 @@ pub(crate) fn build_weighted_pool(
                 game.rank,
                 game.score,
                 &[],
+                Some(&game.metadata),
             );
         }
     }
@@ -225,6 +247,7 @@ pub(crate) fn build_weighted_pool(
                 None,
                 None,
                 &[],
+                None,
             );
         }
     }
@@ -238,6 +261,7 @@ pub(crate) fn build_weighted_pool(
                 None,
                 None,
                 &game.evidence,
+                None,
             );
         }
     }
@@ -505,6 +529,7 @@ mod tests {
             rank: Some(1),
             score: None,
             app_id: Some(10101),
+            metadata: Default::default(),
         };
         let evidence = ScanEvidence {
             launcher: LauncherId::Generic,
@@ -709,6 +734,7 @@ mod tests {
                 sources: vec!["Manual".into()],
                 source_ids: vec![SourceId::Manual],
                 scan_evidence: vec![],
+                metadata_observations: vec![],
                 weight: 1.0,
             },
             WeightedPoolGame {
@@ -718,6 +744,7 @@ mod tests {
                 sources: vec!["Steam Import".into()],
                 source_ids: vec![SourceId::SteamImport],
                 scan_evidence: vec![],
+                metadata_observations: vec![],
                 weight: 2.0,
             },
         ];

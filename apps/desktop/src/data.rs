@@ -189,6 +189,7 @@ fn parse_steamcharts(html: &str) -> Result<Vec<GameItem>> {
             rank,
             score,
             app_id,
+            metadata: Default::default(),
         });
     }
 
@@ -242,6 +243,7 @@ fn parse_twitchmetrics(html: &str) -> Result<Vec<GameItem>> {
             rank,
             score,
             app_id: None,
+            metadata: Default::default(),
         });
     }
 
@@ -293,6 +295,7 @@ fn parse_steamdb_html(html: &str) -> Result<Vec<GameItem>> {
                 rank,
                 score,
                 app_id,
+                metadata: Default::default(),
             });
         }
         if !results.is_empty() {
@@ -353,6 +356,7 @@ async fn fetch_steam_api_top(client: &Client) -> Result<Vec<GameItem>> {
             rank: Some(entry.rank),
             score: entry.peak_in_game,
             app_id: Some(u64::from(entry.appid)),
+            metadata: Default::default(),
         });
         sleep(Duration::from_millis(60)).await;
     }
@@ -448,6 +452,10 @@ fn map_steam_owned_games(games: Vec<SteamOwnedGame>) -> Vec<GameItem> {
             rank: Some(index + 1),
             score: game.playtime_forever,
             app_id: Some(u64::from(game.appid)),
+            metadata: crate::GameMetadata {
+                provider_id: Some(game.appid.to_string()),
+                ..Default::default()
+            },
         });
     }
 
@@ -466,6 +474,7 @@ fn steam_app_id_from_href(href: &str) -> Option<u64> {
 #[cfg(test)]
 mod identity_tests {
     use super::{map_steam_owned_games, steam_app_id_from_href, SteamOwnedGamesResponse};
+    use crate::{engine::build_weighted_pool, provenance::SourceId};
 
     #[test]
     fn steam_import_keeps_equal_titles_with_distinct_app_ids() {
@@ -481,6 +490,37 @@ mod identity_tests {
         assert_eq!(
             games.iter().map(|game| game.app_id).collect::<Vec<_>>(),
             [Some(10101), Some(20202)]
+        );
+        assert_eq!(games[0].metadata.provider_id.as_deref(), Some("10101"));
+        let pool = build_weighted_pool(
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &[],
+            &[],
+            &[],
+            &games,
+            &[],
+            &[],
+        );
+        assert_eq!(pool.len(), 2);
+        assert_eq!(pool[0].source_ids, [SourceId::SteamImport]);
+        assert_eq!(
+            pool[0].metadata_observations[0]
+                .metadata
+                .provider_id
+                .as_deref(),
+            Some("10101")
         );
     }
 

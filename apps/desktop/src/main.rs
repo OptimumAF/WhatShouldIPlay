@@ -37,6 +37,29 @@ struct GameItem {
     rank: Option<usize>,
     score: Option<u64>,
     app_id: Option<u64>,
+    metadata: GameMetadata,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct GameMetadata {
+    provider_id: Option<String>,
+    url: Option<String>,
+    platforms: Option<Vec<String>>,
+    tags: Option<Vec<String>>,
+    release_date: Option<String>,
+    price_usd: Option<f64>,
+    price: Option<contracts::PriceContract>,
+    is_free: Option<bool>,
+    estimated_length: Option<String>,
+    length_estimate: Option<contracts::LengthEstimateContract>,
+    metadata_observed_at: Option<String>,
+    source_fetched_at: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct SourceMetadataObservation {
+    source: provenance::SourceId,
+    metadata: GameMetadata,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -53,6 +76,7 @@ struct WeightedPoolGame {
     sources: Vec<String>,
     source_ids: Vec<provenance::SourceId>,
     scan_evidence: Vec<provenance::ScanEvidence>,
+    metadata_observations: Vec<SourceMetadataObservation>,
     weight: f64,
 }
 
@@ -602,7 +626,7 @@ fn localize_source_chain(lang: UiLang, sources: &str) -> String {
     localized.join(" + ")
 }
 
-fn map_contract_games(items: Vec<contracts::GameContract>) -> Vec<GameItem> {
+fn map_contract_games(items: Vec<contracts::GameContract>, fetched_at: &str) -> Vec<GameItem> {
     let mut mapped = Vec::new();
     for (index, entry) in items.into_iter().enumerate() {
         let name = normalize_name(&entry.name);
@@ -614,23 +638,143 @@ fn map_contract_games(items: Vec<contracts::GameContract>) -> Vec<GameItem> {
             rank: entry.rank.or(Some(index + 1)),
             score: entry.score,
             app_id: entry.app_id,
+            metadata: GameMetadata {
+                provider_id: entry.provider_id,
+                url: entry.url,
+                platforms: entry.platforms,
+                tags: entry.tags,
+                release_date: entry.release_date,
+                price_usd: entry.price_usd,
+                price: entry.price,
+                is_free: entry.is_free,
+                estimated_length: entry.estimated_length,
+                length_estimate: entry.length_estimate,
+                metadata_observed_at: entry.metadata_observed_at,
+                source_fetched_at: Some(fetched_at.to_string()),
+            },
         });
     }
     dedupe_game_items(mapped)
 }
 
 fn online_data_from_contract(payload: TopGamesPayloadContract) -> OnlineData {
-    let steamdb_note = payload
-        .sources
-        .steamdb
+    let charts = payload.sources.steamcharts;
+    let db = payload.sources.steamdb;
+    let twitch = payload.sources.twitchmetrics;
+    let steamdb_note = db
         .note
         .unwrap_or_else(|| "Shared top-games contract feed.".to_string());
 
     OnlineData {
-        steamcharts: map_contract_games(payload.sources.steamcharts.games),
-        steamdb: map_contract_games(payload.sources.steamdb.games),
-        twitchmetrics: map_contract_games(payload.sources.twitchmetrics.games),
+        steamcharts: map_contract_games(charts.games, &charts.fetched_at),
+        steamdb: map_contract_games(db.games, &db.fetched_at),
+        twitchmetrics: map_contract_games(twitch.games, &twitch.fetched_at),
         steamdb_note,
+    }
+}
+
+#[cfg(test)]
+mod metadata_adapter_tests {
+    use super::{build_weighted_pool, online_data_from_contract, TopGamesPayloadContract};
+    use crate::provenance::SourceId;
+
+    #[test]
+    fn desktop_feed_adapter_keeps_metadata_through_weighted_pool() {
+        let feed: TopGamesPayloadContract = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/top-games-metadata-v1.json"
+        ))
+        .unwrap();
+        let online = online_data_from_contract(feed);
+        let game = &online.steamcharts[0];
+        assert_eq!(game.app_id, Some(10101));
+        assert_eq!(game.metadata.provider_id.as_deref(), Some("10101"));
+        assert_eq!(
+            game.metadata
+                .price
+                .as_ref()
+                .map(|price| price.currency.as_str()),
+            Some("EUR")
+        );
+        assert_eq!(
+            game.metadata.source_fetched_at.as_deref(),
+            Some("2026-01-01T12:00:00.000Z")
+        );
+        let pool = build_weighted_pool(
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            &online.steamcharts,
+            &online.steamdb,
+            &[],
+            &[],
+            &[],
+            &[],
+        );
+        assert_eq!(pool.len(), 1);
+        assert_eq!(pool[0].id, "steam:10101");
+        let observation = &pool[0].metadata_observations[0];
+        assert_eq!(observation.source, SourceId::Steamcharts);
+        assert_eq!(observation.metadata.provider_id.as_deref(), Some("10101"));
+        assert_eq!(
+            observation.metadata.url.as_deref(),
+            Some("https://example.invalid/games/echo-harbor")
+        );
+        assert_eq!(
+            observation.metadata.platforms.as_deref(),
+            Some(&["windows".into(), "linux".into()][..])
+        );
+        assert_eq!(
+            observation.metadata.tags.as_deref(),
+            Some(&["Puzzle".into()][..])
+        );
+        assert_eq!(
+            observation.metadata.release_date.as_deref(),
+            Some("2025-12-01")
+        );
+        assert_eq!(observation.metadata.is_free, Some(false));
+        assert_eq!(
+            observation
+                .metadata
+                .price
+                .as_ref()
+                .map(|price| price.amount),
+            Some(19.99)
+        );
+        assert!(observation.metadata.length_estimate.is_some());
+        assert_eq!(
+            observation.metadata.metadata_observed_at.as_deref(),
+            Some("2026-01-01T11:30:00.000Z")
+        );
+        assert_eq!(
+            observation.metadata.source_fetched_at.as_deref(),
+            Some("2026-01-01T12:00:00.000Z")
+        );
+        assert_eq!(pool[0].metadata_observations.len(), 2);
+        assert_eq!(pool[0].metadata_observations[1].source, SourceId::Steamdb);
+        assert_eq!(
+            pool[0].metadata_observations[1]
+                .metadata
+                .provider_id
+                .as_deref(),
+            Some("steamdb-10101")
+        );
+        assert_eq!(
+            pool[0].metadata_observations[1]
+                .metadata
+                .source_fetched_at
+                .as_deref(),
+            Some("2026-01-01T13:00:00.000Z")
+        );
     }
 }
 

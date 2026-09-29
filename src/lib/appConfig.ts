@@ -9,7 +9,7 @@ import {
   storedSteamImportSchema,
   type CloudSyncSnapshot,
 } from "./appSchemas";
-import type { GameEntry, GameLength, GamePlatform, SourceId } from "../types";
+import type { GameEntry, GameLength, GameLengthEstimate, GamePlatform, GamePrice, SourceId } from "../types";
 import { gameIdentity } from "./gameIdentity";
 import type { GameObservations } from "./gameObservations";
 import { uniqueManualIdForName, type ManualGameRecord } from "./manualIdentity";
@@ -23,6 +23,22 @@ export type ThemeMode = "system" | "light" | "dark" | "high-contrast";
 export type WorkspaceTab = "play" | "library" | "history" | "settings";
 export type SpinSpeedProfile = "cinematic" | "balanced" | "rapid";
 
+export interface PoolSourceObservation {
+  source: SourceId;
+  fetchedAt?: string;
+  providerId?: string;
+  url?: string;
+  platforms?: GamePlatform[];
+  tags?: string[];
+  releaseDate?: string;
+  priceUsd?: number;
+  price?: GamePrice;
+  isFree?: boolean;
+  estimatedLength?: GameLength;
+  lengthEstimate?: GameLengthEstimate;
+  metadataObservedAt?: string;
+}
+
 export interface PoolGame {
   id: string;
   name: string;
@@ -30,13 +46,18 @@ export interface PoolGame {
   observations: GameObservations;
   weight: number;
   appId?: number;
+  providerId?: string;
   url?: string;
   platforms?: GamePlatform[];
   tags?: string[];
   releaseDate?: string;
   priceUsd?: number;
+  price?: GamePrice;
   isFree?: boolean;
   estimatedLength?: GameLength;
+  lengthEstimate?: GameLengthEstimate;
+  metadataObservedAt?: string;
+  sourceObservations: PoolSourceObservation[];
 }
 
 export interface WinnerInfo {
@@ -441,13 +462,17 @@ export const sanitizeSteamImport = (input: StoredSteamImport | null): StoredStea
       rank: entry.rank ?? index + 1,
       score: entry.score,
       appId: entry.appId,
+      providerId: entry.providerId,
       url: entry.url,
       platforms: entry.platforms,
       tags: entry.tags,
       releaseDate: entry.releaseDate,
       priceUsd: entry.priceUsd,
+      price: entry.price,
       isFree: entry.isFree,
       estimatedLength: entry.estimatedLength,
+      lengthEstimate: entry.lengthEstimate,
+      metadataObservedAt: entry.metadataObservedAt,
     });
   });
 

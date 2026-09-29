@@ -1,6 +1,8 @@
 import type {
   GameLength as ContractGameLength,
+  GameLengthEstimate as ContractGameLengthEstimate,
   GamePlatform as ContractGamePlatform,
+  GamePrice as ContractGamePrice,
   TopGameSourceId,
   TopGamesPayloadContract,
 } from "./contracts/topGamesContract";
@@ -12,13 +14,18 @@ export interface GameEntry {
   rank?: number;
   score?: number;
   appId?: number;
+  providerId?: string;
   url?: string;
   platforms?: GamePlatform[];
   tags?: string[];
   releaseDate?: string;
   priceUsd?: number;
+  price?: GamePrice;
   isFree?: boolean;
   estimatedLength?: GameLength;
+  lengthEstimate?: GameLengthEstimate;
+  metadataObservedAt?: string;
+  sourceFetchedAt?: string;
 }
 
 export interface SourcePayload {
@@ -30,6 +37,7 @@ export interface SourcePayload {
 }
 
 export interface TopGamesPayload {
+  schemaVersion?: TopGamesPayloadContract["schemaVersion"];
   generatedAt: string;
   sources: TopGamesPayloadContract["sources"];
 }
@@ -37,3 +45,5 @@ export interface TopGamesPayload {
 export type SourceId = TopGameSourceId | "manual" | "scan" | "steamImport";
 export type GamePlatform = ContractGamePlatform;
 export type GameLength = ContractGameLength;
+export type GamePrice = ContractGamePrice;
+export type GameLengthEstimate = ContractGameLengthEstimate;

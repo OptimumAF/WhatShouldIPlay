@@ -163,6 +163,7 @@ mod availability_tests {
                 launcher: LauncherId::Steam,
                 kind: ScanEvidenceKind::Manifest,
             }],
+            metadata_observations: vec![],
             weight: 1.0,
         }];
         let spin = SpinOperation::new(1, &pool, &[1.0], 0, &[], "", "");
